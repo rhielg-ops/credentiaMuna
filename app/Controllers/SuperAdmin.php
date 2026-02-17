@@ -5,18 +5,24 @@ namespace App\Controllers;
 use CodeIgniter\Controller;
 use App\Models\UserModel;
 use App\Models\ActivityLogModel;
+use App\Models\DashboardModel;
+use App\Models\UserPrivilegeModel;
 use App\Libraries\EmailService;
 
 class SuperAdmin extends BaseController
 {
     protected $userModel;
     protected $activityLogModel;
+    protected $dashboardModel;
+    protected $privilegeModel;
     protected $emailService;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
         $this->activityLogModel = new ActivityLogModel();
+        $this->dashboardModel = new DashboardModel();
+        $this->privilegeModel = new UserPrivilegeModel();
         $this->emailService = new EmailService();
     }
 
@@ -25,7 +31,7 @@ class SuperAdmin extends BaseController
      */
     protected function checkSuperAdmin()
     {
-        if (!session()->get('logged_in') || session()->get('role') !== 'super_admin') {
+        if (!session()->get('logged_in') || session()->get('role') !== 'admin') {
             return redirect()->to('/login')->with('error', 'Unauthorized access.');
         }
         return null;
@@ -39,11 +45,17 @@ class SuperAdmin extends BaseController
         $redirect = $this->checkSuperAdmin();
         if ($redirect) return $redirect;
 
+        // Load dashboard statistics dynamically
+        $stats = $this->dashboardModel->getSuperAdminStats();
+        $recentActivity = $this->dashboardModel->getRecentActivity(5);
+
         $data = [
+            'title' => 'Admin Dashboard - CredentiaTAU',
             'email' => session()->get('email'),
             'role'  => session()->get('role'),
-            'full_name' => session()->get('full_name') ?? 'Super Admin',
-            'stats' => $this->userModel->getUserStats()
+            'full_name' => session()->get('full_name') ?? 'Admin',
+            'stats' => $stats,
+            'recent_activity' => $recentActivity
         ];
 
         return view('super_admin/dashboard', $data);
@@ -60,22 +72,86 @@ class SuperAdmin extends BaseController
         // Get all users with record counts
         $users = $this->userModel->getAllUsersWithRecordCounts();
         
-        // Get pending admins
-        $pendingAdmins = $this->userModel->getPendingAdmins();
+        // Get inactive users (pending reactivation)
+        $inactiveUsers = $this->userModel->getInactiveUsers();
+
+        // Build a privileges map keyed by user_id for use in the view
+        $userPrivilegesMap = [];
+        foreach ($users as $user) {
+            $userPrivilegesMap[$user['id']] = $this->privilegeModel->getUserPrivileges($user['id']);
+        }
 
         $data = [
+            'title' => 'User Management - CredentiaTAU',
             'email' => session()->get('email'),
             'role'  => session()->get('role'),
-            'full_name' => session()->get('full_name') ?? 'Super Admin',
+            'full_name' => session()->get('full_name') ?? 'Admin',
             'users' => $users,
-            'pending_admins' => $pendingAdmins
+            'pending_admins' => $inactiveUsers,
+            'user_privileges_map' => $userPrivilegesMap,
+            'privilege_definitions' => $this->privilegeModel->getPrivilegeDefinitions()
         ];
 
         return view('super_admin/user_management', $data);
     }
 
     /**
-     * Add new admin
+     * All Records
+     */
+    public function allRecords()
+    {
+        $redirect = $this->checkSuperAdmin();
+        if ($redirect) return $redirect;
+
+        $data = [
+            'title' => 'All Records - CredentiaTAU',
+            'email' => session()->get('email'),
+            'role'  => session()->get('role'),
+            'full_name' => session()->get('full_name') ?? 'Admin'
+        ];
+
+        return view('super_admin/all_records', $data);
+    }
+
+    /**
+     * System Backup
+     */
+    public function systemBackup()
+    {
+        $redirect = $this->checkSuperAdmin();
+        if ($redirect) return $redirect;
+
+        $data = [
+            'title' => 'System Backup - CredentiaTAU',
+            'email' => session()->get('email'),
+            'role'  => session()->get('role'),
+            'full_name' => session()->get('full_name') ?? 'Admin'
+        ];
+
+        return view('super_admin/system_backup', $data);
+    }
+
+    /**
+     * Settings
+     */
+    public function settings()
+    {
+        $redirect = $this->checkSuperAdmin();
+        if ($redirect) return $redirect;
+
+        $data = [
+            'title' => 'Settings - CredentiaTAU',
+            'email' => session()->get('email'),
+            'role'  => session()->get('role'),
+            'full_name' => session()->get('full_name') ?? 'Admin',
+            'user_id' => session()->get('user_id')
+        ];
+
+        return view('super_admin/settings', $data);
+    }
+
+    /**
+     * Add Admin
      */
     public function addAdmin()
     {
@@ -87,7 +163,8 @@ class SuperAdmin extends BaseController
         $validation->setRules([
             'full_name' => 'required|min_length[3]|max_length[255]',
             'email' => 'required|valid_email|is_unique[users.email]',
-            'role' => 'required|in_list[admin,super_admin]',
+            'username' => 'required|min_length[3]|max_length[100]|is_unique[users.username]|alpha_numeric_punct',
+            'role' => 'required|in_list[admin,user]',
             'access_level' => 'required|in_list[full,limited]',
             'initial_password' => 'required|min_length[8]'
         ]);
@@ -103,6 +180,7 @@ class SuperAdmin extends BaseController
         $userData = [
             'full_name' => $this->request->getPost('full_name'),
             'email' => $this->request->getPost('email'),
+            'username' => $this->request->getPost('username'),
             'password' => $initialPassword, // Will be hashed by model
             'role' => $this->request->getPost('role'),
             'access_level' => $this->request->getPost('access_level'),
@@ -114,11 +192,31 @@ class SuperAdmin extends BaseController
         if ($this->userModel->insert($userData)) {
             $newUserId = $this->userModel->getInsertID();
             
+            // Build privileges from submitted checkboxes, falling back to role defaults
+            $submittedPrivs = $this->request->getPost('privileges') ?? null;
+
+            if (is_array($submittedPrivs) && count($submittedPrivs) > 0) {
+                $allKeys = [
+                    'records_upload', 'files_view', 'records_update', 'records_organize',
+                    'folders_add', 'records_delete', 'folders_delete',
+                    'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin'
+                ];
+                $privileges = [];
+                foreach ($allKeys as $key) {
+                    $privileges[$key] = in_array($key, $submittedPrivs, true);
+                }
+                $this->privilegeModel->setPrivileges($newUserId, $privileges);
+            } else {
+                // Fallback: initialize default privileges for the user's role
+                $this->privilegeModel->initializeUserPrivileges($newUserId, $userData['role']);
+            }
+            
             // Log activity
+            $roleDisplay = $this->userModel->getRoleDisplayName($userData['role']);
             $this->activityLogModel->logActivity(
                 session()->get('user_id'),
                 'user_created',
-                "Created new {$userData['role']}: {$userData['email']}"
+                "Created new {$roleDisplay}: {$userData['email']} (username: {$userData['username']})"
             );
 
             // Send welcome email
@@ -130,29 +228,24 @@ class SuperAdmin extends BaseController
             );
 
             return redirect()->to('/super-admin/user-management')
-                ->with('success', 'Admin account created successfully! Welcome email sent.');
+                ->with('success', 'User account created successfully! Welcome email sent.');
         } else {
-            return redirect()->back()->with('error', 'Failed to create admin account.');
+            return redirect()->back()->with('error', 'Failed to create user account.');
         }
     }
 
     /**
-     * Edit admin
+     * Edit Admin
      */
     public function editAdmin($id)
     {
         $redirect = $this->checkSuperAdmin();
         if ($redirect) return $redirect;
 
-        // Check if user exists
-        $user = $this->userModel->find($id);
-        if (!$user) {
+        // Get existing user
+        $existingUser = $this->userModel->find($id);
+        if (!$existingUser) {
             return redirect()->back()->with('error', 'User not found.');
-        }
-
-        // Prevent editing self
-        if ($id == session()->get('user_id')) {
-            return redirect()->back()->with('error', 'You cannot edit your own account from here.');
         }
 
         // Validate input
@@ -160,55 +253,79 @@ class SuperAdmin extends BaseController
         $validation->setRules([
             'full_name' => 'required|min_length[3]|max_length[255]',
             'email' => "required|valid_email|is_unique[users.email,id,{$id}]",
-            'role' => 'required|in_list[admin,super_admin]',
+            'username' => "required|min_length[3]|max_length[100]|is_unique[users.username,id,{$id}]|alpha_numeric_punct",
+            'role' => 'required|in_list[admin,user]',
             'access_level' => 'required|in_list[full,limited]',
-            'status' => 'required|in_list[active,inactive,suspended]'
+            'status' => 'required|in_list[active,inactive]',
+            'new_password' => 'permit_empty|min_length[8]'
         ]);
 
         if (!$validation->withRequest($this->request)->run()) {
             return redirect()->back()->with('error', implode('<br>', $validation->getErrors()));
         }
 
-        // Update user
+        // Prepare update data
         $updateData = [
             'full_name' => $this->request->getPost('full_name'),
             'email' => $this->request->getPost('email'),
+            'username' => $this->request->getPost('username'),
             'role' => $this->request->getPost('role'),
             'access_level' => $this->request->getPost('access_level'),
             'status' => $this->request->getPost('status')
         ];
 
-        // Update password if provided
+        // Add password if provided
         $newPassword = $this->request->getPost('new_password');
         if (!empty($newPassword)) {
             $updateData['password'] = $newPassword; // Will be hashed by model
-            $updateData['initial_password_changed'] = false;
+        }
+
+        // If role changed, update privileges
+        if ($existingUser['role'] !== $updateData['role']) {
+            $this->privilegeModel->deleteUserPrivileges($id);
+            $this->privilegeModel->initializeUserPrivileges($id, $updateData['role']);
         }
 
         if ($this->userModel->update($id, $updateData)) {
             // Log activity
+            $changes = [];
+            if ($existingUser['username'] !== $updateData['username']) {
+                $changes[] = "username: {$existingUser['username']} → {$updateData['username']}";
+            }
+            if ($existingUser['email'] !== $updateData['email']) {
+                $changes[] = "email: {$existingUser['email']} → {$updateData['email']}";
+            }
+            if ($existingUser['role'] !== $updateData['role']) {
+                $oldRole = $this->userModel->getRoleDisplayName($existingUser['role']);
+                $newRole = $this->userModel->getRoleDisplayName($updateData['role']);
+                $changes[] = "role: {$oldRole} → {$newRole}";
+            }
+            if (!empty($newPassword)) {
+                $changes[] = "password reset";
+            }
+            
+            $changeLog = empty($changes) ? 'Updated user details' : 'Updated: ' . implode(', ', $changes);
+            
             $this->activityLogModel->logActivity(
                 session()->get('user_id'),
                 'user_updated',
-                "Updated user: {$updateData['email']}"
+                "Updated user: {$updateData['email']} - {$changeLog}"
             );
 
             return redirect()->to('/super-admin/user-management')
-                ->with('success', 'Admin account updated successfully!');
+                ->with('success', 'User account updated successfully!');
         } else {
-            return redirect()->back()->with('error', 'Failed to update admin account.');
+            return redirect()->back()->with('error', 'Failed to update user account.');
         }
     }
 
     /**
-     * Delete admin
+     * Delete Admin
      */
     public function deleteAdmin($id)
     {
-        $redirect = $this->checkSuperAdmin();
-        if ($redirect) return $redirect;
+        if ($redirect = $this->checkSuperAdmin()) return $redirect;
 
-        // Check if user exists
         $user = $this->userModel->find($id);
         if (!$user) {
             return redirect()->back()->with('error', 'User not found.');
@@ -220,183 +337,366 @@ class SuperAdmin extends BaseController
         }
 
         // Prevent deleting the only super admin
-        if ($user['role'] === 'super_admin') {
-            $superAdminCount = $this->userModel->where('role', 'super_admin')->countAllResults();
-            if ($superAdminCount <= 1) {
-                return redirect()->back()->with('error', 'Cannot delete the only super admin account.');
+        if ($user['role'] === 'admin') {
+            $count = $this->userModel->where('role', 'admin')->countAllResults();
+            if ($count <= 1) {
+                return redirect()->back()->with('error', 'Cannot delete the only Admin (Super Admin) account.');
             }
         }
 
         if ($this->userModel->delete($id)) {
-            // Log activity
+            $roleDisplay = $this->userModel->getRoleDisplayName($user['role']);
             $this->activityLogModel->logActivity(
                 session()->get('user_id'),
                 'user_deleted',
-                "Deleted user: {$user['email']}"
+                "Deleted user: {$user['email']} (username: {$user['username']}, role: {$roleDisplay})"
             );
 
             return redirect()->to('/super-admin/user-management')
-                ->with('success', 'Admin account deleted successfully!');
-        } else {
-            return redirect()->back()->with('error', 'Failed to delete admin account.');
+                ->with('success', 'User account deleted successfully!');
         }
+
+        return redirect()->back()->with('error', 'Failed to delete user account.');
     }
 
     /**
-     * Approve pending admin
+     * Toggle Inactive Status (Activate/Deactivate)
      */
-    public function approveAdmin($id)
+    public function toggleStatus($id)
     {
-        $redirect = $this->checkSuperAdmin();
-        if ($redirect) return $redirect;
+        if ($redirect = $this->checkSuperAdmin()) return $redirect;
 
         $user = $this->userModel->find($id);
         if (!$user) {
             return redirect()->back()->with('error', 'User not found.');
         }
 
-        if ($this->userModel->update($id, ['status' => 'active'])) {
-            $this->activityLogModel->logActivity(
-                session()->get('user_id'),
-                'user_approved',
-                "Approved user: {$user['email']}"
-            );
-
-            return redirect()->back()->with('success', 'Admin approved successfully!');
-        } else {
-            return redirect()->back()->with('error', 'Failed to approve admin.');
-        }
-    }
-
-    /**
-     * Reject pending admin
-     */
-    public function rejectAdmin($id)
-    {
-        $redirect = $this->checkSuperAdmin();
-        if ($redirect) return $redirect;
-
-        $user = $this->userModel->find($id);
-        if (!$user) {
-            return redirect()->back()->with('error', 'User not found.');
-        }
-
-        if ($this->userModel->delete($id)) {
-            $this->activityLogModel->logActivity(
-                session()->get('user_id'),
-                'user_rejected',
-                "Rejected user: {$user['email']}"
-            );
-
-            return redirect()->back()->with('success', 'Admin rejected and removed.');
-        } else {
-            return redirect()->back()->with('error', 'Failed to reject admin.');
-        }
-    }
-
-    /**
-     * Suspend/Unsuspend admin
-     */
-    public function toggleSuspend($id)
-    {
-        $redirect = $this->checkSuperAdmin();
-        if ($redirect) return $redirect;
-
-        $user = $this->userModel->find($id);
-        if (!$user) {
-            return redirect()->back()->with('error', 'User not found.');
-        }
-
-        // Prevent suspending self
+        // Prevent changing own status
         if ($id == session()->get('user_id')) {
-            return redirect()->back()->with('error', 'You cannot suspend your own account.');
+            return redirect()->back()->with('error', 'You cannot change your own status.');
         }
 
-        $newStatus = $user['status'] === 'suspended' ? 'active' : 'suspended';
-        
+        $newStatus = $user['status'] === 'inactive' ? 'active' : 'inactive';
+
         if ($this->userModel->update($id, ['status' => $newStatus])) {
-            $action = $newStatus === 'suspended' ? 'suspended' : 'unsuspended';
-            
+            $action = $newStatus === 'inactive' ? 'deactivated' : 'activated';
+
             $this->activityLogModel->logActivity(
                 session()->get('user_id'),
                 "user_{$action}",
-                "User {$action}: {$user['email']}"
+                "User {$action}: {$user['email']} (username: {$user['username']})"
             );
 
-            return redirect()->back()->with('success', "Admin {$action} successfully!");
-        } else {
-            return redirect()->back()->with('error', 'Failed to update admin status.');
+            return redirect()->back()->with('success', "User {$action} successfully!");
         }
+
+        return redirect()->back()->with('error', 'Failed to update user status.');
     }
 
     /**
-     * Get user data as JSON (for edit modal)
+     * Get User Data (AJAX)
      */
     public function getUserData($id)
     {
-        $redirect = $this->checkSuperAdmin();
-        if ($redirect) return $redirect;
+        if ($redirect = $this->checkSuperAdmin()) return $redirect;
 
         $user = $this->userModel->find($id);
-        
+
         if ($user) {
-            // Remove password from response
             unset($user['password']);
-            return $this->response->setJSON(['success' => true, 'user' => $user]);
-        } else {
-            return $this->response->setJSON(['success' => false, 'message' => 'User not found']);
+            return $this->response->setJSON([
+                'success' => true,
+                'user' => $user
+            ]);
         }
+
+        return $this->response->setJSON([
+            'success' => false,
+            'message' => 'User not found'
+        ]);
     }
 
     /**
-     * All Records
+     * Get User Privileges (AJAX)
      */
-    public function allRecords()
+  
+    /**
+     * Update User Privileges (AJAX)
+     */
+   
+/**
+ * =============================================================================
+ * INSTRUCTIONS: Add this method to your SuperAdmin controller
+ * =============================================================================
+ * 
+ * File Location: app/Controllers/SuperAdmin.php (or similar)
+ * 
+ * This method handles the AJAX request to fetch user privileges for the modal.
+ * Add this method to your existing SuperAdmin controller class.
+ */
+
+
+/**
+ * =============================================================================
+ * INSTRUCTIONS: Add this method to your SuperAdmin controller
+ * =============================================================================
+ * 
+ * File Location: app/Controllers/SuperAdmin.php (or similar)
+ * 
+ * This method handles the AJAX request to fetch user privileges for the modal.
+ * Add this method to your existing SuperAdmin controller class.
+ */
+
+public function getUserPrivileges($userId)
+{
+    // Return JSON response
+    return $this->response->setJSON($this->_getUserPrivilegesData($userId));
+}
+
+/**
+ * Helper method to get user privileges data
+ * Private method to keep the logic separate and testable
+ */
+private function _getUserPrivilegesData($userId)
+{
+    try {
+        $db = \Config\Database::connect();
+        
+        // Get user info
+        $user = $db->table('users')
+            ->where('id', $userId)
+            ->get()
+            ->getRow();
+        
+        if (!$user) {
+            return [
+                'success' => false,
+                'message' => 'User not found'
+            ];
+        }
+        
+        // Get user privileges from database
+        $privilegesQuery = $db->table('user_privileges')
+            ->where('user_id', $userId)
+            ->where('privilege_value', 1)
+            ->get();
+        
+        $userPrivileges = [];
+        foreach ($privilegesQuery->getResult() as $priv) {
+            $userPrivileges[$priv->privilege_key] = true;
+        }
+        
+        // Define all possible privilege definitions with categories
+        // This defines what each privilege means and how it's displayed
+        $definitions = [
+            'records_upload' => [
+                'label'       => 'Upload Records',
+                'description' => 'Upload digitized academic records',
+                'category'    => 'Records Management',
+            ],
+            'files_view' => [
+                'label'       => 'View Files',
+                'description' => 'View, download, and print archived records',
+                'category'    => 'Records Management',
+            ],
+            'records_update' => [
+                'label'       => 'Update Records',
+                'description' => 'Replace existing files with new versions',
+                'category'    => 'Records Management',
+            ],
+            'records_organize' => [
+                'label'       => 'Organize Records',
+                'description' => 'Move files/folders, rename files, and manage file structure',
+                'category'    => 'Records Management',
+            ],
+            'folders_add' => [
+                'label'       => 'Add Folders',
+                'description' => 'Create new folders or categories',
+                'category'    => 'Records Management',
+            ],
+            'records_delete' => [
+                'label'       => 'Delete Records',
+                'description' => 'Delete archived files',
+                'category'    => 'Records Management',
+            ],
+            'folders_delete' => [
+                'label'       => 'Delete Folders',
+                'description' => 'Delete folders or categories',
+                'category'    => 'Records Management',
+            ],
+            'profile_edit' => [
+                'label'       => 'Edit Profile',
+                'description' => 'Edit user profile and personal settings',
+                'category'    => 'Profile Management',
+            ],
+            'user_management' => [
+                'label'       => 'Manage Users',
+                'description' => 'Add, edit, and assign roles to users',
+                'category'    => 'Administration',
+            ],
+            'system_backup' => [
+                'label'       => 'System Backup',
+                'description' => 'Access system backup and restore features',
+                'category'    => 'Administration',
+            ],
+            'audit_logs' => [
+                'label'       => 'Audit Logs',
+                'description' => 'View system activity logs',
+                'category'    => 'Administration',
+            ],
+            'full_admin' => [
+                'label'       => 'Full Admin Access',
+                'description' => 'Automatically grants all privileges when selected',
+                'category'    => 'Administration',
+            ],
+        ];
+        
+        // Build privileges object showing which privileges the user has
+        $privileges = [];
+        foreach ($definitions as $key => $def) {
+            $privileges[$key] = isset($userPrivileges[$key]);
+        }
+        
+        return [
+            'success' => true,
+            'privileges' => $privileges,
+            'definitions' => $definitions,
+            'user' => [
+                'id' => $user->id,
+                'full_name' => $user->full_name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'access_level' => $user->access_level
+            ]
+        ];
+        
+    } catch (\Exception $e) {
+        log_message('error', 'Error fetching user privileges: ' . $e->getMessage());
+        return [
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ];
+    }
+}
+
+/**
+ * =============================================================================
+ * ROUTE CONFIGURATION
+ * =============================================================================
+ * 
+ * Add this route to app/Config/Routes.php inside your super-admin group:
+ * 
+ * $routes->get('super-admin/get-user-privileges/(:num)', 'SuperAdmin::getUserPrivileges/$1');
+ * 
+ * Or if you already have a routes group for super-admin:
+ * 
+ * $routes->group('super-admin', function($routes) {
+ *     $routes->get('get-user-privileges/(:num)', 'SuperAdmin::getUserPrivileges/$1');
+ *     // ... other routes
+ * });
+ */
+
+    /**
+     * Update User Privileges (AJAX POST)
+     * Route: POST super-admin/update-user-privileges/(:num)
+     */
+    public function updateUserPrivileges($userId)
+    {
+        if ($redirect = $this->checkSuperAdmin()) return $redirect;
+
+        // Must be an AJAX request
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)
+                                  ->setJSON(['success' => false, 'message' => 'Forbidden']);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User not found.']);
+        }
+
+        // All known privilege keys
+        $allKeys = [
+            'records_upload', 'files_view', 'records_update', 'records_organize',
+            'folders_add', 'records_delete', 'folders_delete',
+            'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin'
+        ];
+
+        // Parse submitted JSON body
+        $body       = $this->request->getJSON(true);
+        $submitted  = $body['privileges'] ?? [];
+
+        // Build a clean true/false map for every key
+        $privileges = [];
+        foreach ($allKeys as $key) {
+            $privileges[$key] = isset($submitted[$key]) && $submitted[$key] === true;
+        }
+
+        if ($this->privilegeModel->setPrivileges($userId, $privileges)) {
+            $this->activityLogModel->logActivity(
+                session()->get('user_id'),
+                'privileges_updated',
+                "Updated privileges for user: {$user['email']} (username: {$user['username']})"
+            );
+            return $this->response->setJSON(['success' => true, 'message' => 'Privileges updated successfully.']);
+        }
+
+        return $this->response->setJSON(['success' => false, 'message' => 'Failed to update privileges.']);
+    }
+
+    /**
+     * Activity Logs
+     */
+    public function activityLogs()
     {
         $redirect = $this->checkSuperAdmin();
         if ($redirect) return $redirect;
 
+        // Get filter parameters
+        $action = $this->request->getGet('action');
+        $timeRange = $this->request->getGet('time_range') ?? '7';
+        $userId = $this->request->getGet('user_id');
+
+        // Build query
+        $builder = $this->activityLogModel
+            ->select('activity_logs.*, users.full_name, users.email')
+            ->join('users', 'activity_logs.user_id = users.id', 'left');
+
+        // Apply filters
+        if ($action) {
+            $builder->like('activity_logs.action', $action);
+        }
+
+        if ($timeRange !== 'all') {
+            $days = intval($timeRange);
+            $builder->where('activity_logs.created_at >=', date('Y-m-d H:i:s', strtotime("-{$days} days")));
+        }
+
+        if ($userId) {
+            $builder->where('activity_logs.user_id', $userId);
+        }
+
+        $logs = $builder->orderBy('activity_logs.created_at', 'DESC')
+                       ->limit(100)
+                       ->findAll();
+
+        // Get all users for filter dropdown
+        $users = $this->userModel->select('id, full_name, email')
+                                 ->orderBy('full_name', 'ASC')
+                                 ->findAll();
+
         $data = [
+            'title' => 'Activity Logs - CredentiaTAU',
             'email' => session()->get('email'),
-            'role'  => session()->get('role'),
-            'full_name' => session()->get('full_name') ?? 'Super Admin'
+            'role' => session()->get('role'),
+            'full_name' => session()->get('full_name'),
+            'logs' => $logs,
+            'users' => $users,
+            'current_action' => $action,
+            'current_time_range' => $timeRange,
+            'current_user_id' => $userId
         ];
 
-        return view('super_admin/all_records', $data);
-    }
-
-    /**
-     * System Backup
-     */
-    public function systemBackup()
-    {
-        $redirect = $this->checkSuperAdmin();
-        if ($redirect) return $redirect;
-
-        $data = [
-            'email' => session()->get('email'),
-            'role'  => session()->get('role'),
-            'full_name' => session()->get('full_name') ?? 'Super Admin'
-        ];
-
-        return view('super_admin/system_backup', $data);
-    }
-
-    /**
-     * Settings
-     */
-    public function settings()
-    {
-        $redirect = $this->checkSuperAdmin();
-        if ($redirect) return $redirect;
-
-        $data = [
-            'email' => session()->get('email'),
-            'role'  => session()->get('role'),
-            'full_name' => session()->get('full_name') ?? 'Super Admin',
-            'user_id' => session()->get('user_id')
-        ];
-
-        return view('super_admin/settings', $data);
+        return view('super_admin/activity_logs', $data);
     }
 }

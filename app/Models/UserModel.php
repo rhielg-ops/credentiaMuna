@@ -16,6 +16,7 @@ class UserModel extends Model
     protected $allowedFields = [
         'full_name',
         'email',
+        'username',
         'password',
         'role',
         'access_level',
@@ -31,20 +32,15 @@ class UserModel extends Model
 
     protected $validationRules = [
         'full_name' => 'required|min_length[3]|max_length[255]',
-        'email' => 'required|valid_email|is_unique[users.email,id,{id}]',
-        'password' => 'required|min_length[8]',
-        'role' => 'required|in_list[super_admin,admin]',
+        'email' => 'required|valid_email',
+        'role' => 'required|in_list[admin,user]',
         'access_level' => 'in_list[full,limited]',
-        'status' => 'in_list[active,inactive,pending,suspended]'
+        'status' => 'in_list[active,inactive]'
     ];
 
     protected $validationMessages = [
         'email' => [
-            'is_unique' => 'This email is already registered.',
             'valid_email' => 'Please enter a valid email address.'
-        ],
-        'password' => [
-            'min_length' => 'Password must be at least 8 characters long.'
         ]
     ];
 
@@ -52,12 +48,16 @@ class UserModel extends Model
     protected $beforeUpdate = ['hashPassword'];
 
     /**
-     * Hash password before saving
+     * Hash password before saving - FIXED VERSION
      */
     protected function hashPassword(array $data)
     {
-        if (isset($data['data']['password'])) {
+        // Only hash if password field is present and not empty
+        if (isset($data['data']['password']) && !empty($data['data']['password'])) {
             $data['data']['password'] = password_hash($data['data']['password'], PASSWORD_DEFAULT);
+        } else {
+            // If password is empty, remove it from the update data
+            unset($data['data']['password']);
         }
         return $data;
     }
@@ -97,15 +97,11 @@ class UserModel extends Model
     }
 
     /**
-     * Get pending admin requests
+     * Get inactive users (for reactivation requests)
      */
-    public function getPendingAdmins()
+    public function getInactiveUsers()
     {
-        return $this->select('users.*, creator.full_name as created_by_name')
-                    ->join('users as creator', 'users.created_by = creator.id', 'left')
-                    ->where('users.status', 'pending')
-                    ->orderBy('users.created_at', 'DESC')
-                    ->findAll();
+        return $this->where('status', 'inactive')->findAll();
     }
 
     /**
@@ -116,9 +112,9 @@ class UserModel extends Model
         $db = \Config\Database::connect();
         
         return [
-            'total_admins' => $this->whereIn('role', ['admin', 'super_admin'])->countAllResults(),
-            'active_admins' => $this->whereIn('role', ['admin', 'super_admin'])->where('status', 'active')->countAllResults(),
-            'pending_admins' => $this->where('status', 'pending')->countAllResults(),
+            'total_admins' => $this->whereIn('role', 'admin')->countAllResults(),
+            'active_admins' => $this->whereIn('role', 'admin')->where('status', 'active')->countAllResults(),
+            'inactive_admins' => $this->where('status', 'inactive')->countAllResults(),
             'total_users' => $this->countAllResults()
         ];
     }
@@ -159,5 +155,45 @@ class UserModel extends Model
                     ->groupBy('users.id')
                     ->orderBy('users.created_at', 'DESC')
                     ->findAll();
+    }
+
+    /**
+     * Update user without password change
+     */
+    public function updateUser($userId, $data)
+    {
+        // If password is not provided or empty, remove it from update
+        if (!isset($data['password']) || empty($data['password'])) {
+            unset($data['password']);
+        }
+        
+        return $this->update($userId, $data);
+    }
+
+    /**
+     * Get role display name (updated naming)
+     */
+    public function getRoleDisplayName($role)
+    {
+        $roleNames = [
+    'admin' => 'Admin (Former Super Admin)',
+    'user' => 'User (Former Admin)'
+];
+        
+        return $roleNames[$role] ?? ucfirst($role);
+    }
+
+    /**
+     * Check if username exists
+     */
+    public function usernameExists($username, $excludeId = null)
+    {
+        $builder = $this->where('username', $username);
+        
+        if ($excludeId) {
+            $builder->where('id !=', $excludeId);
+        }
+        
+        return $builder->countAllResults() > 0;
     }
 }

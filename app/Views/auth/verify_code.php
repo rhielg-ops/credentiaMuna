@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Enter Verification Code - CredentiaTAU</title>
+  <title> Verification - CredentiaTAU</title>
   <link rel="icon" href="<?= base_url('assets/img/TAU.png'); ?>">
   <style>
   * {
@@ -195,7 +195,7 @@
 <body>
   <div class="verification-container">
     <img src="<?= base_url('assets/img/TAU.png'); ?>" class="logo" alt="TAU Logo">
-    <h2>Two-Factor Authentication</h2>
+    <h2>Verification</h2>
     <p class="subtitle">Verify Your Identity</p>
 
     <div class="info-box">

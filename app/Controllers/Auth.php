@@ -44,20 +44,38 @@ class Auth extends BaseController
 
     /**
      * Handle login (Step 1: Password verification)
+     * Now accepts EITHER email OR username
      */
     public function login()
     {
-        $email = $this->request->getPost('email');
+        $emailOrUsername = $this->request->getPost('email'); // Field name is 'email' but accepts both
         $password = $this->request->getPost('password');
 
         // Validate input
-        if (!$email || !$password) {
-            return redirect()->back()->with('error', 'Please enter both email and password.');
+        if (!$emailOrUsername || !$password) {
+            return redirect()->back()->with('error', 'Please enter your email/username and password.');
+        }
+
+        // Find user by email OR username
+        $user = $this->userModel
+            ->groupStart()
+                ->where('email', $emailOrUsername)
+                ->orWhere('username', $emailOrUsername)
+            ->groupEnd()
+            ->first();
+
+        // Determine email for lock checking
+        if ($user) {
+            $email = $user['email'];
+        } else {
+            // Use the input if it looks like an email, otherwise construct a temp one for logging
+            $email = filter_var($emailOrUsername, FILTER_VALIDATE_EMAIL) 
+                ? $emailOrUsername 
+                : $emailOrUsername . '@username.login';
         }
 
         // Check if account is locked
         if ($this->accountLockModel->isAccountLocked($email, 'password_attempts')) {
-            $lock = $this->accountLockModel->getActiveLock($email, 'password_attempts');
             $remainingTime = $this->accountLockModel->getRemainingLockTime($email, 'password_attempts');
             $minutes = ceil($remainingTime / 60);
             
@@ -65,11 +83,9 @@ class Auth extends BaseController
         }
 
         // Check if user exists
-        $user = $this->userModel->where('email', $email)->first();
-        
         if (!$user) {
             $this->loginAttemptModel->recordAttempt($email, 'password', false);
-            return redirect()->back()->with('error', 'Invalid email or password.');
+            return redirect()->back()->with('error', 'Invalid email/username or password.');
         }
 
         // Check account status
@@ -103,7 +119,7 @@ class Auth extends BaseController
             }
             
             $attemptsLeft = $maxAttempts - $failedAttempts;
-            return redirect()->back()->with('error', "Invalid email and password. You have {$attemptsLeft} attempt(s) remaining.");
+            return redirect()->back()->with('error', "Invalid email/username or password. You have {$attemptsLeft} attempt(s) remaining.");
         }
 
         // Password is correct - record successful attempt
@@ -229,9 +245,11 @@ class Auth extends BaseController
         session()->set([
             'user_id' => $user['id'],
             'email' => $user['email'],
+            'username' => $user['username'] ?? null,
             'full_name' => $user['full_name'],
             'role' => $user['role'],
             'access_level' => $user['access_level'],
+            'staff_unit' => $user['staff_unit'] ?? null,
             'logged_in' => true
         ]);
 
@@ -310,7 +328,7 @@ class Auth extends BaseController
     {
         $role = session()->get('role');
 
-        if ($role === 'super_admin') {
+        if ($role === 'admin') {
             return redirect()->to('/super-admin/dashboard');
         } else {
             return redirect()->to('/dashboard');
