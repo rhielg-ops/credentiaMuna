@@ -110,7 +110,7 @@ class SuperAdmin extends BaseController
             'full_name' => session()->get('full_name') ?? 'Admin'
         ];
 
-        return view('super_admin/all_records', $data);
+        return view('auth/academic_records', $data);
     }
 
     /**
