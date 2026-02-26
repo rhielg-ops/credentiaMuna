@@ -359,4 +359,276 @@ class AcademicRecords extends BaseController
 
         return $this->jsonOk(['new_path' => trim($destRelative . '/' . basename($absSrc), '/')]);
     }
+
+    // ================================================================
+// PHASE 1: TEMPORARY UPLOAD
+// ================================================================
+
+/**
+ * Handle temporary file upload (before preview)
+ * Route: POST /academic-records/temp-upload
+ */
+public function tempUpload()
+{
+    if (!session()->get('logged_in')) {
+        return $this->jsonError('Unauthenticated.', 401);
+    }
+
+    $privs = $this->privs();
+    if (!($privs['records_upload'] ?? false)) {
+        return $this->jsonError('No permission to upload files.');
+    }
+
+    $file       = $this->request->getFile('record_file');
+    $folderPath = $this->request->getPost('folder_path') ?? '';
+
+    // Validate file
+    if (!$file || !$file->isValid()) {
+        return $this->jsonError('No valid file received.');
+    }
+    if ($file->hasMoved()) {
+        return $this->jsonError('File already processed.');
+    }
+    if ($file->getSize() > $this->maxBytes) {
+        return $this->jsonError('File exceeds the 10 MB limit.');
+    }
+
+    $ext = strtolower($file->getClientExtension());
+    if (!in_array($ext, $this->allowedExts)) {
+        return $this->jsonError('File type not allowed. Accepted: ' . implode(', ', $this->allowedExts));
+    }
+
+    // Create temp directory if not exists
+    $tempDir = WRITEPATH . 'temp_uploads';
+    if (!is_dir($tempDir)) {
+        mkdir($tempDir, 0755, true);
+    }
+
+    // Generate unique token
+    $token = bin2hex(random_bytes(16));
+    $safeName = $token . '_' . $this->sanitiseName($file->getClientName());
+    
+    // Move to temp location
+    if (!$file->move($tempDir, $safeName)) {
+        return $this->jsonError('Failed to save temporary file.');
+    }
+
+    // Store metadata in session
+    session()->set('temp_upload_' . $token, [
+        'filename' => $safeName,
+        'original_name' => $file->getClientName(),
+        'folder_path' => $folderPath,
+        'size' => $file->getSize(),
+        'ext' => $ext,
+        'uploaded_at' => time()
+    ]);
+
+    return $this->jsonOk([
+        'token' => $token,
+        'preview_url' => base_url('academic-records/preview-pending/' . $token),
+        'original_name' => $file->getClientName(),
+        'size' => $this->formatBytes($file->getSize())
+    ]);
+}
+
+// ================================================================
+// PHASE 2: PREVIEW PENDING FILE
+// ================================================================
+
+/**
+ * Preview a pending (temporary) file
+ * Route: GET /academic-records/preview-pending/{token}
+ */
+public function previewPending($token)
+{
+    if (!session()->get('logged_in')) {
+        return $this->response->setStatusCode(401)->setBody('Unauthenticated.');
+    }
+
+    $privs = $this->privs();
+    if (!($privs['files_view'] ?? false)) {
+        return $this->response->setStatusCode(403)->setBody('No permission to view files.');
+    }
+
+    // Get metadata from session
+    $metadata = session()->get('temp_upload_' . $token);
+    if (!$metadata) {
+        return $this->response->setStatusCode(404)->setBody('Temporary file not found or expired.');
+    }
+
+    $tempPath = WRITEPATH . 'temp_uploads/' . $metadata['filename'];
+    if (!is_file($tempPath)) {
+        return $this->response->setStatusCode(404)->setBody('Temporary file not found.');
+    }
+
+    // Return file for preview
+    return $this->response
+        ->setHeader('Content-Type', mime_content_type($tempPath))
+        ->setHeader('Content-Disposition', 'inline; filename="' . $metadata['original_name'] . '"')
+        ->setHeader('Content-Length', (string) filesize($tempPath))
+        ->setBody(file_get_contents($tempPath));
+}
+
+/**
+ * Download a pending (temporary) file
+ * Route: GET /academic-records/download-pending/{token}
+ */
+public function downloadPending($token)
+{
+    if (!session()->get('logged_in')) {
+        return redirect()->to('/login');
+    }
+
+    $privs = $this->privs();
+    if (!($privs['files_view'] ?? false)) {
+        return $this->response->setStatusCode(403)->setBody('No permission to download files.');
+    }
+
+    $metadata = session()->get('temp_upload_' . $token);
+    if (!$metadata) {
+        return $this->response->setStatusCode(404)->setBody('Temporary file not found or expired.');
+    }
+
+    $tempPath = WRITEPATH . 'temp_uploads/' . $metadata['filename'];
+    if (!is_file($tempPath)) {
+        return $this->response->setStatusCode(404)->setBody('Temporary file not found.');
+    }
+
+    return $this->response
+        ->setHeader('Content-Type', mime_content_type($tempPath))
+        ->setHeader('Content-Disposition', 'attachment; filename="' . $metadata['original_name'] . '"')
+        ->setHeader('Content-Length', (string) filesize($tempPath))
+        ->setBody(file_get_contents($tempPath));
+}
+
+/**
+ * Cancel pending upload and delete temp file
+ * Route: POST /academic-records/cancel-pending
+ */
+public function cancelPending()
+{
+    if (!session()->get('logged_in')) {
+        return $this->jsonError('Unauthenticated.', 401);
+    }
+
+    $token = $this->request->getPost('token');
+    if (!$token) {
+        return $this->jsonError('Token required.');
+    }
+
+    $metadata = session()->get('temp_upload_' . $token);
+    if ($metadata) {
+        $tempPath = WRITEPATH . 'temp_uploads/' . $metadata['filename'];
+        if (is_file($tempPath)) {
+            unlink($tempPath);
+        }
+        session()->remove('temp_upload_' . $token);
+    }
+
+    return $this->jsonOk(['message' => 'Upload cancelled.']);
+}
+
+// ================================================================
+// PHASE 3: FOLDER BROWSER (Uses existing listFolder method)
+// ================================================================
+// Note: Your existing listFolder() method already provides the folder
+// structure. The frontend will use it to populate the folder browser modal.
+
+// ================================================================
+// PHASE 4: FINALIZE SAVE
+// ================================================================
+
+/**
+ * Finalize upload - move from temp to permanent location
+ * Route: POST /academic-records/finalize-upload
+ */
+public function finalizeUpload()
+{
+    if (!session()->get('logged_in')) {
+        return $this->jsonError('Unauthenticated.', 401);
+    }
+
+    $privs = $this->privs();
+    if (!($privs['records_upload'] ?? false)) {
+        return $this->jsonError('No permission to upload files.');
+    }
+
+    $token = $this->request->getPost('token');
+    $folderPath = $this->request->getPost('folder_path') ?? '';
+
+    if (!$token) {
+        return $this->jsonError('Token required.');
+    }
+
+    // Get temp file metadata
+    $metadata = session()->get('temp_upload_' . $token);
+    if (!$metadata) {
+        return $this->jsonError('Temporary file not found or expired.');
+    }
+
+    $tempPath = WRITEPATH . 'temp_uploads/' . $metadata['filename'];
+    if (!is_file($tempPath)) {
+        return $this->jsonError('Temporary file not found.');
+    }
+
+    // Sanitize destination folder
+    try {
+        $destDir = $this->safePath($folderPath);
+    } catch (\RuntimeException $e) {
+        return $this->jsonError('Invalid destination path.');
+    }
+
+    // Create destination directory if needed
+    if (!is_dir($destDir)) {
+        mkdir($destDir, 0755, true);
+    }
+
+    // Generate final filename with timestamp
+    $finalName = time() . '_' . $this->sanitiseName($metadata['original_name']);
+    $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
+
+    // Move file from temp to permanent location
+    if (!rename($tempPath, $finalPath)) {
+        return $this->jsonError('Failed to save file to permanent location.');
+    }
+
+    // Clean up session
+    session()->remove('temp_upload_' . $token);
+
+    // Build file info for response
+    $relativePath = trim($folderPath . '/' . $finalName, '/');
+    
+    return $this->jsonOk([
+        'message' => 'Record saved successfully',
+        'file_name' => $finalName,
+        'file_path' => $relativePath,
+        'file_size' => $this->formatBytes(filesize($finalPath)),
+        'download_url' => base_url('academic-records/download?path=' . urlencode($relativePath)),
+        'preview_url' => base_url('academic-records/preview?path=' . urlencode($relativePath))
+    ]);
+}
+
+/**
+ * Clean up old temporary files (maintenance)
+ * Can be called via cron or manually
+ */
+public function cleanupTempFiles()
+{
+    $tempDir = WRITEPATH . 'temp_uploads';
+    if (!is_dir($tempDir)) {
+        return;
+    }
+
+    $maxAge = 3600; // 1 hour
+    $now = time();
+
+    foreach (scandir($tempDir) as $file) {
+        if ($file === '.' || $file === '..') continue;
+        
+        $filePath = $tempDir . DIRECTORY_SEPARATOR . $file;
+        if (is_file($filePath) && ($now - filemtime($filePath)) > $maxAge) {
+            unlink($filePath);
+        }
+    }
+}
 }

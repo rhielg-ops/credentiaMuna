@@ -95,7 +95,6 @@ class UserPrivilegeModel extends Model
             'admin' => [
                 'records_upload'   => true,
                 'files_view'       => true,
-                'records_update'   => true,
                 'records_organize' => true,
                 'folders_add'      => true,
                 'records_delete'   => true,
@@ -109,7 +108,6 @@ class UserPrivilegeModel extends Model
             'user' => [
                 'records_upload'   => true,
                 'files_view'       => true,
-                'records_update'   => false,
                 'records_organize' => false,
                 'folders_add'      => false,
                 'records_delete'   => false,
@@ -158,11 +156,7 @@ class UserPrivilegeModel extends Model
                 'description' => 'View, download, and print archived records',
                 'category'    => 'Records Management',
             ],
-            'records_update' => [
-                'label'       => 'Update Records',
-                'description' => 'Replace existing files with new versions',
-                'category'    => 'Records Management',
-            ],
+            
             'records_organize' => [
                 'label'       => 'Organize Records',
                 'description' => 'Move files/folders, rename files, and manage file structure',

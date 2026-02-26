@@ -31,11 +31,26 @@ class DashboardModel extends Model
     /**
      * Get total records count
      */
-    protected function getTotalRecords()
+   protected function getTotalRecords()
     {
-        $query = $this->db->query("SELECT COUNT(*) as total FROM academic_records WHERE status = 'active'");
-        $result = $query->getRow();
-        return $result ? $result->total : 0;
+        $uploadRoot = FCPATH . 'uploads/academic_records/';
+
+        if (!is_dir($uploadRoot)) {
+            return 0;
+        }
+
+        $total = 0;
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($uploadRoot, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            // Count both files and folders (excluding . and ..)
+            $total++;
+        }
+
+        return $total;
     }
 
     /**
@@ -74,7 +89,7 @@ class DashboardModel extends Model
      */
     protected function getPendingStaffCount()
     {
-        $query = $this->db->query("SELECT COUNT(*) as total FROM access_requests WHERE status = 'pending'");
+        $query = $this->db->query("SELECT COUNT(*) as total FROM approval_requests WHERE status = 'pending'");
         $result = $query->getRow();
         return $result ? $result->total : 0;
     }

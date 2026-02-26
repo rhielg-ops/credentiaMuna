@@ -244,6 +244,30 @@
 <?= $this->section('modals') ?>
 
 <!-- ============================================================
+     PERMISSION DENIED MODAL
+     ============================================================ -->
+<div id="permissionDeniedModal"
+     class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+  <div class="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center">
+    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      </svg>
+    </div>
+    <h3 class="text-xl font-bold text-gray-800 mb-2">Access Denied</h3>
+    <p id="permissionDeniedMsg" class="text-gray-500 mb-6">
+      You don't have permission to perform this action.
+    </p>
+    <button onclick="closePermissionDeniedModal()"
+            class="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-colors w-full">
+      OK
+    </button>
+  </div>
+</div>
+
+
+<!-- ============================================================
      1. NEW FOLDER MODAL — requires folders_add
      ============================================================ -->
 <?php if ($can_add_folder ?? $priv_folders_add ?? false): ?>
@@ -683,6 +707,19 @@
       </div>
     </div>
 
+    <!-- Selected Path Preview -->
+    <div id="movePathPreviewWrap" class="hidden px-6 pb-0 pt-3">
+      <div class="flex items-start gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg">
+        <svg class="w-4 h-4 text-green-700 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+        </svg>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-semibold text-green-800 mb-0.5">Selected destination:</p>
+          <p id="moveSelectedPath" class="text-xs text-green-700 break-all"></p>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Footer -->
     <div class="flex items-center gap-3 px-6 py-4 border-t border-gray-200">
       <button 
@@ -737,11 +774,120 @@
 
   const PERMISSION_DENIED_MSG = 'Sorry, you do not have permission to perform this action.';
 
+  // ─── Reusable pop-up dialog notification ────────────────────────────────────
+  // Creates a clean modal-style dialog (not a browser alert) for user feedback.
+  // type: 'warning' | 'error' | 'success'
+  function showDialog(message, type = 'warning') {
+    // Remove any existing dialog
+    document.getElementById('_appDialog')?.remove();
+
+    const icons = {
+      warning: `<svg class="w-10 h-10 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>`,
+      error:   `<svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>`,
+      success: `<svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>`,
+    };
+    const borders = { warning: 'border-yellow-200', error: 'border-red-200', success: 'border-green-200' };
+    const bgs     = { warning: 'bg-yellow-50',      error: 'bg-red-50',      success: 'bg-green-50' };
+
+    const overlay = document.createElement('div');
+    overlay.id = '_appDialog';
+    overlay.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4';
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.45)';
+    overlay.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-[fadeIn_.15s_ease]">
+        <div class="flex flex-col items-center px-8 py-7 ${bgs[type]} border-b ${borders[type]}">
+          ${icons[type]}
+          <p class="mt-4 text-center text-gray-800 font-medium text-base leading-snug">${message}</p>
+        </div>
+        <div class="px-8 py-4 flex justify-center bg-white">
+          <button id="_appDialogOk"
+                  class="px-8 py-2.5 bg-green-700 hover:bg-green-800 text-white rounded-xl font-semibold transition-colors text-sm">
+            OK
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    document.getElementById('_appDialogOk').addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    });
+  }
+
+  // ─── Duplicate-name confirmation popup ────────────────────────────────────
+  // Shows a modal asking the user whether to replace an existing file/folder.
+  // onReplace: called when user clicks "Replace"
+  // onCancel:  called when user clicks "Cancel" (or dismisses)
+  function showDuplicateConfirm(name, onReplace, onCancel) {
+    document.getElementById('_dupConfirmDialog')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = '_dupConfirmDialog';
+    overlay.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4';
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.45)';
+    overlay.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex flex-col items-center px-8 py-7 bg-yellow-50 border-b border-yellow-200">
+          <svg class="w-10 h-10 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <p class="mt-4 text-center text-gray-800 font-semibold text-base leading-snug">
+            A file or folder with this name already exists.
+          </p>
+          <p class="mt-1 text-center text-gray-500 text-sm break-all">"${name}"</p>
+          <p class="mt-2 text-center text-gray-700 text-sm">Do you want to replace it?</p>
+        </div>
+        <div class="px-8 py-4 flex gap-3 bg-white">
+          <button id="_dupCancel"
+                  class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium text-gray-700 transition-colors text-sm">
+            Cancel
+          </button>
+          <button id="_dupReplace"
+                  class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors text-sm">
+            Replace
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+
+    document.getElementById('_dupReplace').addEventListener('click', () => { close(); onReplace(); });
+    document.getElementById('_dupCancel').addEventListener('click',  () => { close(); if (onCancel) onCancel(); });
+    overlay.addEventListener('click', e => { if (e.target === overlay) { close(); if (onCancel) onCancel(); } });
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); if (onCancel) onCancel(); }
+    });
+  }
+
   // Current folder path the user has navigated into (empty = root)
   let currentFolderPath = '';
 
   let currentView   = 'grid';
   let currentFilter = 'All Records';
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEW: TEMP UPLOAD WORKFLOW GLOBAL VARIABLES
+  // ═══════════════════════════════════════════════════════════════════════════
+  let currentTempToken = null;
+  let currentTempMetadata = null;
+  let selectedFolderPath = '';
+  let folderBrowserPath = '';
+  let folderBreadcrumbStack = [{ label: 'Academic Records', path: '' }];
 
   function denyAction() { alert(PERMISSION_DENIED_MSG); }
 
@@ -1131,17 +1277,268 @@
     return wrap;
   }
 
-  // ─── Search ───────────────────────────────────────────────────────────────
+  // ─── Global Search (Windows File Explorer style) ──────────────────────────
+  // Holds all folders+files fetched once for instant filtering
+  let _searchIndex        = null;   // { folders: [...], files: [...] } flat, all paths
+  let _searchBuildPromise = null;   // Promise lock — prevents concurrent/duplicate crawls
+  let _searchDebounce     = null;
+  let _searchActive       = false;
+
+  // Called on every keystroke in the search bar
   function filterRecords() {
-    const q = document.getElementById('searchInput').value.toLowerCase();
-    document.querySelectorAll('.record-card').forEach(card => {
-      card.closest('div').style.display =
-        (card.dataset.name || '').toLowerCase().includes(q) ? '' : 'none';
+    const q = document.getElementById('searchInput').value.trim();
+
+    clearTimeout(_searchDebounce);
+
+    if (q === '') {
+      // User cleared search — go back to normal folder view
+      if (_searchActive) {
+        _searchActive = false;
+        document.getElementById('breadcrumb').style.display = '';
+        loadFolder(currentFolderPath);
+      }
+      return;
+    }
+
+    // Debounce: wait 180 ms after the user stops typing
+    _searchDebounce = setTimeout(() => runGlobalSearch(q), 180);
+  }
+
+  // Build a flat index of every folder and file under Academic Records.
+  // Uses a Promise lock so concurrent calls all await the SAME crawl — no double-build,
+  // no race condition where a partial (empty) index is returned.
+  async function buildSearchIndex() {
+    if (_searchIndex)        return _searchIndex;          // fully built — return immediately
+    if (_searchBuildPromise) return _searchBuildPromise;   // crawl already in-flight — await it
+
+    _searchBuildPromise = (async () => {
+      const idx = { folders: [], files: [] };
+      await _crawlPath('', [], idx);
+      _searchIndex        = idx;
+      _searchBuildPromise = null;
+      return _searchIndex;
+    })();
+
+    return _searchBuildPromise;
+  }
+
+  // ancestorLabels = array of folder names from root down to (but not including) current path
+  async function _crawlPath(path, ancestorLabels, index) {
+    try {
+      const data = await apiFetch(API.listFolder + '?path=' + encodeURIComponent(path));
+      if (!data.success) return;
+      const folders = data.folders || [];
+      const files   = data.files   || [];
+
+      const locationLabel = ancestorLabels.length
+        ? 'Academic Records › ' + ancestorLabels.join(' › ')
+        : 'Academic Records';
+
+      folders.forEach(f => {
+        index.folders.push({ ...f, _locationLabel: locationLabel });
+      });
+      files.forEach(f => {
+        index.files.push({ ...f, _locationLabel: locationLabel });
+      });
+
+      // Recurse — pass this folder's name as the next ancestor
+      await Promise.all(folders.map(f =>
+        _crawlPath(f.path, [...ancestorLabels, f.name], index)
+      ));
+    } catch (e) { /* ignore individual path errors */ }
+  }
+
+  async function runGlobalSearch(q) {
+    _searchActive = true;
+
+    // Hide breadcrumb while in search mode
+    document.getElementById('breadcrumb').style.display = 'none';
+
+    const container = document.getElementById('masterList');
+    container.innerHTML = `
+      <div class="flex items-center justify-center py-10 text-gray-400">
+        <svg class="w-6 h-6 animate-spin mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Searching…
+      </div>`;
+
+    const index = await buildSearchIndex();
+
+    // Guard: if the user changed the query while index was building, skip stale render
+    const currentQ = document.getElementById('searchInput').value.trim();
+    if (currentQ !== q) return;
+
+    const lower = q.toLowerCase();
+
+    const matchedFolders = index.folders.filter(f =>
+      f.name.toLowerCase().includes(lower)
+    );
+    const matchedFiles = index.files.filter(f =>
+      f.name.toLowerCase().includes(lower)
+    );
+
+    renderSearchResults(q, matchedFolders, matchedFiles);
+  }
+
+  // Highlight matched substring in a name (case-insensitive)
+  function highlightMatch(text, q) {
+    if (!q) return text;
+    const idx = text.toLowerCase().indexOf(q.toLowerCase());
+    if (idx === -1) return text;
+    return text.slice(0, idx)
+      + `<mark class="bg-yellow-200 text-gray-900 rounded px-0.5">${text.slice(idx, idx + q.length)}</mark>`
+      + text.slice(idx + q.length);
+  }
+
+  function renderSearchResults(q, folders, files) {
+    const container = document.getElementById('masterList');
+    container.innerHTML = '';
+
+    const total = folders.length + files.length;
+
+    // ── Header ──
+    const header = document.createElement('div');
+    header.className = 'mb-5 flex items-center gap-3';
+    header.innerHTML = `
+      <div class="flex-1">
+        <p class="text-sm text-gray-500">
+          Results for <span class="font-semibold text-gray-800">"${q}"</span>
+          &mdash; <span class="text-green-700 font-semibold">${total}</span> result${total !== 1 ? 's' : ''} found
+        </p>
+      </div>
+      <button onclick="clearSearch()"
+              class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+        Clear search
+      </button>`;
+    container.appendChild(header);
+
+    if (total === 0) {
+      container.insertAdjacentHTML('beforeend', `
+        <div class="flex flex-col items-center justify-center py-20 text-gray-400">
+          <svg class="w-14 h-14 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <p class="text-lg font-medium">No results found</p>
+          <p class="text-sm mt-1">Try a different keyword or check the spelling.</p>
+        </div>`);
+      return;
+    }
+
+    // ── Flat list — folders first, then files ──
+    const listWrap = document.createElement('div');
+    listWrap.className = 'border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100';
+
+    const allResults = [
+      ...folders.map(f => ({ ...f, _kind: 'folder' })),
+      ...files.map(f   => ({ ...f, _kind: 'file' })),
+    ];
+
+    allResults.forEach(item => {
+      const isFolder = item._kind === 'folder';
+
+      // _locationLabel was stamped on during crawl — e.g. "Academic Records › CAF"
+      const locationLabel = item._locationLabel || 'Academic Records';
+
+      const safePath = item.path.replace(/'/g, "\\'");
+      const safeName = item.name.replace(/'/g, "\\'");
+      const highlightedName = highlightMatch(item.name, q);
+
+      // Icon
+      const iconHTML = isFolder
+        ? `<div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+             <svg class="w-6 h-6 text-green-700" fill="currentColor" viewBox="0 0 24 24">
+               <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+             </svg>
+           </div>`
+        : (() => {
+            const ext     = item.ext || 'pdf';
+            const iconSvg = RECORD_ICONS[ext] || RECORD_ICONS['pdf'];
+            const iconBg  = ICON_BG_MAP[ext]  || 'bg-gray-50';
+            return `<div class="w-10 h-10 ${iconBg} rounded-lg flex items-center justify-center flex-shrink-0">${iconSvg}</div>`;
+          })();
+
+      // Action buttons
+      const actionHTML = isFolder
+        ? `<button onclick="openFolderFromSearch('${safePath}','${safeName}','${locationLabel.replace(/'/g, "\\'")}')"
+                   class="text-xs px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 font-medium transition-colors whitespace-nowrap">
+             Open
+           </button>`
+        : `<div class="flex items-center gap-2">
+             <button onclick="fileAction_preview('${safePath}')"
+                     class="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium transition-colors whitespace-nowrap">
+               Preview
+             </button>
+             <button onclick="fileAction_download('${safePath}')"
+                     class="text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 font-medium transition-colors whitespace-nowrap">
+               Download
+             </button>
+           </div>`;
+
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors';
+      row.innerHTML = `
+        ${iconHTML}
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-gray-800 truncate">${highlightedName}</p>
+          <p class="text-xs text-gray-400 mt-0.5 flex items-center gap-1 truncate">
+            <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+            </svg>
+            ${locationLabel}
+          </p>
+        </div>
+        <div class="flex-shrink-0">
+          ${actionHTML}
+        </div>`;
+
+      listWrap.appendChild(row);
     });
-    document.querySelectorAll('.folder-card').forEach(card => {
-      card.closest('.folder-card-compact').style.display =
-        (card.dataset.folderName || '').toLowerCase().includes(q) ? '' : 'none';
-    });
+
+    container.appendChild(listWrap);
+  }
+
+  // Clear the search bar and restore the current folder
+  function clearSearch() {
+    const input = document.getElementById('searchInput');
+    input.value = '';
+    _searchActive = false;
+    document.getElementById('breadcrumb').style.display = '';
+    renderBreadcrumb();
+    loadFolder(currentFolderPath);
+  }
+
+  // Navigate directly into a folder from search results, rebuilding the breadcrumb trail
+  function openFolderFromSearch(folderPath, folderName, locationLabel) {
+    clearSearch();
+
+    // Rebuild breadcrumb from the location label
+    // locationLabel format: "Academic Records › CAF › 2026"
+    const parts = locationLabel.split(' › ').map(s => s.trim());
+
+    // Reset breadcrumb to base
+    breadcrumbStack = [
+      { label: 'My Files',         folderPath: null, isHome: true },
+      { label: 'Academic Records', folderPath: '',   isHome: false },
+    ];
+
+    // Walk through ancestor parts (skip "Academic Records" which is already added)
+    // We don't have ancestor paths stored individually, so we navigate straight to target
+    breadcrumbStack.push({ label: folderName, folderPath, isHome: false });
+    renderBreadcrumb();
+    loadFolder(folderPath);
+  }
+
+  // Invalidate the index whenever the file system changes (upload, delete, rename, move)
+  function invalidateSearchIndex() {
+    _searchIndex        = null;
+    _searchBuildPromise = null;
   }
 
   // ─── Menu toggles ─────────────────────────────────────────────────────────
@@ -1205,10 +1602,14 @@
     }
 
     closeNewFolderModal();
+    invalidateSearchIndex();
+    invalidateMoveFolderIndex();
     loadFolder(currentFolderPath); // refresh from disk
   }
 
-  // ─── Upload Record Modal ──────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // MODIFIED: UPLOAD RECORD MODAL - WITH PROGRESS BAR
+  // ═══════════════════════════════════════════════════════════════════════════
   function openUploadModal() {
     if (!PRIV_UPLOAD) { denyAction(); return; }
     document.getElementById('uploadFolderPath').value = currentFolderPath;
@@ -1217,8 +1618,18 @@
   function closeUploadModal() {
     document.getElementById('uploadModal').classList.add('hidden');
     document.getElementById('uploadForm')?.reset();
+    // Always fully reset the submit button
+    const submitBtn = document.querySelector('#uploadForm button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Upload Record';
+    }
+    // Clear file label
     const lbl = document.getElementById('recordFileName');
-    if (lbl) lbl.classList.add('hidden');
+    if (lbl) { lbl.innerHTML = ''; lbl.classList.add('hidden'); }
+    // Remove progress bar
+    const progress = document.querySelector('#uploadForm .upload-progress-container');
+    if (progress) progress.remove();
   }
   function openUploadModalForFolder(folderPath) {
     if (!PRIV_UPLOAD) { denyAction(); return; }
@@ -1226,64 +1637,1087 @@
     document.getElementById('uploadModal').classList.remove('hidden');
   }
 
-  // AJAX upload — intercept form submit so we can refresh without full reload
+  // Upload form handler with progress bar
+  // NOTE: uses a named function so we can remove+re-add it cleanly if needed.
+  // The submit button text is hardcoded so it is never read from a possibly-corrupt DOM state.
+  const UPLOAD_BTN_LABEL = 'Upload Record';
+
+  function _resetUploadModal() {
+    const form      = document.getElementById('uploadForm');
+    const submitBtn = form?.querySelector('button[type="submit"]');
+    const progress  = form?.querySelector('.upload-progress-container');
+    const lbl       = document.getElementById('recordFileName');
+    if (submitBtn)  { submitBtn.disabled = false; submitBtn.textContent = UPLOAD_BTN_LABEL; }
+    if (progress)   { progress.remove(); }
+    if (lbl)        { lbl.innerHTML = ''; lbl.classList.add('hidden'); }
+  }
+
   document.getElementById('uploadForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
-    const fd   = new FormData(this);
-    const data = await apiFetch(API.upload, 'POST', fd);
-    if (!data.success) { alert('Upload failed: ' + data.message); return; }
-    closeUploadModal();
-    loadFolder(currentFolderPath);
+
+    if (!PRIV_UPLOAD) { denyAction(); return; }
+
+    // Guard: if button already disabled, a previous upload is still in flight — bail out
+    const submitBtn = this.querySelector('button[type="submit"]');
+    if (submitBtn.disabled) return;
+
+    // Validate: must have a file selected
+    const recordFile = document.getElementById('recordFileInput');
+    if (!recordFile || !recordFile.files || recordFile.files.length === 0) {
+      showDialog('Please upload a file or folder first.', 'warning');
+      return;
+    }
+
+    const formData = new FormData(this);
+
+    // Remove any leftover progress bar from a previous attempt
+    this.querySelector('.upload-progress-container')?.remove();
+
+    // Build progress bar
+    const progressContainer = document.createElement('div');
+    progressContainer.className = 'upload-progress-container mt-4';
+    progressContainer.innerHTML = `
+      <div class="bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+        <div id="uploadProgress" class="bg-gradient-to-r from-green-500 to-green-600 h-full transition-all duration-300 flex items-center justify-end" style="width:0%">
+          <span id="uploadPercentText" class="text-xs font-bold text-white pr-2"></span>
+        </div>
+      </div>
+      <div class="flex items-center justify-between mt-2">
+        <p id="uploadStatus" class="text-sm text-gray-600 font-medium">
+          <span class="inline-block animate-pulse">⬆️</span> Uploading...
+        </p>
+        <p id="uploadSize" class="text-xs text-gray-500"></p>
+      </div>`;
+    this.appendChild(progressContainer);
+
+    // Disable button while uploading
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `
+      <svg class="animate-spin h-5 w-5 mr-2 inline-block" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      Uploading...`;
+
+    // Helper: fully reset UI on any failure path
+    const resetOnError = () => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = UPLOAD_BTN_LABEL;
+      progressContainer.remove();
+    };
+
+    try {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (!e.lengthComputable) return;
+        const pct          = (e.loaded / e.total) * 100;
+        const progressBar  = document.getElementById('uploadProgress');
+        const percentText  = document.getElementById('uploadPercentText');
+        const sizeText     = document.getElementById('uploadSize');
+        const statusEl     = document.getElementById('uploadStatus');
+        if (progressBar)  progressBar.style.width = pct + '%';
+        if (percentText)  percentText.textContent  = pct > 20 ? Math.round(pct) + '%' : '';
+        if (sizeText)     sizeText.textContent      = `${(e.loaded/1048576).toFixed(1)} MB / ${(e.total/1048576).toFixed(1)} MB`;
+        if (statusEl) {
+          if (pct < 30)       statusEl.innerHTML = '<span class="inline-block animate-pulse">⬆️</span> Uploading...';
+          else if (pct < 70)  statusEl.innerHTML = '<span class="inline-block animate-pulse">📤</span> Upload in progress...';
+          else if (pct < 100) statusEl.innerHTML = '<span class="inline-block animate-pulse">⏱️</span> Almost done...';
+          else                statusEl.innerHTML = '<span class="inline-block">✅</span> Processing...';
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        // Always re-enable button first so the modal is never stuck
+        submitBtn.disabled = false;
+        submitBtn.textContent = UPLOAD_BTN_LABEL;
+        progressContainer.remove();
+
+        if (xhr.status !== 200) {
+          alert('Upload failed. Please try again.');
+          return;
+        }
+
+        let data;
+        try { data = JSON.parse(xhr.responseText); }
+        catch(err) { alert('Unexpected server response. Please try again.'); return; }
+
+        if (!data.success) {
+          alert('Upload failed: ' + data.message);
+          return;
+        }
+
+        // Store temp upload info
+        currentTempToken    = data.token;
+        currentTempMetadata = {
+          original_name: data.original_name,
+          size:          data.size,
+          preview_url:   data.preview_url,
+        };
+
+        // Close upload modal (button already re-enabled above)
+        closeUploadModal();
+
+        // Open preview/save modal
+        openTempPreviewModal(data.token, data.preview_url, data.original_name);
+      });
+
+      xhr.addEventListener('error', () => {
+        alert('Network error. Please check your connection.');
+        resetOnError();
+      });
+
+      xhr.addEventListener('abort', () => {
+        alert('Upload cancelled.');
+        resetOnError();
+      });
+
+      xhr.open('POST', API.listFolder.replace('/list-folder', '/temp-upload'));
+      xhr.send(formData);
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Upload failed. Please try again.');
+      resetOnError();
+    }
   });
 
-  // ─── Upload Folder Modal ──────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEW: TEMP PREVIEW MODAL FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  function openTempPreviewModal(token, previewUrl, fileName) {
+    const modal = document.getElementById('previewModal');
+    const titleEl = document.getElementById('previewTitle');
+    const contentEl = document.getElementById('previewContent');
+    
+    if (!modal || !titleEl || !contentEl) {
+      console.error('Preview modal elements not found');
+      return;
+    }
+    
+    titleEl.textContent = fileName;
+    modal.classList.remove('hidden');
+    
+    // Determine file type from filename
+    const ext = fileName.split('.').pop().toLowerCase();
+    
+    if (['jpg', 'jpeg', 'png'].includes(ext)) {
+      // Image preview
+      contentEl.innerHTML = `
+        <img src="${previewUrl}" 
+             alt="Preview" 
+             class="max-w-full max-h-full mx-auto rounded-lg shadow-lg"/>`;
+    } else if (ext === 'pdf') {
+      // PDF preview
+      contentEl.innerHTML = `
+        <iframe src="${previewUrl}" 
+                class="w-full border-0 rounded-lg" 
+                style="min-height:520px;" 
+                title="PDF Preview">
+        </iframe>`;
+    } else {
+      // DOCX or other - show metadata
+      contentEl.innerHTML = `
+        <div class="text-center text-gray-500 py-10">
+          <svg class="w-20 h-20 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" 
+                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+          </svg>
+          <p class="text-lg font-semibold mb-2">Preview not available</p>
+          <p class="text-sm text-gray-400 mb-4">.${ext.toUpperCase()} files cannot be previewed in the browser.</p>
+          <button onclick="downloadTempFile()" 
+                  class="px-6 py-2.5 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors">
+            Download to View
+          </button>
+        </div>`;
+    }
+    
+    // Update footer buttons - replace Cancel with our new buttons
+    const footer = modal.querySelector('.flex.items-center.justify-end.gap-3');
+    if (footer) {
+      footer.innerHTML = `
+        <button onclick="cancelTempUpload()" 
+                class="px-6 py-2.5 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors font-medium text-gray-700">
+          ✗ Cancel
+        </button>
+        <button onclick="openFolderBrowserModal()" 
+                class="px-6 py-2.5 rounded-lg bg-green-700 text-white hover:bg-green-800 transition-colors font-medium">
+          ✓ Save As
+        </button>`;
+    }
+  }
+
+  function downloadTempFile() {
+    if (!currentTempToken) return;
+    const downloadUrl = API.listFolder.replace('/list-folder', '/download-pending/' + currentTempToken);
+    window.location.href = downloadUrl;
+  }
+
+  async function cancelTempUpload() {
+    if (!currentTempToken) {
+      closePreviewModal();
+      return;
+    }
+    
+    try {
+      const formData = new FormData();
+      formData.append(CSRF_NAME, CSRF_TOKEN);
+      formData.append('token', currentTempToken);
+      
+      await fetch(API.listFolder.replace('/list-folder', '/cancel-pending'), {
+        method: 'POST',
+        body: formData
+      });
+      
+    } catch (error) {
+      console.error('Error cancelling upload:', error);
+    } finally {
+      currentTempToken = null;
+      currentTempMetadata = null;
+      closePreviewModal();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEW: FOLDER BROWSER MODAL
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // ── Folder Browser: flat index (all folders, recursive) ─────────────────
+  let _folderBrowserIndex = null;  // [{ name, path, locationLabel }]
+  let _folderBrowserFilesCache = {};  // { [path]: files[] } — avoids extra API call at save time
+  let _folderBrowserSearchDebounce = null;
+  let _folderBrowserSearchActive = false;
+  let _folderBrowserSaveMode = 'record'; // 'record' or 'folder'
+
+  async function _crawlFolderBrowserFolders(path, ancestorLabels, index) {
+    try {
+      const data = await apiFetch(API.listFolder + '?path=' + encodeURIComponent(path));
+      if (!data.success) return;
+      const folders = data.folders || [];
+      folders.forEach(f => {
+        const locationLabel = ancestorLabels.length
+          ? 'Academic Records > ' + ancestorLabels.join(' > ')
+          : 'Academic Records';
+        // Store parentPath explicitly — the path we queried — so renderFolderBrowserTree
+        // can match direct children without fragile string parsing of f.path
+        index.push({
+          name: f.name,
+          path: f.path,
+          parentPath: path,   // <-- explicit parent, always reliable
+          locationLabel,
+          count: f.count,
+          modified: f.modified
+        });
+      });
+      await Promise.all(folders.map(f =>
+        _crawlFolderBrowserFolders(f.path, [...ancestorLabels, f.name], index)
+      ));
+    } catch(e) {}
+  }
+
+  async function buildFolderBrowserIndex() {
+    if (_folderBrowserIndex) return _folderBrowserIndex;
+    _folderBrowserIndex = [];
+    await _crawlFolderBrowserFolders('', [], _folderBrowserIndex);
+    return _folderBrowserIndex;
+  }
+
+  function invalidateFolderBrowserIndex() { _folderBrowserIndex = null; }
+
+  function openFolderBrowserModal() {
+    // Close preview modal first
+    document.getElementById('previewModal')?.classList.add('hidden');
+
+    // Create folder browser modal dynamically if it doesn't exist
+    if (!document.getElementById('folderBrowserModal')) {
+      createFolderBrowserModal();
+    }
+
+    // Reset state
+    _folderBrowserSearchActive = false;
+    _folderBrowserSaveMode = 'record';
+    folderBreadcrumbStack = [{ label: 'Academic Records', path: '' }];
+    selectedFolderPath = '';
+
+    // Reset title/subtitle back to record defaults
+    const titleEl = document.querySelector('#folderBrowserModal h3');
+    if (titleEl) titleEl.textContent = 'Select Destination Folder';
+    const subtitleEl = document.querySelector('#folderBrowserModal p.text-sm.text-gray-500');
+    if (subtitleEl) subtitleEl.textContent = 'Choose where to save this file';
+
+    document.getElementById('folderBrowserModal').classList.remove('hidden');
+
+    // Load and show all folders (no search yet)
+    loadFolderBrowser('');
+  }
+
+  function createFolderBrowserModal() {
+    const modal = document.createElement('div');
+    modal.id = 'folderBrowserModal';
+    modal.className = 'hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+    modal.innerHTML = `
+      <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div>
+            <h3 class="text-xl font-bold text-gray-800">Select Destination Folder</h3>
+            <p class="text-sm text-gray-500 mt-1">Choose where to save this file</p>
+          </div>
+          <button onclick="closeFolderBrowserModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Breadcrumb -->
+        <div class="px-6 pt-4">
+          <nav id="folderBreadcrumb" class="flex items-center flex-wrap gap-1 text-sm text-gray-600">
+            <!-- Populated by JS -->
+          </nav>
+        </div>
+
+        <!-- Search -->
+        <div class="px-6 pt-3 pb-3">
+          <div class="relative">
+            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+            <input type="text" id="folderSearchInput" placeholder="Search folders..." 
+                   class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                   oninput="filterFoldersInBrowser()">
+          </div>
+        </div>
+
+        <!-- Folder List -->
+        <div class="flex-1 overflow-y-auto px-6 pb-3">
+          <div id="folderBrowserList" class="border border-gray-200 rounded-lg divide-y divide-gray-100 min-h-[200px]">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Selected Path Preview -->
+        <div id="folderBrowserPathPreviewWrap" class="hidden px-6 pb-0 pt-2">
+          <div class="flex items-start gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-lg">
+            <svg class="w-4 h-4 text-green-700 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+            </svg>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-semibold text-green-800 mb-0.5">Selected destination:</p>
+              <p id="folderBrowserSelectedPath" class="text-xs text-green-700 break-all"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <button onclick="closeFolderBrowserModal()" 
+                  class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium text-gray-700 transition-colors">
+            Cancel
+          </button>
+          <button onclick="_folderBrowserSaveMode === 'folder' ? finalizeUploadFolderToFolder() : finalizeUploadToFolder()" 
+                  class="flex-1 px-4 py-2.5 bg-green-700 text-white rounded-lg hover:bg-green-800 font-medium transition-colors">
+            Save to This Folder
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+  }
+
+  async function loadFolderBrowser(path) {
+    folderBrowserPath = path;
+    const listEl = document.getElementById('folderBrowserList');
+    if (!listEl) return;
+
+    listEl.innerHTML = '<div class="p-8 text-center text-gray-400">Loading folders…</div>';
+
+    // Build full index in background AND cache the file listing for the current path
+    // Both run in parallel so there's no extra wait time
+    const [index, listData] = await Promise.all([
+      buildFolderBrowserIndex(),
+      apiFetch(API.listFolder + '?path=' + encodeURIComponent(path)).catch(() => ({}))
+    ]);
+    _folderBrowserFilesCache[path] = listData.files || [];
+    // Also cache subfolder listings that were already fetched by the index crawl
+    if (listData.folders) {
+      (listData.folders || []).forEach(f => {
+        if (!(_folderBrowserFilesCache[f.path])) _folderBrowserFilesCache[f.path] = [];
+      });
+    }
+
+    // If search is active, re-apply the search term
+    const searchInput = document.getElementById('folderSearchInput');
+    const q = searchInput ? searchInput.value.trim() : '';
+    if (q) {
+      renderFolderBrowserResults(q);
+    } else {
+      renderFolderBrowserTree(path, index);
+    }
+    renderFolderBreadcrumb();
+  }
+
+  // Show only direct children of `path` (browse mode, no search)
+  function renderFolderBrowserTree(path, index) {
+    const listEl = document.getElementById('folderBrowserList');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    // Use the explicit parentPath stamped during crawl — no fragile string parsing
+    const children = index.filter(f => f.parentPath === path);
+
+    if (children.length === 0) {
+      listEl.innerHTML = '<div class="p-8 text-center text-gray-400">No subfolders here</div>';
+      return;
+    }
+
+    children.forEach(folder => {
+      const div = document.createElement('div');
+      div.className = 'folder-browser-item p-4 hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-3 border-l-4 border-transparent';
+      div.dataset.folderName = folder.name;
+      div.dataset.folderPath = folder.path;
+      div.innerHTML = `
+        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <svg class="w-6 h-6 text-green-700" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-medium text-gray-800 truncate">${folder.name}</p>
+          <p class="text-xs text-gray-500">${folder.count ?? 0} file${(folder.count ?? 0) !== 1 ? 's' : ''}</p>
+        </div>
+        <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+        </svg>`;
+      div.onclick = () => {
+        selectFolderBrowserItem(div, folder.path);
+        navigateToFolder(folder.path, folder.name);
+      };
+      listEl.appendChild(div);
+    });
+  }
+
+  // Show flat search results across ALL folders (search mode)
+  function renderFolderBrowserResults(q) {
+    const listEl = document.getElementById('folderBrowserList');
+    if (!listEl || !_folderBrowserIndex) return;
+    listEl.innerHTML = '';
+
+    const lower = q.toLowerCase().trim();
+    const results = lower
+      ? _folderBrowserIndex.filter(f => f.name.toLowerCase().includes(lower))
+      : _folderBrowserIndex;
+
+    if (results.length === 0) {
+      listEl.innerHTML = `<div class="p-8 text-center text-gray-400">No folders match <strong>${q}</strong></div>`;
+      return;
+    }
+
+    results.forEach(folder => {
+      // Highlight matched text
+      let displayName = folder.name;
+      if (lower) {
+        const idx = folder.name.toLowerCase().indexOf(lower);
+        if (idx !== -1) {
+          displayName =
+            folder.name.slice(0, idx) +
+            '<span class="bg-yellow-200 text-gray-900 rounded px-0.5 font-semibold">' +
+            folder.name.slice(idx, idx + q.length) +
+            '</span>' +
+            folder.name.slice(idx + q.length);
+        }
+      }
+
+      const isSelected = selectedFolderPath === folder.path;
+
+      const div = document.createElement('div');
+      div.className = 'folder-browser-item px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors flex items-center gap-3 border-l-4 ' +
+        (isSelected ? 'bg-green-50 border-green-700' : 'border-transparent');
+      div.dataset.folderName = folder.name;
+      div.dataset.folderPath = folder.path;
+      div.innerHTML = `
+        <div class="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-green-700" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="font-medium text-gray-800 text-sm truncate">${displayName}</p>
+          <p class="text-xs text-gray-400 truncate mt-0.5">${folder.locationLabel}</p>
+        </div>`;
+      div.onclick = () => selectFolderBrowserItem(div, folder.path, folder.name, folder.locationLabel);
+      listEl.appendChild(div);
+    });
+  }
+
+  // Select a folder in the browser and show path preview
+  function selectFolderBrowserItem(el, path, name, locationLabel) {
+    document.querySelectorAll('.folder-browser-item').forEach(i => {
+      i.classList.remove('bg-green-50', 'border-green-700');
+      i.classList.add('border-transparent');
+    });
+    el.classList.add('bg-green-50', 'border-green-700');
+    el.classList.remove('border-transparent');
+    selectedFolderPath = path;
+
+    // Show selected path preview
+    const wrap = document.getElementById('folderBrowserPathPreviewWrap');
+    const pathEl = document.getElementById('folderBrowserSelectedPath');
+    if (wrap && pathEl && locationLabel) {
+      pathEl.textContent = locationLabel + ' > ' + (name || path.split('/').pop());
+      wrap.classList.remove('hidden');
+    }
+  }
+
+  function navigateToFolder(path, label) {
+    // Add to breadcrumb stack
+    const existing = folderBreadcrumbStack.findIndex(item => item.path === path);
+    if (existing !== -1) {
+      folderBreadcrumbStack = folderBreadcrumbStack.slice(0, existing + 1);
+    } else {
+      folderBreadcrumbStack.push({ label, path });
+    }
+
+    folderBrowserPath = path;
+
+    // Index is already built — just re-render from cache, no AJAX needed
+    if (_folderBrowserIndex) {
+      renderFolderBrowserTree(path, _folderBrowserIndex);
+      renderFolderBreadcrumb();
+      // Pre-cache the file listing for this path if not already cached
+      if (!_folderBrowserFilesCache[path]) {
+        apiFetch(API.listFolder + '?path=' + encodeURIComponent(path))
+          .then(d => { _folderBrowserFilesCache[path] = d.files || []; })
+          .catch(() => {});
+      }
+    } else {
+      loadFolderBrowser(path);
+    }
+  }
+
+  function renderFolderBreadcrumb() {
+    const nav = document.getElementById('folderBreadcrumb');
+    if (!nav) return;
+    
+    nav.innerHTML = '';
+    
+    folderBreadcrumbStack.forEach((crumb, index) => {
+      if (index > 0) {
+        nav.insertAdjacentHTML('beforeend', `
+          <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+          </svg>`);
+      }
+      
+      const isLast = index === folderBreadcrumbStack.length - 1;
+      if (isLast) {
+        nav.insertAdjacentHTML('beforeend', `<span class="font-semibold text-green-700">${crumb.label}</span>`);
+      } else {
+        const btn = document.createElement('button');
+        btn.className = 'hover:text-green-700 transition-colors';
+        btn.textContent = crumb.label;
+        btn.onclick = () => navigateToFolder(crumb.path, crumb.label);
+        nav.appendChild(btn);
+      }
+    });
+    
+    selectedFolderPath = folderBrowserPath;
+  }
+
+  function filterFoldersInBrowser() {
+    clearTimeout(_folderBrowserSearchDebounce);
+    _folderBrowserSearchDebounce = setTimeout(() => {
+      const q = document.getElementById('folderSearchInput').value.trim();
+      if (q === '') {
+        // Back to browse mode
+        _folderBrowserSearchActive = false;
+        renderFolderBreadcrumb();
+        renderFolderBrowserTree(folderBrowserPath, _folderBrowserIndex || []);
+        // Hide path preview
+        const wrap = document.getElementById('folderBrowserPathPreviewWrap');
+        if (wrap) wrap.classList.add('hidden');
+      } else {
+        _folderBrowserSearchActive = true;
+        renderFolderBrowserResults(q);
+      }
+    }, 150);
+  }
+
+  function closeFolderBrowserModal() {
+    document.getElementById('folderBrowserModal')?.classList.add('hidden');
+    // Reset state
+    folderBreadcrumbStack = [{ label: 'Academic Records', path: '' }];
+    selectedFolderPath = '';
+    _folderBrowserSearchActive = false;
+    _folderBrowserSaveMode = 'record';
+    _folderBrowserFilesCache = {};
+    // Clear search input
+    const inp = document.getElementById('folderSearchInput');
+    if (inp) inp.value = '';
+    // Hide path preview
+    const wrap = document.getElementById('folderBrowserPathPreviewWrap');
+    if (wrap) wrap.classList.add('hidden');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEW: FINALIZE UPLOAD TO PERMANENT LOCATION
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  async function finalizeUploadToFolder() {
+    if (!currentTempToken) {
+      alert('No upload in progress.');
+      return;
+    }
+
+    // ── Duplicate check: use cached file listing (populated when user browsed the folder)
+    const uploadedName = currentTempMetadata?.original_name || '';
+    if (uploadedName) {
+      const cachedFiles = _folderBrowserFilesCache[selectedFolderPath] || [];
+      const duplicate = cachedFiles.find(
+        f => (f.name || '').toLowerCase() === uploadedName.toLowerCase()
+      );
+      if (duplicate) {
+        const existingFilePath = duplicate.path || '';
+        showDuplicateConfirm(uploadedName,
+          () => _doFinalizeUploadToFolder(true, existingFilePath),   // Replace
+          null                                                         // Cancel — do nothing, keep modal open
+        );
+        return;
+      }
+    }
+
+    _doFinalizeUploadToFolder(false);
+  }
+
+  async function _doFinalizeUploadToFolder(isReplace = false, existingFilePath = '') {
+    if (!currentTempToken) return;
+
+    const formData = new FormData();
+    formData.append(CSRF_NAME, CSRF_TOKEN);
+    formData.append('token', currentTempToken);
+    formData.append('folder_path', selectedFolderPath);
+    
+    // Show loading
+    const btn = document.querySelector('#folderBrowserModal button[onclick*="finalizeUpload"]');
+    const originalText = btn ? btn.textContent.trim() : 'Save to This Folder';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `
+        <svg class="animate-spin h-5 w-5 mr-2 inline-block" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Saving...`;
+    }
+
+    const resetBtn = () => {
+      if (btn) { btn.disabled = false; btn.textContent = originalText; }
+    };
+
+    try {
+      // If replacing, delete the existing file first so finalize-upload can save cleanly
+      if (isReplace && existingFilePath) {
+        await apiFetch(API.deleteFile, 'POST', { path: existingFilePath });
+      }
+
+      const response = await fetch(API.listFolder.replace('/list-folder', '/finalize-upload'), {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        alert('Failed to save: ' + data.message);
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+      
+      // Success!
+      const successMsg = isReplace ? 'File replaced successfully.' : (data.message || 'Record saved successfully.');
+
+      // Re-enable button before closing so the modal is never stuck in "Saving..." on next open
+      btn.disabled = false;
+      btn.textContent = originalText;
+
+      // Close all modals
+      closeFolderBrowserModal();
+      closePreviewModal();
+
+      showDialog(successMsg, 'success');
+      
+      // Reset state
+      currentTempToken = null;
+      currentTempMetadata = null;
+      
+      // Refresh file list
+      invalidateSearchIndex();
+      invalidateMoveFolderIndex();
+      loadFolder(currentFolderPath);
+      
+    } catch (error) {
+      console.error('Error finalizing upload:', error);
+      alert('Failed to save file. Please try again.');
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+
+  // ─── Upload Folder ────────────────────────────────────────────────────────
+  // Strategy:
+  //   • Folder Name (required) + optional files selected by the user
+  //   • On submit: validate → open folder browser to pick destination
+  //   • On "Save to This Folder": createFolder at dest, then uploadFolder files (if any)
+  //   • No temp tokens — uses the same existing API endpoints that already work
+  // ──────────────────────────────────────────────────────────────────────────
+
+  const UPLOAD_FOLDER_BTN_LABEL = 'Upload Folder';
+
+  // Holds files chosen by the user while they browse for a destination folder
+  let _pendingFolderFiles = [];
+  let _pendingFolderName  = '';
+
+  function _resetUploadFolderModal() {
+    const submitBtn = document.getElementById('uploadFolderSubmitBtn');
+    const form      = document.getElementById('uploadFolderForm');
+    const progress  = form?.querySelector('.upload-folder-progress-container');
+    const list      = document.getElementById('folderFileList');
+    const nameInput = document.getElementById('uploadFolderName');
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = UPLOAD_FOLDER_BTN_LABEL; }
+    if (progress)  { progress.remove(); }
+    if (list)      { list.innerHTML = ''; list.classList.add('hidden'); }
+    if (nameInput) { nameInput.value = ''; }
+    // Clear both file inputs
+    const folderDirInput = document.getElementById('folderDirInput');
+    if (folderDirInput) folderDirInput.value = '';
+    const folderFilesInput = document.getElementById('folderFilesInput');
+    if (folderFilesInput) folderFilesInput.value = '';
+    _pendingFolderFiles = [];
+    _pendingFolderName  = '';
+  }
+
   function openUploadFolderModal() {
     if (!PRIV_UPLOAD) { denyAction(); return; }
-    document.getElementById('uploadFolderFolderPath').value = currentFolderPath;
+    _resetUploadFolderModal();
+
+    // Force folder-picker dialog (not file-picker) every time the modal opens
+    const _ffi = document.getElementById('folderFilesInput');
+    if (_ffi) {
+      _ffi.setAttribute('webkitdirectory', '');
+      _ffi.setAttribute('mozdirectory', '');
+      _ffi.removeAttribute('accept');
+      _ffi.onchange = function() { handleFolderDirSelect(this); };
+    }
+
+    // Inject folder name input above the drop zone if missing (design-safe)
+    const form = document.getElementById('uploadFolderForm');
+    if (form && !document.getElementById('uploadFolderName')) {
+      // Find the drop zone wrapper and insert before it
+      const dropZoneWrap = document.getElementById('folderDropZone')?.closest('div.mb-4');
+      const nameWrap = document.createElement('div');
+      nameWrap.id = 'uploadFolderNameWrap';
+      nameWrap.className = 'mb-4';
+      nameWrap.innerHTML = `
+        <label class="block text-sm font-medium text-gray-700 mb-2">
+          Folder Name <span class="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          id="uploadFolderName"
+          name="upload_folder_name"
+          placeholder="Auto-filled from selected folder"
+          class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+        />`;
+      if (dropZoneWrap) {
+        form.insertBefore(nameWrap, dropZoneWrap);
+      } else {
+        form.insertBefore(nameWrap, form.firstChild);
+      }
+    }
+
+    // Assign id to submit button if missing
+    if (form) {
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn && !submitBtn.id) {
+        submitBtn.id = 'uploadFolderSubmitBtn';
+      }
+    }
+
     document.getElementById('uploadFolderModal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('uploadFolderName')?.focus(), 50);
   }
+
   function closeUploadFolderModal() {
     document.getElementById('uploadFolderModal').classList.add('hidden');
     document.getElementById('uploadFolderForm')?.reset();
-    const list = document.getElementById('folderFileList');
-    if (list) { list.innerHTML = ''; list.classList.add('hidden'); }
+    _resetUploadFolderModal();
   }
+
   function updateFolderFileList(input) {
     const list = document.getElementById('folderFileList');
     list.innerHTML = '';
-    if (!input.files.length) { list.classList.add('hidden'); return; }
+    _pendingFolderFiles = Array.from(input.files || []);
+    if (_pendingFolderFiles.length === 0) { list.classList.add('hidden'); return; }
     list.classList.remove('hidden');
-    Array.from(input.files).forEach(file => {
+    _pendingFolderFiles.forEach(file => {
+      const sizeMB = (file.size / 1048576).toFixed(2);
       const li = document.createElement('li');
       li.className = 'flex items-center gap-2 text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2';
-      li.innerHTML = `<svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+      li.innerHTML = `
+        <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
         <span class="flex-1 truncate">${file.name}</span>
-        <span class="text-gray-400 flex-shrink-0">${(file.size/1024/1024).toFixed(2)} MB</span>`;
+        <span class="text-gray-400 flex-shrink-0">${sizeMB} MB</span>`;
       list.appendChild(li);
     });
   }
 
-  document.getElementById('uploadFolderForm')?.addEventListener('submit', async function(e) {
+  document.getElementById('uploadFolderForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
-    const fd   = new FormData(this);
-    const data = await apiFetch(API.uploadFolder, 'POST', fd);
-    if (!data.success) { alert('Upload failed: ' + data.message); return; }
-    const errs = data.errors || [];
-    if (errs.length) alert('Some files skipped:\n' + errs.join('\n'));
+    if (!PRIV_UPLOAD) { denyAction(); return; }
+
+    const submitBtn = document.getElementById('uploadFolderSubmitBtn');
+    if (submitBtn?.disabled) return;
+
+    // ── Derive folder name: from hidden input (set by handleFolderDirSelect) or _pendingFolderName ──
+    const folderNameEl = document.getElementById('uploadFolderName');
+    const folderName   = (folderNameEl?.value || _pendingFolderName || '').trim();
+
+    if (!folderName) {
+      showDialog('Please select a folder first.', 'warning');
+      return;
+    }
+
+    // Capture current files from the input (may be 0 for empty folder — that's fine)
+    const filesInput    = document.getElementById('folderFilesInput');
+    _pendingFolderFiles = _pendingFolderFiles.length > 0
+      ? _pendingFolderFiles
+      : Array.from(filesInput?.files || []);
+    _pendingFolderName  = folderName;
+    // Sync hidden input
+    if (folderNameEl) folderNameEl.value = folderName;
+
+    // ── Go straight to folder browser — no XHR yet ──────────────────────────
+    // Save pendingFolderName BEFORE closeUploadFolderModal() resets it
+    const savedFolderName  = folderName;
+    const savedFolderFiles = _pendingFolderFiles.slice();
     closeUploadFolderModal();
-    loadFolder(currentFolderPath);
+    // Restore after reset so the folder browser has the correct name
+    _pendingFolderName  = savedFolderName;
+    _pendingFolderFiles = savedFolderFiles;
+    openFolderBrowserModalForFolder();
   });
 
+  // Open folder browser in "folder-upload" mode
+  function openFolderBrowserModalForFolder() {
+    if (!document.getElementById('folderBrowserModal')) {
+      createFolderBrowserModal();
+    }
+
+    _folderBrowserSaveMode    = 'folder';
+    _folderBrowserSearchActive = false;
+    folderBreadcrumbStack = [{ label: 'Academic Records', path: '' }];
+    selectedFolderPath = '';
+
+    // Hide stale path preview
+    const wrap = document.getElementById('folderBrowserPathPreviewWrap');
+    if (wrap) wrap.classList.add('hidden');
+
+    document.getElementById('folderBrowserModal').classList.remove('hidden');
+    loadFolderBrowser('');
+
+    // Update modal copy
+    const titleEl    = document.querySelector('#folderBrowserModal h3');
+    const subtitleEl = document.querySelector('#folderBrowserModal p.text-sm.text-gray-500');
+    if (titleEl)    titleEl.textContent    = 'Select Destination Folder';
+    if (subtitleEl) subtitleEl.textContent = 'Choose where to create "' + _pendingFolderName + '"';
+  }
+
+  // Called when user clicks "Save to This Folder" in folder-upload mode.
+  // Creates root folder, then every subfolder (shallow-first), then uploads
+  // each file to its correct subfolder path — like Google Drive.
+  async function finalizeUploadFolderToFolder() {
+    if (!_pendingFolderName) {
+      showDialog('No folder name found. Please try again.', 'warning');
+      return;
+    }
+
+    // ── Duplicate check: use cached folder index (populated when user browsed) ──
+    const cachedFolders = (_folderBrowserIndex || []).filter(f => f.parentPath === selectedFolderPath);
+    const duplicateFolder = cachedFolders.find(
+      f => (f.name || '').toLowerCase() === _pendingFolderName.toLowerCase()
+    );
+    if (duplicateFolder) {
+      showDuplicateConfirm(_pendingFolderName,
+        () => _doFinalizeUploadFolderToFolder(true),   // Replace — skip root folder creation
+        null                                            // Cancel — do nothing, keep modal open
+      );
+      return;
+    }
+
+    _doFinalizeUploadFolderToFolder(false);
+  }
+
+  async function _doFinalizeUploadFolderToFolder(skipRootCreation = false) {
+    if (!_pendingFolderName) return;
+
+    const btn = document.querySelector('#folderBrowserModal button[onclick*="finalizeUpload"]');
+    const originalText = btn ? btn.textContent.trim() : 'Save to This Folder';
+
+    const setLoading = (label) => {
+      if (!btn) return;
+      btn.disabled = true;
+      btn.innerHTML = `
+        <svg class="animate-spin h-5 w-5 mr-2 inline-block" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>${label || 'Saving...'}`;
+    };
+    const resetBtn = () => {
+      if (btn) { btn.disabled = false; btn.textContent = originalText; }
+    };
+
+    setLoading('Saving...');
+
+    try {
+      const allFiles   = _pendingFolderFiles;
+      const rootName   = _pendingFolderName;
+      const destPrefix = selectedFolderPath ? selectedFolderPath + '/' : '';
+      const rootPath   = destPrefix + rootName;
+
+      // ── Step 1: Create root folder (skip if replacing — folder already exists) ─
+      if (!skipRootCreation) {
+        const createData = await apiFetch(API.createFolder, 'POST', {
+          parent_path: selectedFolderPath,
+          folder_name: rootName,
+        });
+        if (!createData.success) {
+          showDialog('Could not create folder: ' + createData.message, 'error');
+          resetBtn();
+          return;
+        }
+      }
+
+      // ── Step 2: Collect unique subfolder paths from webkitRelativePath ────
+      // e.g. "example/2024/file.pdf" → register sub-path "2024" under root
+      const subDirSet = new Set();
+      allFiles.forEach(f => {
+        const parts = (f.webkitRelativePath || f.name).split('/');
+        for (let d = 2; d < parts.length; d++) {
+          subDirSet.add(parts.slice(1, d).join('/')); // relative to root
+        }
+      });
+      // Shallow-first so parent folders are always created before children
+      const subDirs = [...subDirSet].sort((a, b) => a.split('/').length - b.split('/').length);
+
+      // ── Step 3: Create every subfolder in order ─────────────────────
+      for (const rel of subDirs) {
+        const parts      = rel.split('/');
+        const folderName = parts[parts.length - 1];
+        const parentPath = rootPath + (parts.length > 1 ? '/' + parts.slice(0, -1).join('/') : '');
+        await apiFetch(API.createFolder, 'POST', {
+          parent_path: parentPath,
+          folder_name: folderName,
+        });
+      }
+
+      // ── Step 4: Upload files grouped by destination subfolder ─────────
+      if (allFiles.length > 0) {
+        const byFolder = new Map();
+        allFiles.forEach(f => {
+          const parts    = (f.webkitRelativePath || f.name).split('/');
+          const dirParts = parts.slice(1, -1);
+          const target   = rootPath + (dirParts.length ? '/' + dirParts.join('/') : '');
+          if (!byFolder.has(target)) byFolder.set(target, []);
+          byFolder.get(target).push(f);
+        });
+
+        let done = 0;
+        const uploadErrors = [];
+        for (const [folderPath, files] of byFolder) {
+          setLoading('Uploading ' + done + ' / ' + allFiles.length + '...');
+          const fd = new FormData();
+          fd.append(CSRF_NAME, CSRF_TOKEN);
+          fd.append('folder_path', folderPath);
+          files.forEach(f => fd.append('folder_files[]', f));
+          try {
+            const res  = await fetch(API.uploadFolder, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!data.success) uploadErrors.push(data.message);
+            else if (data.errors && data.errors.length) uploadErrors.push(...data.errors);
+          } catch(e) { uploadErrors.push(folderPath + ': network error'); }
+          done += files.length;
+        }
+        if (uploadErrors.length) {
+          showDialog('Some files were skipped: ' + uploadErrors.slice(0, 3).join(', '), 'warning');
+        }
+      }
+
+      // ── Done ────────────────────────────────────────────────
+      resetBtn(); // Re-enable button before closing so it's never stuck in "Saving..." on next open
+      closeFolderBrowserModal();
+      showDialog(skipRootCreation ? 'Folder replaced successfully.' : 'Folder uploaded successfully.', 'success');
+      _pendingFolderFiles    = [];
+      _pendingFolderName     = '';
+      _folderBrowserSaveMode = 'record';
+
+      invalidateSearchIndex();
+      invalidateMoveFolderIndex();
+      invalidateFolderBrowserIndex();
+      loadFolder(currentFolderPath);
+
+    } catch (err) {
+      console.error('finalizeUploadFolderToFolder error:', err);
+      showDialog('Failed to save. Please try again.', 'error');
+      resetBtn();
+    }
+  }
   function updateRecordFileLabel(input) {
     const label = document.getElementById('recordFileName');
     if (!label) return;
+    
     if (input.files.length > 0) {
-      label.textContent = '✓ ' + input.files[0].name + ' (' + (input.files[0].size/1024/1024).toFixed(2) + ' MB)';
-      label.classList.remove('hidden');
+        const file = input.files[0];
+        const sizeMB = (file.size/1024/1024).toFixed(2);
+        
+        label.classList.remove('hidden');
+        
+        // Warn about large files
+        if (file.size > 5 * 1024 * 1024) { // 5MB
+            label.innerHTML = `
+                <div class="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold text-yellow-800">Large File Detected</p>
+                        <p class="text-xs text-yellow-700 mt-1">
+                            ${file.name} (${sizeMB} MB) - Upload may take time on slow connections
+                        </p>
+                    </div>
+                </div>
+            `;
+        } else {
+            label.innerHTML = `
+                <div class="flex items-center gap-2 text-sm text-gray-700">
+                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <span class="font-medium">${file.name}</span>
+                    <span class="text-gray-500">(${sizeMB} MB)</span>
+                </div>
+            `;
+        }
     } else {
-      label.classList.add('hidden');
+        label.classList.add('hidden');
     }
   }
+  
   function handleRecordDrop(event) {
     event.preventDefault();
     const input = document.getElementById('recordFileInput');
@@ -1296,15 +2730,144 @@
       updateRecordFileLabel(input);
     }
   }
+  // Handle folder selected via webkitdirectory input.
+  // Keeps ALL files with their webkitRelativePath intact so the full
+  // subfolder structure is preserved when finalizeUploadFolderToFolder runs.
+  function handleFolderDirSelect(input) {
+    const allFiles = Array.from(input.files || []);
+
+    // Auto-fill folder name from the first file's relative path
+    let dirName = '';
+    if (allFiles.length > 0) {
+      dirName = (allFiles[0].webkitRelativePath || '').split('/')[0] || '';
+    }
+
+    // If no files (empty folder), try to get name from the input element's value
+    if (!dirName && input.value) {
+      // input.value may be C:\fakepath\foldername or just foldername
+      dirName = input.value.split(/[\\\/]/).filter(Boolean).pop() || '';
+    }
+
+    if (dirName) {
+      _pendingFolderName = dirName;
+      const nameInput = document.getElementById('uploadFolderName');
+      if (nameInput) nameInput.value = dirName;
+    }
+
+    // Store every file with its relative path intact — structure rebuilt on upload
+    _pendingFolderFiles = allFiles;
+
+    // Sync to the visible input so updateFolderFileList shows the right count
+    updateFolderFileList(input);
+  }
   function handleFolderDrop(event) {
     event.preventDefault();
-    const input = document.getElementById('folderFilesInput');
-    const zone  = document.getElementById('folderDropZone');
+    const zone = document.getElementById('folderDropZone');
     zone.classList.remove('border-green-600','bg-green-50');
-    const dt = new DataTransfer();
-    Array.from(event.dataTransfer.files).forEach(f => dt.items.add(f));
-    input.files = dt.files;
-    updateFolderFileList(input);
+
+    const items = event.dataTransfer.items;
+    if (!items || items.length === 0) return;
+
+    // Use webkitGetAsEntry to traverse folder structure (like Google Drive)
+    const entries = Array.from(items)
+      .map(item => item.webkitGetAsEntry ? item.webkitGetAsEntry() : null)
+      .filter(Boolean);
+
+    if (entries.length === 0) return;
+
+    // Collect all file entries recursively, preserving relative paths
+    async function traverseEntry(entry, pathPrefix) {
+      if (entry.isFile) {
+        return new Promise((resolve) => {
+          entry.file(file => {
+            // Manually set webkitRelativePath-like structure via a wrapper object
+            const wrappedFile = new File([file], file.name, { type: file.type, lastModified: file.lastModified });
+            Object.defineProperty(wrappedFile, 'webkitRelativePath', {
+              value: pathPrefix + file.name,
+              writable: false
+            });
+            resolve([wrappedFile]);
+          }, () => resolve([]));
+        });
+      } else if (entry.isDirectory) {
+        return new Promise((resolve) => {
+          const reader = entry.createReader();
+          const allEntries = [];
+          function readAll() {
+            reader.readEntries(async (results) => {
+              if (results.length === 0) {
+                // No more entries — recurse into collected entries
+                const nested = await Promise.all(
+                  allEntries.map(e => traverseEntry(e, pathPrefix + entry.name + '/'))
+                );
+                resolve(nested.flat());
+              } else {
+                allEntries.push(...results);
+                readAll(); // readEntries may return in batches
+              }
+            }, () => resolve([]));
+          }
+          readAll();
+        });
+      }
+      return [];
+    }
+
+    // Process all top-level dropped entries
+    Promise.all(entries.map(entry => {
+      // If dropped item is a directory, use its name as root
+      if (entry.isDirectory) {
+        return traverseEntry(entry, entry.name + '/');
+      }
+      // If file dropped directly, treat parent as root
+      return traverseEntry(entry, '');
+    })).then(results => {
+      const allFiles = results.flat();
+      _pendingFolderFiles = allFiles;
+
+      // Auto-fill folder name from the first entry that is a directory
+      const dirEntry = entries.find(e => e.isDirectory);
+      if (dirEntry) {
+        _pendingFolderName = dirEntry.name;
+        const nameInput = document.getElementById('uploadFolderName');
+        if (nameInput) nameInput.value = dirEntry.name;
+      }
+
+      // Show file count in the drop zone
+      const zone = document.getElementById('folderDropZone');
+      if (zone) {
+        const countEl = zone.querySelector('p.text-sm');
+        if (countEl) {
+          countEl.textContent = allFiles.length > 0
+            ? `${allFiles.length} file${allFiles.length !== 1 ? 's' : ''} ready to upload`
+            : 'Empty folder selected';
+        }
+      }
+
+      // Update file list display
+      const list = document.getElementById('folderFileList');
+      if (list) {
+        list.innerHTML = '';
+        if (allFiles.length === 0) {
+          list.classList.add('hidden');
+        } else {
+          list.classList.remove('hidden');
+          allFiles.forEach(file => {
+            const sizeMB = (file.size / 1048576).toFixed(2);
+            const li = document.createElement('li');
+            li.className = 'flex items-center gap-2 text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2';
+            li.innerHTML = `
+              <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              <span class="flex-1 truncate">${file.webkitRelativePath || file.name}</span>
+              <span class="text-gray-400 flex-shrink-0">${sizeMB} MB</span>`;
+            list.appendChild(li);
+          });
+        }
+      }
+    });
   }
 
   // ─── Delete file ──────────────────────────────────────────────────────────
@@ -1316,6 +2879,8 @@
     if (!data.success) { alert('Delete failed: ' + data.message); return; }
 
     document.getElementById('file-menu-' + menuId)?.classList.add('hidden');
+    invalidateSearchIndex();
+    invalidateMoveFolderIndex();
     loadFolder(currentFolderPath);
   }
 
@@ -1328,6 +2893,8 @@
     if (!data.success) { alert('Delete failed: ' + data.message); return; }
 
     document.getElementById('folder-menu-' + menuId)?.classList.add('hidden');
+    invalidateSearchIndex();
+    invalidateMoveFolderIndex();
     loadFolder(currentFolderPath);
   }
 
@@ -1345,14 +2912,12 @@
     currentPreviewUrl = API.download + '?path=' + encodeURIComponent(filePath);
 
     if (['jpg', 'jpeg', 'png'].includes(ext)) {
-        // Images render fine directly
         contentEl.innerHTML = `
             <img src="${previewUrl}"
                  alt="Preview"
                  class="max-w-full max-h-full mx-auto rounded-lg shadow-lg"/>`;
 
     } else if (ext === 'pdf') {
-        // PDF — use inline endpoint so browser renders it, not downloads it
         contentEl.innerHTML = `
             <iframe
                 src="${previewUrl}"
@@ -1362,7 +2927,6 @@
             </iframe>`;
 
     } else {
-        // Word docs, etc. — can't be previewed in browser natively
         contentEl.innerHTML = `
             <div class="text-center text-gray-500 py-10">
                 <svg class="w-20 h-20 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1377,7 +2941,7 @@
                 </button>
             </div>`;
     }
-}
+  }
 
   let currentPreviewUrl = null;
   function closePreviewModal() {
@@ -1422,7 +2986,6 @@
     currentRenameType   = type;
     const inp = document.getElementById('renameInput');
     if (inp) {
-      // Pre-fill with current name
       inp.value = targetPath.split('/').pop();
       inp.focus();
     }
@@ -1440,6 +3003,8 @@
     const data = await apiFetch(API.rename, 'POST', { path: currentRenameTarget, new_name: name });
     if (!data.success) { alert('Rename failed: ' + data.message); return; }
     closeRenameModal();
+    invalidateSearchIndex();
+    invalidateMoveFolderIndex();
     loadFolder(currentFolderPath);
   }
 
@@ -1453,46 +3018,139 @@
     currentMoveType    = type;
     selectedMoveFolder = null;
     document.getElementById('moveModal').classList.remove('hidden');
-    // Refresh folder list in the modal
     refreshMoveFolderList();
   }
   function closeMoveModal() {
     document.getElementById('moveModal').classList.add('hidden');
     currentMoveTarget = currentMoveType = selectedMoveFolder = null;
+    // Reset path preview
+    const wrap = document.getElementById('movePathPreviewWrap');
+    if (wrap) wrap.classList.add('hidden');
+    const inp = document.getElementById('searchFolders');
+    if (inp) inp.value = '';
   }
+  // ── Move Modal: flat folder index (all folders, recursive) ──────────────────
+  let _moveFolderIndex = null;  // [{ name, path, locationLabel }]
+
+  async function _crawlMoveFolders(path, ancestorLabels, index) {
+    try {
+      const data = await apiFetch(API.listFolder + '?path=' + encodeURIComponent(path));
+      if (!data.success) return;
+      const folders = data.folders || [];
+      folders.forEach(f => {
+        const locationLabel = ancestorLabels.length
+          ? 'Academic Records > ' + ancestorLabels.join(' > ')
+          : 'Academic Records';
+        index.push({ name: f.name, path: f.path, locationLabel });
+      });
+      await Promise.all(folders.map(f =>
+        _crawlMoveFolders(f.path, [...ancestorLabels, f.name], index)
+      ));
+    } catch(e) {}
+  }
+
+  async function buildMoveFolderIndex() {
+    if (_moveFolderIndex) return _moveFolderIndex;
+    _moveFolderIndex = [];
+    await _crawlMoveFolders('', [], _moveFolderIndex);
+    return _moveFolderIndex;
+  }
+
+  function invalidateMoveFolderIndex() { _moveFolderIndex = null; }
+
   async function refreshMoveFolderList() {
-    const data = await apiFetch(API.listFolder + '?path=' + encodeURIComponent(currentFolderPath));
-    if (!data.success) return;
+    const container = document.getElementById('folderListMove');
+    container.innerHTML = '<p class="px-4 py-6 text-sm text-gray-400 text-center">Loading folders...</p>';
+    await buildMoveFolderIndex();
+    renderMoveFolderResults('');
+  }
+
+  function renderMoveFolderResults(q) {
     const container = document.getElementById('folderListMove');
     container.innerHTML = '';
-    (data.folders || []).forEach(f => {
+
+    if (!_moveFolderIndex) return;
+
+    const lower = q.toLowerCase().trim();
+
+    // Filter: show all when empty, or match partial name (case-insensitive)
+    const results = lower
+      ? _moveFolderIndex.filter(f => f.name.toLowerCase().includes(lower))
+      : _moveFolderIndex;
+
+    if (results.length === 0) {
+      container.innerHTML = lower
+        ? '<p class="px-4 py-6 text-sm text-gray-400 text-center">No folders match <strong>' + q + '</strong></p>'
+        : '<p class="px-4 py-6 text-sm text-gray-400 text-center">No folders found.</p>';
+      return;
+    }
+
+    results.forEach(f => {
+      // Highlight matched portion in folder name
+      let displayName = f.name;
+      if (lower) {
+        const idx = f.name.toLowerCase().indexOf(lower);
+        if (idx !== -1) {
+          displayName =
+            f.name.slice(0, idx) +
+            '<span class="bg-yellow-200 text-gray-900 rounded px-0.5 font-semibold">' +
+            f.name.slice(idx, idx + q.length) +
+            '</span>' +
+            f.name.slice(idx + q.length);
+        }
+      }
+
+      const isSelected = selectedMoveFolder === f.path;
+
       const btn = document.createElement('button');
-      btn.className = 'w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 folder-move-item transition-colors';
+      btn.className = 'folder-move-item w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 transition-colors border-l-4 ' +
+        (isSelected ? 'bg-green-50 border-green-700' : 'border-transparent');
       btn.dataset.folderName = f.name;
+      btn.dataset.folderPath = f.path;
       btn.innerHTML = `
-        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-          <svg class="w-6 h-6 text-green-700" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+        <div class="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <svg class="w-5 h-5 text-green-700" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+          </svg>
         </div>
         <div class="flex-1 min-w-0">
-          <p class="font-medium text-gray-800 truncate">${f.name}</p>
-          <p class="text-xs text-gray-500">${f.path}</p>
-        </div>`;
+          <p class="font-medium text-gray-800 truncate text-sm">${displayName}</p>
+          <p class="text-xs text-gray-400 truncate mt-0.5">${f.locationLabel}</p>
+        </div>
+        ${isSelected ? '<svg class="w-4 h-4 text-green-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>' : ''}`;
+
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.folder-move-item').forEach(i => i.classList.remove('bg-green-50','border-l-4','border-green-700'));
-        btn.classList.add('bg-green-50','border-l-4','border-green-700');
+        // Deselect all
+        document.querySelectorAll('.folder-move-item').forEach(i => {
+          i.classList.remove('bg-green-50', 'border-green-700');
+          i.classList.add('border-transparent');
+          const chk = i.querySelector('svg.text-green-700:last-child');
+          if (chk && chk !== i.querySelector('div svg')) chk.remove();
+        });
+        // Select this one
+        btn.classList.add('bg-green-50', 'border-green-700');
+        btn.classList.remove('border-transparent');
         selectedMoveFolder = f.path;
+
+        // Show selected path in footer
+        const pathPreview = document.getElementById('moveSelectedPath');
+        if (pathPreview) {
+          pathPreview.textContent = f.locationLabel + ' > ' + f.name;
+          pathPreview.closest('#movePathPreviewWrap').classList.remove('hidden');
+        }
       });
+
       container.appendChild(btn);
     });
-    if (!data.folders?.length) {
-      container.innerHTML = '<p class="px-4 py-3 text-sm text-gray-400">No folders available here.</p>';
-    }
   }
+
+  let _moveSearchDebounce = null;
   function filterFoldersInMoveModal() {
-    const q = document.getElementById('searchFolders').value.toLowerCase();
-    document.querySelectorAll('.folder-move-item').forEach(item => {
-      item.style.display = (item.dataset.folderName || '').toLowerCase().includes(q) ? '' : 'none';
-    });
+    clearTimeout(_moveSearchDebounce);
+    _moveSearchDebounce = setTimeout(() => {
+      const q = document.getElementById('searchFolders').value;
+      renderMoveFolderResults(q);
+    }, 150);
   }
   async function submitMove() {
     if (!PRIV_ORGANIZE) { denyAction(); return; }
@@ -1505,6 +3163,8 @@
 
     if (!data.success) { alert('Move failed: ' + data.message); return; }
     closeMoveModal();
+    invalidateSearchIndex();
+    invalidateMoveFolderIndex();
     loadFolder(currentFolderPath);
   }
 
@@ -1512,5 +3172,141 @@
   renderBreadcrumb();
   loadFolder(''); // Initial load from disk
 
+  // Pre-warm the search index in the background so the first search is instant
+  setTimeout(() => buildSearchIndex(), 1500);
+
 </script>
+
+<script>
+/* ── PHP → JS privilege flags ── */
+var PRIV_UPLOAD     = <?= json_encode((bool)($priv_records_upload   ?? false)) ?>;
+var PRIV_VIEW       = <?= json_encode((bool)($priv_files_view       ?? false)) ?>;
+var PRIV_UPDATE     = <?= json_encode((bool)($priv_records_update   ?? false)) ?>;
+var PRIV_ORGANIZE   = <?= json_encode((bool)($priv_records_organize ?? false)) ?>;
+var PRIV_ADD_FOLDER = <?= json_encode((bool)($priv_folders_add      ?? false)) ?>;
+var PRIV_DEL_FILE   = <?= json_encode((bool)($priv_records_delete   ?? false)) ?>;
+var PRIV_DEL_FOLDER = <?= json_encode((bool)($priv_folders_delete   ?? false)) ?>;
+
+/* ── Show/hide permission denied modal ── */
+function showPermissionDenied() {
+  var modal = document.getElementById('permissionDeniedModal');
+  if (modal) modal.classList.remove('hidden');
+}
+function closePermissionDeniedModal() {
+  var modal = document.getElementById('permissionDeniedModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+/* Close on backdrop click */
+document.addEventListener('click', function(e) {
+  var modal = document.getElementById('permissionDeniedModal');
+  if (modal && e.target === modal) modal.classList.add('hidden');
+});
+
+/* ── Helper: PHP renders empty <div> when no permission ── */
+function isModalReal(id) {
+  var el = document.getElementById(id);
+  return el && el.children.length > 0;
+}
+
+/* ── Wrap action functions AFTER page scripts have loaded ── */
+window.addEventListener('load', function() {
+
+  /* New Folder */
+  var _openNewFolderModal = window.openNewFolderModal;
+  window.openNewFolderModal = function() {
+    if (!PRIV_ADD_FOLDER || !isModalReal('newFolderModal')) { showPermissionDenied(); return; }
+    if (_openNewFolderModal) _openNewFolderModal();
+  };
+
+  /* Upload Record */
+  var _openUploadModal = window.openUploadModal;
+  window.openUploadModal = function() {
+    if (!PRIV_UPLOAD || !isModalReal('uploadModal')) { showPermissionDenied(); return; }
+    if (_openUploadModal) _openUploadModal();
+  };
+
+  /* Upload Folder */
+  var _openUploadFolderModal = window.openUploadFolderModal;
+  window.openUploadFolderModal = function() {
+    if (!PRIV_UPLOAD || !isModalReal('uploadFolderModal')) { showPermissionDenied(); return; }
+    if (_openUploadFolderModal) _openUploadFolderModal();
+  };
+
+  /* Rename */
+  var _openRenameModal = window.openRenameModal;
+  window.openRenameModal = function() {
+    if (!PRIV_ORGANIZE || !isModalReal('renameModal')) { showPermissionDenied(); return; }
+    if (_openRenameModal) _openRenameModal.apply(this, arguments);
+  };
+
+  /* Move */
+  var _openMoveModal = window.openMoveModal;
+  window.openMoveModal = function() {
+    if (!PRIV_ORGANIZE || !isModalReal('moveModal')) { showPermissionDenied(); return; }
+    if (_openMoveModal) _openMoveModal.apply(this, arguments);
+  };
+
+  /* Preview */
+  var _openPreviewModal = window.openPreviewModal;
+  window.openPreviewModal = function() {
+    if (!PRIV_VIEW) { showPermissionDenied(); return; }
+    if (_openPreviewModal) _openPreviewModal.apply(this, arguments);
+  };
+
+  /* Delete file */
+  var _deleteFile = window.deleteFile;
+  window.deleteFile = function() {
+    if (!PRIV_DEL_FILE) { showPermissionDenied(); return; }
+    if (_deleteFile) _deleteFile.apply(this, arguments);
+  };
+
+  /* Delete folder */
+  var _deleteFolder = window.deleteFolder;
+  window.deleteFolder = function() {
+    if (!PRIV_DEL_FOLDER) { showPermissionDenied(); return; }
+    if (_deleteFolder) _deleteFolder.apply(this, arguments);
+  };
+
+  /* Download */
+  var _downloadFile = window.downloadFile;
+  window.downloadFile = function() {
+    if (!PRIV_VIEW) { showPermissionDenied(); return; }
+    if (_downloadFile) _downloadFile.apply(this, arguments);
+  };
+
+  var _downloadPreviewFile = window.downloadPreviewFile;
+  window.downloadPreviewFile = function() {
+    if (!PRIV_VIEW) { showPermissionDenied(); return; }
+    if (_downloadPreviewFile) _downloadPreviewFile.apply(this, arguments);
+  };
+
+});
+
+/* ── Intercept AJAX responses from backend ── */
+/* NOTE: We do NOT override window.fetch globally to avoid breaking
+   the page. Instead we patch the specific functions that make fetch calls. */
+
+/* Patch createFolder response handling */
+var _origCreateFolder = window.createFolder;
+if (typeof _origCreateFolder === 'function') {
+  window.createFolder = function() {
+    if (!PRIV_ADD_FOLDER) { showPermissionDenied(); return; }
+    _origCreateFolder.apply(this, arguments);
+  };
+}
+
+/* Download link guard — block <a href> clicks when view is off */
+document.addEventListener('click', function(e) {
+  var anchor = e.target.closest('a[href]');
+  if (!anchor) return;
+  var href = anchor.getAttribute('href') || '';
+  if ((href.indexOf('academic-records/download') !== -1 ||
+       href.indexOf('academic-records/preview')  !== -1) && !PRIV_VIEW) {
+    e.preventDefault();
+    showPermissionDenied();
+  }
+}, true);
+</script>
+
 <?= $this->endSection() ?>

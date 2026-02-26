@@ -39,7 +39,14 @@ class Auth extends BaseController
             return $this->redirectToDashboard();
         }
 
-        return view('auth/login');
+        $data = [];
+
+        // AuthFilter destroys session of deactivated user and sets this flashdata
+        if (session()->getFlashdata('deactivated')) {
+            $data['show_deactivated_modal'] = true;
+        }
+
+        return view('auth/login', $data);
     }
 
     /**
@@ -88,9 +95,19 @@ class Auth extends BaseController
             return redirect()->back()->with('error', 'Invalid email/username or password.');
         }
 
-        // Check account status
-        if ($user['status'] !== 'active') {
-            return redirect()->back()->with('error', 'Your account is not active. Please contact your administrator.');
+         // Inactive users see a modal, not a plain error
+        if ($user['status'] === 'inactive') {
+            $approvalModel = new \App\Models\ApprovalRequestModel();
+            $hasPending = (bool) $approvalModel
+                ->where('user_id', $user['id'])
+                ->where('status', 'pending')
+                ->first();
+            return view('auth/login', [
+                'deactivated_user_id' => $user['id'],
+                'deactivated_email'   => $user['email'],
+                'deactivated_name'    => $user['full_name'],
+                'has_pending_request' => $hasPending,
+            ]);
         }
 
         // Verify password
@@ -333,5 +350,57 @@ class Auth extends BaseController
         } else {
             return redirect()->to('/dashboard');
         }
+    }
+
+    /**
+     * AJAX: deactivated user submits a reactivation request
+     * Route: POST auth/send-approval-request
+     */
+    public function sendApprovalRequest()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false]);
+        }
+
+        $userId   = (int) $this->request->getPost('user_id');
+        $email    = $this->request->getPost('email');
+        $fullName = $this->request->getPost('full_name');
+
+        if (!$userId || !$email) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.']);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user || $user['status'] !== 'inactive') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Account not found or already active.']);
+        }
+
+        $approvalModel = new \App\Models\ApprovalRequestModel();
+
+        $existing = $approvalModel->where('user_id', $userId)->where('status', 'pending')->first();
+        if ($existing) {
+            return $this->response->setJSON(['success' => false, 'message' => 'You already have a pending request.']);
+        }
+
+        $approvalModel->createRequest($userId, $email, $fullName, 'reactivation', 'User requesting account reactivation');
+
+        // Email all active admins
+        $admins = $this->userModel->where('role', 'admin')->where('status', 'active')->findAll();
+        foreach ($admins as $admin) {
+            try {
+                $this->emailService->sendReactivationRequestEmail(
+                    $admin['email'],
+                    $admin['full_name'],
+                    $fullName,
+                    $email
+                );
+            } catch (\Exception $e) {
+                log_message('error', 'Failed to notify admin: ' . $e->getMessage());
+            }
+        }
+
+        $this->activityLogModel->logActivity($userId, 'reactivation_requested', 'User submitted reactivation request');
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Your request has been sent to the administrator.']);
     }
 }

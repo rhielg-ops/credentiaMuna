@@ -11,6 +11,7 @@ $routes->post('login',               'Auth::login');
 $routes->get('auth/verify-code',     'Auth::verifyCodePage');
 $routes->post('auth/verify-code',    'Auth::verifyCode');
 $routes->post('auth/resend-code',    'Auth::resendCode');
+$routes->post('auth/send-approval-request', 'Auth::sendApprovalRequest');
 $routes->get('auth/logout',          'Auth::logout');
 
 // ── Regular user dashboard ────────────────────────────────────────────────────
@@ -28,6 +29,11 @@ $routes->post('academic-records/delete-file',   'AcademicRecords::deleteFile');
 $routes->post('academic-records/delete-folder', 'AcademicRecords::deleteFolder');
 $routes->post('academic-records/rename',        'AcademicRecords::rename');
 $routes->post('academic-records/move',          'AcademicRecords::move');
+$routes->post('academic-records/temp-upload',       'AcademicRecords::tempUpload');
+$routes->get('academic-records/preview-pending/(:any)', 'AcademicRecords::previewPending/$1');
+$routes->get('academic-records/download-pending/(:any)', 'AcademicRecords::downloadPending/$1');
+$routes->post('academic-records/cancel-pending',    'AcademicRecords::cancelPending');
+$routes->post('academic-records/finalize-upload',   'AcademicRecords::finalizeUpload');
 
 // ── Settings (all roles) ──────────────────────────────────────────────────────
 $routes->get('settings',                  'Settings::index');

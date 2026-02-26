@@ -255,14 +255,6 @@
               </div>
             </label>
             <label class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-green-50">
-              <input type="checkbox" name="privileges[]" value="records_update"
-                     class="add-priv-cb mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
-              <div>
-                <p class="text-sm font-medium text-gray-800">Update Records</p>
-                <p class="text-xs text-gray-500">Replace existing files with new versions</p>
-              </div>
-            </label>
-            <label class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-green-50">
               <input type="checkbox" name="privileges[]" value="records_organize"
                      class="add-priv-cb mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
               <div>
@@ -461,14 +453,7 @@
                 <p class="text-xs text-gray-500">View, download, and print archived records</p>
               </div>
             </label>
-            <label class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-green-50">
-              <input type="checkbox" id="ep_records_update" data-key="records_update"
-                     class="edit-priv-cb mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
-              <div>
-                <p class="text-sm font-medium text-gray-800">Update Records</p>
-                <p class="text-xs text-gray-500">Replace existing files with new versions</p>
-              </div>
-            </label>
+    
             <label class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-green-50">
               <input type="checkbox" id="ep_records_organize" data-key="records_organize"
                      class="edit-priv-cb mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
@@ -714,7 +699,6 @@ function displayPrivilegesForRole(user) {
   const definitions = {
     'records_upload':   { label: 'Upload Records',    description: 'Upload digitized academic records',                          category: 'Records Management' },
     'files_view':       { label: 'View Files',         description: 'View, download, and print archived records',                 category: 'Records Management' },
-    'records_update':   { label: 'Update Records',     description: 'Replace existing files with new versions',                  category: 'Records Management' },
     'records_organize': { label: 'Organize Records',   description: 'Move files/folders, rename files, manage file structure',   category: 'Records Management' },
     'folders_add':      { label: 'Add Folders',        description: 'Create new folders or categories',                          category: 'Records Management' },
     'records_delete':   { label: 'Delete Records',     description: 'Delete archived files',                                     category: 'Records Management' },
@@ -729,7 +713,6 @@ function displayPrivilegesForRole(user) {
   const privileges = {
     'records_upload':   true,
     'files_view':       true,
-    'records_update':   isAdmin,
     'records_organize': isAdmin,
     'folders_add':      isAdmin,
     'records_delete':   isAdmin,
@@ -883,7 +866,7 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
 (function () {
   // The 11 individual privilege keys (everything except full_admin itself)
   var ALL_PRIV_KEYS = [
-    'records_upload', 'files_view', 'records_update', 'records_organize',
+    'records_upload', 'files_view', 'records_organize',
     'folders_add', 'records_delete', 'folders_delete',
     'profile_edit', 'user_management', 'system_backup', 'audit_logs'
   ];

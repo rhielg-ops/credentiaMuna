@@ -329,4 +329,29 @@ HTML;
 </html>
 HTML;
     }
+
+    /**
+     * Notify admin that a deactivated user has requested reactivation
+     */
+    public function sendReactivationRequestEmail($adminEmail, $adminName, $userName, $userEmail)
+    {
+        $email = \Config\Services::email();
+        $email->setTo($adminEmail);
+        $email->setSubject('CredentiaTAU — User Reactivation Request');
+        $email->setMessage("
+            <p>Hello {$adminName},</p>
+            <p><strong>{$userName}</strong> ({$userEmail}) has requested reactivation of their deactivated account.</p>
+            <p>Please log in to the admin dashboard to review and approve or reject this request.</p>
+            <p>— CredentiaTAU System</p>
+        ");
+        $email->setMailType('html');
+
+        try {
+            return $email->send();
+        } catch (\Exception $e) {
+            log_message('error', 'sendReactivationRequestEmail failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
 }

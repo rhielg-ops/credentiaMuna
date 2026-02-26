@@ -197,9 +197,9 @@ class SuperAdmin extends BaseController
 
             if (is_array($submittedPrivs) && count($submittedPrivs) > 0) {
                 $allKeys = [
-                    'records_upload', 'files_view', 'records_update', 'records_organize',
-                    'folders_add', 'records_delete', 'folders_delete',
-                    'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin'
+                     'records_upload', 'files_view', 'records_organize',
+    'folders_add', 'records_delete', 'folders_delete',
+    'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin'
                 ];
                 $privileges = [];
                 foreach ($allKeys as $key) {
@@ -319,6 +319,142 @@ class SuperAdmin extends BaseController
         }
     }
 
+    /**
+ * Approve pending user
+ */
+public function approveAdmin($id)
+{
+    if ($redirect = $this->checkSuperAdmin()) return $redirect;
+
+    $user = $this->userModel->find($id);
+    if (!$user) {
+        return redirect()->back()->with('error', 'User not found.');
+    }
+
+    // Activate the user
+    $this->userModel->update($id, ['status' => 'active']);
+
+    // Mark their approval_request as approved (if one exists)
+    $approvalModel = new \App\Models\ApprovalRequestModel();
+    $request = $approvalModel->where('user_id', $id)->where('status', 'pending')->first();
+    if ($request) {
+        $approvalModel->update($request['id'], [
+            'status'      => 'approved',
+            'reviewed_at' => date('Y-m-d H:i:s'),
+            'reviewed_by' => session()->get('user_id'),
+        ]);
+    }
+
+    // Initialize default privileges if they don't have any yet
+    $existing = $this->privilegeModel->getUserPrivileges($id);
+    if (empty($existing)) {
+        $this->privilegeModel->initializeUserPrivileges($id, $user['role']);
+    }
+
+    $this->activityLogModel->logActivity(
+        session()->get('user_id'),
+        'user_approved',
+        "Approved user: {$user['email']} (username: {$user['username']})"
+    );
+
+    return redirect()->back()->with('success', "User {$user['full_name']} has been approved and activated.");
+}
+
+/**
+ * Reject pending user (delete account + mark request as rejected)
+ */
+public function rejectAdmin($id)
+{
+    if ($redirect = $this->checkSuperAdmin()) return $redirect;
+
+    $user = $this->userModel->find($id);
+    if (!$user) {
+        return redirect()->back()->with('error', 'User not found.');
+    }
+
+    // Mark their approval_request as rejected first (before deleting user, due to FK)
+    $approvalModel = new \App\Models\ApprovalRequestModel();
+    $request = $approvalModel->where('user_id', $id)->where('status', 'pending')->first();
+    if ($request) {
+        $approvalModel->update($request['id'], [
+            'status'      => 'rejected',
+            'reviewed_at' => date('Y-m-d H:i:s'),
+            'reviewed_by' => session()->get('user_id'),
+        ]);
+    }
+
+    $email = $user['email'];
+    $name  = $user['full_name'];
+
+    $this->userModel->delete($id);
+
+    $this->activityLogModel->logActivity(
+        session()->get('user_id'),
+        'user_rejected',
+        "Rejected and removed user: {$email}"
+    );
+
+    return redirect()->back()->with('success', "User {$name} has been rejected and removed.");
+}
+
+/**
+ * Deactivate or Reactivate a user
+ * Route: super-admin/toggle-suspend/(:num)
+ */
+public function toggleSuspend($id)
+{
+    if ($redirect = $this->checkSuperAdmin()) return $redirect;
+
+    $user = $this->userModel->find($id);
+    if (!$user) {
+        return redirect()->back()->with('error', 'User not found.');
+    }
+
+    if ($id == session()->get('user_id')) {
+        return redirect()->back()->with('error', 'You cannot change your own status.');
+    }
+
+    $newStatus = $user['status'] === 'inactive' ? 'active' : 'inactive';
+    $this->userModel->update($id, ['status' => $newStatus]);
+
+    $approvalModel = new \App\Models\ApprovalRequestModel();
+
+    if ($newStatus === 'active') {
+        // Resolve any pending reactivation request
+        $pending = $approvalModel->where('user_id', $id)->where('status', 'pending')->first();
+        if ($pending) {
+            $approvalModel->update($pending['id'], [
+                'status'      => 'approved',
+                'reviewed_at' => date('Y-m-d H:i:s'),
+                'reviewed_by' => session()->get('user_id'),
+            ]);
+        }
+
+        // Initialize privileges if user has none yet
+        $existing = $this->privilegeModel->getUserPrivileges($id);
+        if (empty($existing)) {
+            $this->privilegeModel->initializeUserPrivileges($id, $user['role']);
+        }
+
+        $this->activityLogModel->logActivity(
+            session()->get('user_id'),
+            'user_reactivated',
+            "Reactivated user: {$user['email']} (username: {$user['username']})"
+        );
+
+        return redirect()->back()->with('success', "{$user['full_name']} has been reactivated successfully.");
+
+    } else {
+        // Deactivated — AuthFilter will kick them out on their next request
+        $this->activityLogModel->logActivity(
+            session()->get('user_id'),
+            'user_deactivated',
+            "Deactivated user: {$user['email']} (username: {$user['username']})"
+        );
+
+        return redirect()->back()->with('success', "{$user['full_name']} has been deactivated.");
+    }
+}
     /**
      * Delete Admin
      */
@@ -499,11 +635,7 @@ private function _getUserPrivilegesData($userId)
                 'description' => 'View, download, and print archived records',
                 'category'    => 'Records Management',
             ],
-            'records_update' => [
-                'label'       => 'Update Records',
-                'description' => 'Replace existing files with new versions',
-                'category'    => 'Records Management',
-            ],
+            
             'records_organize' => [
                 'label'       => 'Organize Records',
                 'description' => 'Move files/folders, rename files, and manage file structure',
@@ -617,9 +749,9 @@ private function _getUserPrivilegesData($userId)
 
         // All known privilege keys
         $allKeys = [
-            'records_upload', 'files_view', 'records_update', 'records_organize',
-            'folders_add', 'records_delete', 'folders_delete',
-            'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin'
+            'records_upload', 'files_view', 'records_organize',
+    'folders_add', 'records_delete', 'folders_delete',
+    'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin'
         ];
 
         // Parse submitted JSON body
