@@ -7,7 +7,7 @@ use CodeIgniter\Model;
 class AccountLockModel extends Model
 {
     protected $table = 'account_locks';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'lock_id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;

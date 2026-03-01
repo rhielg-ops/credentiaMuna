@@ -7,7 +7,7 @@ use CodeIgniter\Model;
 class UserPrivilegeModel extends Model
 {
     protected $table = 'user_privileges';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'privilege_id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
@@ -60,7 +60,7 @@ class UserPrivilegeModel extends Model
                          ->first();
         
         if ($existing) {
-            return $this->update($existing['id'], ['privilege_value' => $value ? 1 : 0]);
+           return $this->update($existing['privilege_id'], ['privilege_value' => $value ? 1 : 0]);
         } else {
             return $this->insert([
                 'user_id' => $userId,

@@ -26,12 +26,12 @@
         <p class="text-xs text-gray-500">Requested: <?= date('M d, Y', strtotime($pending['created_at'])); ?></p>
       </div>
       <div class="flex gap-2">
-        <a href="<?= base_url('super-admin/approve-admin/' . $pending['id']); ?>" 
+        <a href="<?= base_url('super-admin/approve-admin/' . $pending['user_id']); ?>" 
            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium"
            onclick="return confirm('Approve this admin?');">
           ✓ Approve
         </a>
-        <a href="<?= base_url('super-admin/reject-admin/' . $pending['id']); ?>" 
+        <a href="<?= base_url('super-admin/reject-admin/' . $pending['user_id']); ?>" 
            class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium"
            onclick="return confirm('Reject and remove this request?');">
           ✗ Reject
@@ -112,24 +112,24 @@
           <td class="px-6 py-4 text-sm text-gray-600"><?= $user['total_records'] ?? 0; ?></td>
           <td class="px-6 py-4">
             <div class="flex gap-2">
-              <button onclick='openEditModal(<?= json_encode($user); ?>, <?= json_encode($user_privileges_map[$user["id"]] ?? []); ?>)' 
+              <button onclick='openEditModal(<?= json_encode($user); ?>, <?= json_encode($user_privileges_map[$user["user_id"]] ?? []); ?>)' 
                       class="text-blue-600 hover:text-blue-800 font-medium text-sm">
                 Edit
               </button>
               <?php if ($user['status'] !== 'inactive'): ?>
-                <a href="<?= base_url('super-admin/toggle-suspend/' . $user['id']); ?>" 
+                <a href="<?= base_url('super-admin/toggle-suspend/' . $user['user_id']); ?>" 
                    class="text-orange-600 hover:text-orange-800 font-medium text-sm"
                    onclick="return confirm('Deactivate this admin?');">
                   Deactivate
                 </a>
               <?php else: ?>
-                <a href="<?= base_url('super-admin/toggle-suspend/' . $user['id']); ?>" 
+                <a href="<?= base_url('super-admin/toggle-suspend/' . $user['user_id']); ?>" 
                    class="text-green-600 hover:text-green-800 font-medium text-sm"
                    onclick="return confirm('Reactivate this admin?');">
                   Reactivate
                 </a>
               <?php endif; ?>
-              <a href="<?= base_url('super-admin/delete-admin/' . $user['id']); ?>" 
+              <a href="<?= base_url('super-admin/delete-admin/' . $user['user_id']); ?>" 
                  class="text-red-600 hover:text-red-800 font-medium text-sm"
                  onclick="return confirm('Are you sure you want to delete this admin? This action cannot be undone.');">
                 Delete
@@ -668,10 +668,10 @@ function openEditModal(user, userPrivileges) {
   document.getElementById('edit_access_level').value = user.access_level || 'full';
   document.getElementById('edit_status').value = user.status;
   
-  document.getElementById('editForm').action = '<?= base_url('super-admin/edit-admin/'); ?>' + user.id;
+  document.getElementById('editForm').action = '<?= base_url('super-admin/edit-admin/'); ?>' + user.user_id;
 
   // Store user id for the AJAX privilege save
-  document.getElementById('editForm').dataset.userId = user.id;
+  document.getElementById('editForm').dataset.userId = user.user_id;
 
   // Populate privilege checkboxes from the server-supplied map
   var privMap = userPrivileges || {};
@@ -683,7 +683,7 @@ function openEditModal(user, userPrivileges) {
   document.getElementById('editPrivilegeError').classList.add('hidden');
 
   document.getElementById('editModal').classList.add('active');
-  loadFolderAccess(user.id);   // ← populate folder checkboxes
+ loadFolderAccess(user.user_id);// ← populate folder checkboxes
 }
 
 function closeEditModal() {

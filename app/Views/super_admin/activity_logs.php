@@ -40,7 +40,7 @@
       <select name="user" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
         <option value="all" <?= $userFilter === 'all' ? 'selected' : '' ?>>All Users</option>
         <?php foreach ($users as $user): ?>
-          <option value="<?= $user['id']; ?>" <?= $userFilter == $user['id'] ? 'selected' : '' ?>>
+          <option value="<?= $user['user_id']; ?>" <?= $userFilter == $user['user_id'] ? 'selected' : '' ?>>
             <?= esc($user['full_name']); ?>
           </option>
         <?php endforeach; ?>

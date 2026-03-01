@@ -7,7 +7,7 @@ use CodeIgniter\Model;
 class LoginAttemptModel extends Model
 {
     protected $table = 'login_attempts';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'attempt_id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;

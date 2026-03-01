@@ -7,7 +7,7 @@ use CodeIgniter\Model;
 class UserFolderAccessModel extends Model
 {
     protected $table      = 'user_folder_access';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'access_id';
     protected $allowedFields = ['user_id', 'folder_path', 'created_by'];
 
     /**

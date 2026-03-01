@@ -7,7 +7,7 @@ use CodeIgniter\Model;
 class VerificationCodeModel extends Model
 {
     protected $table = 'verification_codes';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'code_id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
@@ -70,7 +70,7 @@ class VerificationCodeModel extends Model
         }
 
         // Mark code as used
-        $this->update($record['id'], [
+        $this->update($record['code_id'], [
             'is_used' => true,
             'used_at' => date('Y-m-d H:i:s')
         ]);

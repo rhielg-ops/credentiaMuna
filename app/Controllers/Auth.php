@@ -99,11 +99,11 @@ class Auth extends BaseController
         if ($user['status'] === 'inactive') {
             $approvalModel = new \App\Models\ApprovalRequestModel();
             $hasPending = (bool) $approvalModel
-                ->where('user_id', $user['id'])
+                ->where('user_id', $user['user_id'])
                 ->where('status', 'pending')
                 ->first();
             return view('auth/login', [
-                'deactivated_user_id' => $user['id'],
+                'deactivated_user_id' => $user['user_id'],
                 'deactivated_email'   => $user['email'],
                 'deactivated_name'    => $user['full_name'],
                 'has_pending_request' => $hasPending,
@@ -130,7 +130,7 @@ class Auth extends BaseController
                 $this->emailService->sendAccountLockedEmail($email, $user['full_name'], $unlockTime);
                 
                 // Log activity
-                $this->activityLogModel->logActivity($user['id'], 'account_locked', 'Account locked due to failed password attempts');
+                $this->activityLogModel->logActivity($user['user_id'], 'account_locked', 'Account locked due to failed password attempts');
                 
                 return redirect()->back()->with('error', 'Too many failed attempts. Your account has been locked for 5 minutes.');
             }
@@ -143,7 +143,7 @@ class Auth extends BaseController
         $this->loginAttemptModel->recordAttempt($email, 'password', true);
 
         // Generate and send verification code
-        $code = $this->verificationCodeModel->generateCode($user['id'], $email, 10);
+        $code = $this->verificationCodeModel->generateCode($user['user_id'],  $email, 10);
         
         if (!$code) {
             return redirect()->back()->with('error', 'Failed to generate verification code. Please try again.');
@@ -158,7 +158,7 @@ class Auth extends BaseController
 
         // Store user info in session temporarily (not fully logged in yet)
         session()->set([
-            'temp_user_id' => $user['id'],
+            'temp_user_id' => $user['user_id'],
             'temp_email' => $email,
             'temp_full_name' => $user['full_name'],
             'temp_role' => $user['role'],
@@ -166,7 +166,7 @@ class Auth extends BaseController
         ]);
 
         // Log activity
-        $this->activityLogModel->logActivity($user['id'], 'password_verified', 'Password verified, awaiting 2FA');
+        $this->activityLogModel->logActivity($user['user_id'], 'password_verified', 'Password verified, awaiting 2FA');
 
         // Redirect to verification page
         return redirect()->to('/auth/verify-code');
@@ -260,7 +260,7 @@ class Auth extends BaseController
 
         // Set full session (now fully logged in)
         session()->set([
-            'user_id' => $user['id'],
+            'user_id' => $user['user_id'],
             'email' => $user['email'],
             'username' => $user['username'] ?? null,
             'full_name' => $user['full_name'],

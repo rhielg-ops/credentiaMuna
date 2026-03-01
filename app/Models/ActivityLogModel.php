@@ -7,7 +7,7 @@ use CodeIgniter\Model;
 class ActivityLogModel extends Model
 {
     protected $table = 'activity_logs';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'log_id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
@@ -45,7 +45,7 @@ class ActivityLogModel extends Model
     public function getRecentActivities($limit = 50)
     {
         return $this->select('activity_logs.*, users.full_name, users.email')
-                    ->join('users', 'activity_logs.user_id = users.id', 'left')
+                    ->join('users', 'activity_logs.user_id = users.user_id', 'left')
                     ->orderBy('activity_logs.created_at', 'DESC')
                     ->limit($limit)
                     ->findAll();
@@ -68,7 +68,7 @@ class ActivityLogModel extends Model
     public function getActivitiesByAction($action, $limit = 50)
     {
         return $this->select('activity_logs.*, users.full_name, users.email')
-                    ->join('users', 'activity_logs.user_id = users.id', 'left')
+                    ->join('users', 'activity_logs.user_id = users.user_id', 'left')
                     ->where('activity_logs.action', $action)
                     ->orderBy('activity_logs.created_at', 'DESC')
                     ->limit($limit)

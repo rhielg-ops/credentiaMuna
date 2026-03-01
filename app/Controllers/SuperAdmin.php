@@ -80,7 +80,7 @@ class SuperAdmin extends BaseController
         // Build a privileges map keyed by user_id for use in the view
         $userPrivilegesMap = [];
         foreach ($users as $user) {
-            $userPrivilegesMap[$user['id']] = $this->privilegeModel->getUserPrivileges($user['id']);
+            $userPrivilegesMap[$user['user_id']] = $this->privilegeModel->getUserPrivileges($user['user_id']);
         }
 
         $data = [
@@ -254,8 +254,8 @@ class SuperAdmin extends BaseController
         $validation = \Config\Services::validation();
         $validation->setRules([
             'full_name' => 'required|min_length[3]|max_length[255]',
-            'email' => "required|valid_email|is_unique[users.email,id,{$id}]",
-            'username' => "required|min_length[3]|max_length[100]|is_unique[users.username,id,{$id}]|alpha_numeric_punct",
+            'email' => "required|valid_email|is_unique[users.email,user_id,{$id}]",
+            'username' => "required|min_length[3]|max_length[100]|is_unique[users.username,user_id,{$id}]|alpha_numeric_punct",
             'role' => 'required|in_list[admin,user]',
             'access_level' => 'required|in_list[full,limited]',
             'status' => 'required|in_list[active,inactive]',
@@ -672,7 +672,7 @@ private function _getUserPrivilegesData($userId)
         
         // Get user info
         $user = $db->table('users')
-            ->where('id', $userId)
+            ->where('user_id', $userId)
             ->get()
             ->getRow();
         
@@ -766,7 +766,7 @@ private function _getUserPrivilegesData($userId)
             'privileges' => $privileges,
             'definitions' => $definitions,
             'user' => [
-                'id' => $user->id,
+                'user_id' => $user->user_id,
                 'full_name' => $user->full_name,
                 'email' => $user->email,
                 'role' => $user->role,
@@ -864,7 +864,7 @@ private function _getUserPrivilegesData($userId)
         // Build query
         $builder = $this->activityLogModel
             ->select('activity_logs.*, users.full_name, users.email')
-            ->join('users', 'activity_logs.user_id = users.id', 'left');
+            ->join('users', 'activity_logs.user_id = users.user_id', 'left');
 
         // Apply filters
         if ($action) {
@@ -885,7 +885,7 @@ private function _getUserPrivilegesData($userId)
                        ->findAll();
 
         // Get all users for filter dropdown
-        $users = $this->userModel->select('id, full_name, email')
+        $users = $this->userModel->select('user_id, full_name, email')
                                  ->orderBy('full_name', 'ASC')
                                  ->findAll();
 

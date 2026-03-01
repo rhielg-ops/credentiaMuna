@@ -7,7 +7,7 @@ use CodeIgniter\Model;
 class ApprovalRequestModel extends Model
 {
     protected $table = 'approval_requests';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'approval_id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
@@ -65,7 +65,7 @@ class ApprovalRequestModel extends Model
     public function getPendingRequests()
     {
         return $this->select('approval_requests.*, users.role, users.status as user_status')
-                    ->join('users', 'approval_requests.user_id = users.id', 'left')
+                    ->join('users', 'approval_requests.user_id = users.user_id', 'left')
                     ->where('approval_requests.status', 'pending')
                     ->orderBy('approval_requests.requested_at', 'DESC')
                     ->findAll();

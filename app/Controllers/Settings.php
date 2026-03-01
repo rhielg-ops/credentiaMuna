@@ -189,7 +189,7 @@ class Settings extends BaseController
         // Build query
         $builder = $this->activityLogModel
             ->select('activity_logs.*, users.full_name, users.email')
-            ->join('users', 'activity_logs.user_id = users.id', 'left');
+            ->join('users', 'activity_logs.user_id = users.user_id', 'left');
 
         // Apply filters
         if ($actionFilter !== 'all') {
@@ -220,7 +220,7 @@ class Settings extends BaseController
                        ->findAll();
 
         // Get all users for filter dropdown
-        $users = $this->userModel->select('id, full_name, email')
+        $users = $this->userModel->select('user_id, full_name, email')
                                  ->orderBy('full_name', 'ASC')
                                  ->findAll();
 

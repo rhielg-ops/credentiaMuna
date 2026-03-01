@@ -7,7 +7,7 @@ use CodeIgniter\Model;
 class UserModel extends Model
 {
     protected $table = 'users';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'user_id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
@@ -127,7 +127,7 @@ class UserModel extends Model
         $builder = $this->where('email', $email);
         
         if ($excludeId) {
-            $builder->where('id !=', $excludeId);
+            $builder->where('user_id !=', $excludeId);
         }
         
         return $builder->countAllResults() > 0;
@@ -139,9 +139,9 @@ class UserModel extends Model
     public function getUserWithRecordCount($userId)
     {
         return $this->select('users.*, COUNT(academic_records.id) as total_records')
-                    ->join('academic_records', 'users.id = academic_records.uploaded_by', 'left')
-                    ->where('users.id', $userId)
-                    ->groupBy('users.id')
+                    ->join('academic_records', 'users.user_id = academic_records.uploaded_by', 'left')
+                    ->where('users.user_id', $userId)
+                    ->groupBy('users.user_id')
                     ->first();
     }
 
@@ -151,8 +151,8 @@ class UserModel extends Model
     public function getAllUsersWithRecordCounts()
     {
         return $this->select('users.*, COUNT(academic_records.id) as total_records')
-                    ->join('academic_records', 'users.id = academic_records.uploaded_by', 'left')
-                    ->groupBy('users.id')
+                    ->join('academic_records', 'users.user_id = academic_records.uploaded_by', 'left')
+                    ->groupBy('users.user_id')
                     ->orderBy('users.created_at', 'DESC')
                     ->findAll();
     }
@@ -191,7 +191,7 @@ class UserModel extends Model
         $builder = $this->where('username', $username);
         
         if ($excludeId) {
-            $builder->where('id !=', $excludeId);
+            $builder->where('user_id !=', $excludeId);
         }
         
         return $builder->countAllResults() > 0;

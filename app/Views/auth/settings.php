@@ -108,7 +108,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">User ID</label>
         <input
           type="text"
-          value="<?= esc($user['id']); ?>"
+          value="<?= esc($user['user_id']); ?>"
           disabled
           class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
         />

@@ -106,7 +106,7 @@ class DashboardModel extends Model
                 u.email,
                 u.role
             FROM activity_logs al
-            LEFT JOIN users u ON al.user_id = u.id
+            LEFT JOIN users u ON al.user_id = u.user_id
             ORDER BY al.created_at DESC
             LIMIT ?
         ", [$limit]);
