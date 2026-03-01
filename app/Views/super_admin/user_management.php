@@ -527,6 +527,20 @@
               </div>
             </label>
           </div>
+<!-- ── Folder Access ──────────────────────────────── -->
+          <div class="border-t border-gray-200 pt-4 mt-2">
+            <p class="text-sm font-semibold text-gray-700 mb-1">📁 Folder Access</p>
+            <p class="text-xs text-gray-500 mb-3">
+              Assign which top-level folders this user can see and access.
+              Leave all unchecked to block access to all folders.
+              Admins always have full access regardless of this setting.
+            </p>
+            <div id="folderCheckboxList" class="space-y-1 max-h-48 overflow-y-auto pr-1">
+              <p class="text-xs text-gray-400 italic">Loading folders…</p>
+            </div>
+          </div>
+          <!-- Hidden input carries folder selections through form POST -->
+          <input type="hidden" name="folder_access" id="folderAccessInput">
           <div id="editPrivilegeError" class="hidden mt-2 text-sm text-red-600"></div>
         </div>
       </div>
@@ -669,6 +683,7 @@ function openEditModal(user, userPrivileges) {
   document.getElementById('editPrivilegeError').classList.add('hidden');
 
   document.getElementById('editModal').classList.add('active');
+  loadFolderAccess(user.id);   // ← populate folder checkboxes
 }
 
 function closeEditModal() {
@@ -810,14 +825,61 @@ function searchTable() {
   }
 }
 
+// ── Folder Access helpers ─────────────────────────────────────────────────
+
+/**
+ * Called when the Edit modal opens.
+ * Fetches all root folders from disk + which ones this user is assigned.
+ * Renders them as checkboxes inside #folderCheckboxList.
+ */
+function loadFolderAccess(userId) {
+  var container = document.getElementById('folderCheckboxList');
+  container.innerHTML = '<p class="text-xs text-gray-400 italic">Loading…</p>';
+
+  fetch('<?= base_url('super-admin/get-user-folders/') ?>' + userId, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (!data.success || !data.folders.length) {
+      container.innerHTML = '<p class="text-xs text-gray-400 italic">No folders found in the archive root yet.</p>';
+      return;
+    }
+    container.innerHTML = data.folders.map(function(folder) {
+      var checked = data.assigned.includes(folder) ? 'checked' : '';
+      return '<label class="flex items-center gap-2 p-2 bg-gray-50 rounded cursor-pointer hover:bg-green-50">'
+        + '<input type="checkbox" class="folder-access-cb h-4 w-4 rounded border-gray-300 text-green-600" value="' + folder + '" ' + checked + '>'
+        + '<span class="text-sm text-gray-700">📁 ' + folder + '</span>'
+        + '</label>';
+    }).join('');
+  })
+  .catch(function() {
+    container.innerHTML = '<p class="text-xs text-red-500">Could not load folders. Check your connection.</p>';
+  });
+}
+
+/**
+ * Called just before the edit form submits.
+ * Reads all checked folder checkboxes and puts them as JSON
+ * into the hidden #folderAccessInput field.
+ */
+function collectFolderAccess() {
+  var checked = Array.from(document.querySelectorAll('.folder-access-cb:checked'))
+                     .map(function(cb) { return cb.value; });
+  document.getElementById('folderAccessInput').value = JSON.stringify(checked);
+}
+
+// ── END Folder Access helpers ──────────────
 // ────────────────────────────────────────────────
 //   Edit form: save privileges via AJAX, then submit
 // ────────────────────────────────────────────────
 document.getElementById('editForm').addEventListener('submit', function(e) {
   e.preventDefault();
 
+ collectFolderAccess();        // ← serialize folder checkboxes into hidden input first
   var form     = this;
   var userId   = form.dataset.userId;
+
   var errorBox = document.getElementById('editPrivilegeError');
   var submitBtn = form.querySelector('button[type="submit"]');
   var originalText = submitBtn.textContent;

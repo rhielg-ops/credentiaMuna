@@ -11,11 +11,13 @@ class AcademicRecords extends BaseController
     private int    $maxBytes    = 10 * 1024 * 1024;
 
     protected UserPrivilegeModel $privilegeModel;
+    protected \App\Models\UserFolderAccessModel $folderAccessModel;
 
     public function __construct()
     {
-        $this->uploadRoot     = FCPATH . 'uploads/academic_records/';
-        $this->privilegeModel = new UserPrivilegeModel();
+        $this->uploadRoot        = FCPATH . 'uploads/academic_records/';
+        $this->privilegeModel    = new UserPrivilegeModel();
+        $this->folderAccessModel = new \App\Models\UserFolderAccessModel();
 
         if (!is_dir($this->uploadRoot)) {
             mkdir($this->uploadRoot, 0755, true);
@@ -60,6 +62,25 @@ class AcademicRecords extends BaseController
         return $this->response->setJSON(array_merge(['success' => true], $extra));
     }
 
+    /**
+     * Admins (role === 'admin') always pass.
+     * Regular users must have the path in their assigned folders.
+     * Empty path (root) is only allowed for admins.
+     */
+    private function canAccessPath(string $relativePath): bool
+    {
+        if (session()->get('role') === 'admin') return true;
+
+        // Root path "" is always allowed — scanFolders() handles
+        // filtering so the user only SEES their assigned folders.
+        // Blocking root here causes "Access denied" on initial page load.
+        if (ltrim($relativePath, '/') === '') return true;
+
+        $userId = (int) session()->get('user_id');
+        return $this->folderAccessModel->canAccessPath($userId, $relativePath);
+    }
+
+
     private function formatBytes(int $bytes): string
     {
         if ($bytes >= 1048576) return round($bytes / 1048576, 1) . ' MB';
@@ -67,18 +88,51 @@ class AcademicRecords extends BaseController
         return $bytes . ' B';
     }
 
-    private function scanFolders(string $relative): array
+     private function scanFolders(string $relative): array
     {
         $abs = $this->uploadRoot . ltrim($relative, '/');
         if (!is_dir($abs)) return [];
+
+        $isAdmin = session()->get('role') === 'admin';
+        $allowed = $isAdmin ? [] : $this->folderAccessModel->getAllowedFolders(
+            (int) session()->get('user_id')
+        );
+
         $items = [];
         foreach (scandir($abs) as $entry) {
             if ($entry === '.' || $entry === '..') continue;
             $full = $abs . DIRECTORY_SEPARATOR . $entry;
-            if (is_dir($full)) {
-                $count = count(array_filter(scandir($full), fn($f) => $f !== '.' && $f !== '..' && is_file($full . DIRECTORY_SEPARATOR . $f)));
-                $items[] = ['name' => $entry, 'path' => trim($relative . '/' . $entry, '/'), 'modified' => date('Y-m-d', filemtime($full)), 'count' => $count];
+            if (!is_dir($full)) continue;
+
+            $entryPath = trim($relative . '/' . $entry, '/');
+
+            // Non-admins: show a folder only if it IS an allowed folder,
+            // is a subfolder of one, OR is a parent of one (so the tree
+            // can be navigated down to the allowed folder).
+            if (!$isAdmin) {
+                $visible = false;
+                foreach ($allowed as $af) {
+                    $af = ltrim($af, '/');
+                    if ($entryPath === $af
+                        || str_starts_with($entryPath, $af . '/')
+                        || str_starts_with($af, $entryPath . '/')) {
+                        $visible = true;
+                        break;
+                    }
+                }
+                if (!$visible) continue;
             }
+
+            $count   = count(array_filter(
+                scandir($full),
+                fn($f) => $f !== '.' && $f !== '..' && is_file($full . DIRECTORY_SEPARATOR . $f)
+            ));
+            $items[] = [
+                'name'     => $entry,
+                'path'     => $entryPath,
+                'modified' => date('Y-m-d', filemtime($full)),
+                'count'    => $count,
+            ];
         }
         usort($items, fn($a, $b) => strcasecmp($a['name'], $b['name']));
         return $items;
@@ -88,6 +142,10 @@ class AcademicRecords extends BaseController
     {
         $abs = $this->uploadRoot . ltrim($relative, '/');
         if (!is_dir($abs)) return [];
+
+        // Block file listing if this folder is not accessible
+        if (!$this->canAccessPath($relative)) return [];
+
         $items = [];
         foreach (scandir($abs) as $entry) {
             if ($entry === '.' || $entry === '..') continue;
@@ -151,6 +209,9 @@ class AcademicRecords extends BaseController
         $relative = $this->request->getGet('path') ?? '';
         try { $absPath = $this->safePath($relative); } catch (\RuntimeException $e) { return $this->jsonError('Invalid path.'); }
         if (!is_dir($absPath)) return $this->jsonError('Folder not found.', 404);
+
+        if (!$this->canAccessPath($relative)) return $this->jsonError('Access denied.', 403);
+
         return $this->jsonOk(['path' => $relative, 'folders' => $this->scanFolders($relative), 'files' => $this->scanFiles($relative)]);
     }
 
@@ -167,6 +228,7 @@ class AcademicRecords extends BaseController
         if (!$folderName) return $this->jsonError('Folder name is required.');
 
         try { $newPath = $this->safePath(trim($parentPath . '/' . $folderName, '/')); } catch (\RuntimeException $e) { return $this->jsonError('Invalid path.'); }
+        if (!$this->canAccessPath($parentPath)) return $this->jsonError('Access denied.', 403);
         if (is_dir($newPath))        return $this->jsonError('A folder with that name already exists.');
         if (!mkdir($newPath, 0755, true)) return $this->jsonError('Failed to create folder.');
 
@@ -193,6 +255,7 @@ class AcademicRecords extends BaseController
 
         $safeName = time() . '_' . $this->sanitiseName($file->getClientName());
         try { $destDir = $this->safePath($folderPath); } catch (\RuntimeException $e) { return $this->jsonError('Invalid destination path.'); }
+        if (!$this->canAccessPath($folderPath)) return $this->jsonError('Access denied.', 403);
         if (!is_dir($destDir)) mkdir($destDir, 0755, true);
         $file->move($destDir, $safeName);
 
@@ -219,7 +282,8 @@ class AcademicRecords extends BaseController
         $uploaded   = []; $errors = [];
 
         if (empty($files['folder_files'])) return $this->jsonError('No files received.');
-        try { $destDir = $this->safePath($folderPath); } catch (\RuntimeException $e) { return $this->jsonError('Invalid destination path.'); }
+       try { $destDir = $this->safePath($folderPath); } catch (\RuntimeException $e) { return $this->jsonError('Invalid destination path.'); }
+        if (!$this->canAccessPath($folderPath)) return $this->jsonError('Access denied.', 403);
         if (!is_dir($destDir)) mkdir($destDir, 0755, true);
 
         foreach ($files['folder_files'] as $file) {
@@ -247,6 +311,8 @@ class AcademicRecords extends BaseController
         try { $absPath = $this->safePath($relative); } catch (\RuntimeException $e) { return $this->response->setStatusCode(400)->setBody('Invalid path.'); }
         if (!is_file($absPath)) return $this->response->setStatusCode(404)->setBody('File not found.');
 
+        if (!$this->canAccessPath($relative)) return $this->response->setStatusCode(403)->setBody('Access denied.');
+
         return $this->response
             ->setHeader('Content-Type', mime_content_type($absPath))
             ->setHeader('Content-Disposition', 'inline; filename="' . basename($absPath) . '"')
@@ -266,6 +332,8 @@ class AcademicRecords extends BaseController
         try { $absPath = $this->safePath($relative); } catch (\RuntimeException $e) { return redirect()->back()->with('error', 'Invalid file path.'); }
         if (!is_file($absPath)) return redirect()->back()->with('error', 'File not found.');
 
+        if (!$this->canAccessPath($relative)) return redirect()->back()->with('error', 'Access denied.');
+
         return $this->response
             ->setHeader('Content-Type', mime_content_type($absPath))
             ->setHeader('Content-Disposition', 'attachment; filename="' . basename($absPath) . '"')
@@ -283,7 +351,8 @@ class AcademicRecords extends BaseController
 
         $relative = $this->request->getPost('path') ?? '';
         try { $absPath = $this->safePath($relative); } catch (\RuntimeException $e) { return $this->jsonError('Invalid path.'); }
-        if (!is_file($absPath)) return $this->jsonError('File not found.', 404);
+         if (!is_file($absPath)) return $this->jsonError('File not found.', 404);
+        if (!$this->canAccessPath($relative)) return $this->jsonError('Access denied.', 403);
         if (!unlink($absPath))  return $this->jsonError('Delete failed.');
         return $this->jsonOk(['message' => 'File deleted.']);
     }
@@ -298,8 +367,9 @@ class AcademicRecords extends BaseController
 
         $relative = $this->request->getPost('path') ?? '';
         try { $absPath = $this->safePath($relative); } catch (\RuntimeException $e) { return $this->jsonError('Invalid path.'); }
-        if (!is_dir($absPath)) return $this->jsonError('Folder not found.', 404);
+         if (!is_dir($absPath)) return $this->jsonError('Folder not found.', 404);
         if (rtrim($absPath, DIRECTORY_SEPARATOR) === rtrim(realpath($this->uploadRoot), DIRECTORY_SEPARATOR)) return $this->jsonError('Cannot delete the root folder.');
+        if (!$this->canAccessPath($relative)) return $this->jsonError('Access denied.', 403);
         $this->rmdirRecursive($absPath);
         return $this->jsonOk(['message' => 'Folder deleted.']);
     }
@@ -328,6 +398,7 @@ class AcademicRecords extends BaseController
 
         try { $absOld = $this->safePath($relative); } catch (\RuntimeException $e) { return $this->jsonError('Invalid path.'); }
         if (!file_exists($absOld)) return $this->jsonError('Item not found.', 404);
+        if (!$this->canAccessPath($relative)) return $this->jsonError('Access denied.', 403);
 
         $absNew = dirname($absOld) . DIRECTORY_SEPARATOR . $newName;
         if (file_exists($absNew))    return $this->jsonError('An item with that name already exists.');
@@ -352,6 +423,8 @@ class AcademicRecords extends BaseController
 
         if (!file_exists($absSrc)) return $this->jsonError('Source not found.', 404);
         if (!is_dir($absDest))     return $this->jsonError('Destination folder not found.', 404);
+        if (!$this->canAccessPath($srcRelative))  return $this->jsonError('Access denied.', 403);
+        if (!$this->canAccessPath($destRelative)) return $this->jsonError('Access denied to destination.', 403);
 
         $destFull = $absDest . DIRECTORY_SEPARATOR . basename($absSrc);
         if (file_exists($destFull))       return $this->jsonError('An item with that name already exists in the destination.');

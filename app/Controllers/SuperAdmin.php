@@ -16,14 +16,16 @@ class SuperAdmin extends BaseController
     protected $dashboardModel;
     protected $privilegeModel;
     protected $emailService;
+    protected \App\Models\UserFolderAccessModel $folderAccessModel;
 
     public function __construct()
     {
-        $this->userModel = new UserModel();
-        $this->activityLogModel = new ActivityLogModel();
-        $this->dashboardModel = new DashboardModel();
-        $this->privilegeModel = new UserPrivilegeModel();
-        $this->emailService = new EmailService();
+        $this->userModel         = new UserModel();
+        $this->activityLogModel  = new ActivityLogModel();
+        $this->dashboardModel    = new DashboardModel();
+        $this->privilegeModel    = new UserPrivilegeModel();
+        $this->emailService      = new EmailService();
+        $this->folderAccessModel = new \App\Models\UserFolderAccessModel();
     }
 
     /**
@@ -312,6 +314,13 @@ class SuperAdmin extends BaseController
                 "Updated user: {$updateData['email']} - {$changeLog}"
             );
 
+            // Save folder access assignments submitted from the edit modal
+            $folderJson = $this->request->getPost('folder_access');
+            if ($folderJson !== null) {
+                $folders = json_decode($folderJson, true) ?? [];
+                $this->folderAccessModel->setFolders($id, $folders, (int) session()->get('user_id'));
+            }
+
             return redirect()->to('/super-admin/user-management')
                 ->with('success', 'User account updated successfully!');
         } else {
@@ -551,6 +560,69 @@ public function toggleSuspend($id)
             'message' => 'User not found'
         ]);
     }
+
+/**
+     * Get folder list + user's current assignments (AJAX GET)
+     * Called by the Edit modal to populate the folder checkboxes.
+     */
+    public function getUserFolders(int $userId)
+    {
+        if ($redirect = $this->checkSuperAdmin()) return $redirect;
+
+        // Scan root of the uploads directory for top-level folders
+        $uploadRoot  = FCPATH . 'uploads/academic_records/';
+        $rootFolders = [];
+        if (is_dir($uploadRoot)) {
+            foreach (scandir($uploadRoot) as $entry) {
+                if ($entry === '.' || $entry === '..') continue;
+                if (is_dir($uploadRoot . $entry)) $rootFolders[] = $entry;
+            }
+            sort($rootFolders);
+        }
+
+        $assigned = $this->folderAccessModel->getAllowedFolders($userId);
+
+        return $this->response->setJSON([
+            'success'  => true,
+            'folders'  => $rootFolders,   // all folders on disk
+            'assigned' => $assigned,       // which ones this user has
+        ]);
+    }
+
+    /**
+     * Save folder assignments for a user (AJAX POST)
+     * Called by the Edit modal JS before submitting the main form.
+     */
+    public function updateUserFolders(int $userId)
+    {
+        if ($redirect = $this->checkSuperAdmin()) return $redirect;
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false]);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User not found.']);
+        }
+
+        $body    = $this->request->getJSON(true);
+        $folders = $body['folders'] ?? [];
+
+        $this->folderAccessModel->setFolders(
+            $userId,
+            $folders,
+            (int) session()->get('user_id')
+        );
+
+        $this->activityLogModel->logActivity(
+            session()->get('user_id'),
+            'folder_access_updated',
+            "Updated folder access for user: {$user['email']} — folders: " . implode(', ', $folders)
+        );
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Folder access saved.']);
+    }
+
 
     /**
      * Get User Privileges (AJAX)

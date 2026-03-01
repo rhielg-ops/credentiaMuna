@@ -62,6 +62,9 @@ $routes->group('super-admin', function ($routes) {
     $routes->post('toggle-suspend/(:num)',          'SuperAdmin::toggleSuspend/$1');
     $routes->get('toggle-suspend/(:num)',           'SuperAdmin::toggleSuspend/$1');
     $routes->post('update-user-privileges/(:num)', 'SuperAdmin::updateUserPrivileges/$1');
+    $routes->get( 'get-user-folders/(:num)',    'SuperAdmin::getUserFolders/$1');
+    $routes->post('update-user-folders/(:num)', 'SuperAdmin::updateUserFolders/$1');
+
 
     // Requires audit_logs privilege (or admin role)
     $routes->get('activity-logs',                  'SuperAdmin::activityLogs');
