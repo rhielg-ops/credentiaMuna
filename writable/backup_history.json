@@ -1,0 +1,52 @@
+[
+    {
+        "filename": "academic_records_backup_2026-03-02_11-39-52.zip",
+        "created_at": "2026-03-02 11:39:54",
+        "file_count": 36,
+        "source_size": "5.61 MB",
+        "zip_size": "5.02 MB",
+        "type": "manual",
+        "user": "Rhiel Guillermo",
+        "errors": []
+    },
+    {
+        "filename": "academic_records_backup_2026-03-01_20-53-25.zip",
+        "created_at": "2026-03-01 20:53:25",
+        "file_count": 36,
+        "source_size": "5.61 MB",
+        "zip_size": "5.02 MB",
+        "type": "manual",
+        "user": "Rhiel Guillermo",
+        "errors": []
+    },
+    {
+        "filename": "academic_records_backup_2026-03-01_12-36-56.zip",
+        "created_at": "2026-03-01 12:36:57",
+        "file_count": 36,
+        "source_size": "5.61 MB",
+        "zip_size": "5.02 MB",
+        "type": "manual",
+        "user": "Rhiel Guillermo",
+        "errors": []
+    },
+    {
+        "filename": "academic_records_backup_2026-03-01_12-27-03.zip",
+        "created_at": "2026-03-01 12:27:03",
+        "file_count": 36,
+        "source_size": "5.61 MB",
+        "zip_size": "5.04 MB",
+        "type": "manual",
+        "user": "Rhiel Guillermo",
+        "errors": []
+    },
+    {
+        "filename": "academic_records_backup_2026-03-01_12-22-58.zip",
+        "created_at": "2026-03-01 12:22:59",
+        "file_count": 36,
+        "source_size": "5.61 MB",
+        "zip_size": "5.04 MB",
+        "type": "manual",
+        "user": "Rhiel Guillermo",
+        "errors": []
+    }
+]

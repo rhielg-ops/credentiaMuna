@@ -75,4 +75,14 @@ $routes->group('super-admin', function ($routes) {
     $routes->get('system-backup',                  'SuperAdmin::systemBackup');
 
     $routes->get('settings',                       'Settings::index');
+
+     // System Backup API routes
+    $routes->post('backup/run',        'Backup::run');
+    $routes->get( 'backup/download',   'Backup::download');
+    $routes->get( 'backup/list',       'Backup::listBackups');
+    $routes->get( 'backup/schedule',   'Backup::schedule');
+    $routes->post('backup/schedule',   'Backup::schedule');
+    $routes->post('backup/delete',     'Backup::deleteBackup');
 });
+
+$routes->get('super-admin/backup/cron', 'Backup::cron');
