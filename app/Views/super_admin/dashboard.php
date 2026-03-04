@@ -21,6 +21,19 @@
   
   <div class="bg-green-700 rounded-xl p-6 shadow-md border border-green-800 text-white transition-all duration-300 hover:bg-green-600 hover:shadow-lg cursor-default">
     <div class="flex items-center justify-between mb-4">
+      <span class="text-green-100 font-medium">Total Folders</span>
+      <div class="w-12 h-12 bg-green-800/50 rounded-lg flex items-center justify-center">
+        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+        </svg>
+      </div>
+    </div>
+    <p class="text-3xl font-bold mb-1"><?= number_format($stats['total_folders']) ?></p>
+    <p class="text-sm text-green-200">Academic folders</p>
+  </div>
+
+  <div class="bg-green-700 rounded-xl p-6 shadow-md border border-green-800 text-white transition-all duration-300 hover:bg-green-600 hover:shadow-lg cursor-default">
+    <div class="flex items-center justify-between mb-4">
       <span class="text-green-100 font-medium">Total Records</span>
       <div class="w-12 h-12 bg-green-800/50 rounded-lg flex items-center justify-center">
         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -43,19 +56,6 @@
     </div>
     <p class="text-3xl font-bold mb-1"><?= $stats['total_admins'] ?></p>
     <p class="text-sm text-green-200"><?= $stats['active_admins'] ?> active</p>
-  </div>
-
-  <div class="bg-green-700 rounded-xl p-6 shadow-md border border-green-800 text-white transition-all duration-300 hover:bg-green-600 hover:shadow-lg cursor-default">
-    <div class="flex items-center justify-between mb-4">
-      <span class="text-green-100 font-medium">Recent Activity</span>
-      <div class="w-12 h-12 bg-green-800/50 rounded-lg flex items-center justify-center">
-        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-        </svg>
-      </div>
-    </div>
-    <p class="text-3xl font-bold mb-1"><?= $stats['recent_activity'] ?></p>
-    <p class="text-sm text-green-200">actions today</p>
   </div>
 
   <div class="bg-green-700 rounded-xl p-6 shadow-md border border-green-800 text-white transition-all duration-300 hover:bg-green-600 hover:shadow-lg cursor-default">

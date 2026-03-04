@@ -23,7 +23,7 @@
       <div>
         <p class="font-semibold text-gray-800"><?= esc($pending['full_name']); ?></p>
         <p class="text-sm text-gray-600"><?= esc($pending['email']); ?></p>
-        <p class="text-xs text-gray-500">Requested: <?= date('M d, Y', strtotime($pending['created_at'])); ?></p>
+        <p class="text-xs text-gray-500">Requested: <?= date('M d, Y', strtotime($pending['requested_at'])); ?></p>
       </div>
       <div class="flex gap-2">
         <a href="<?= base_url('super-admin/approve-admin/' . $pending['user_id']); ?>" 

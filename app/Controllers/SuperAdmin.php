@@ -74,8 +74,9 @@ class SuperAdmin extends BaseController
         // Get all users with record counts
         $users = $this->userModel->getAllUsersWithRecordCounts();
         
-        // Get inactive users (pending reactivation)
-        $inactiveUsers = $this->userModel->getInactiveUsers();
+        // Get only users who explicitly submitted an access request
+        $approvalModel = new \App\Models\ApprovalRequestModel();
+        $pendingRequests = $approvalModel->getPendingRequests();
 
         // Build a privileges map keyed by user_id for use in the view
         $userPrivilegesMap = [];
@@ -89,7 +90,7 @@ class SuperAdmin extends BaseController
             'role'  => session()->get('role'),
             'full_name' => session()->get('full_name') ?? 'Admin',
             'users' => $users,
-            'pending_admins' => $inactiveUsers,
+            'pending_admins' => $pendingRequests,
             'user_privileges_map' => $userPrivilegesMap,
             'privilege_definitions' => $this->privilegeModel->getPrivilegeDefinitions()
         ];

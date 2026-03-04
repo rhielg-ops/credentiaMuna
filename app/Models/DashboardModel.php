@@ -20,18 +20,19 @@ class DashboardModel extends Model
     public function getSuperAdminStats()
     {
         return [
-            'total_records' => $this->getTotalRecords(),
-            'total_admins' => $this->getTotalAdmins(),
-            'active_admins' => $this->getActiveAdmins(),
+            'total_folders'   => $this->getTotalFolders(),
+            'total_records'   => $this->getTotalRecords(),
+            'total_admins'    => $this->getTotalAdmins(),
+            'active_admins'   => $this->getActiveAdmins(),
             'recent_activity' => $this->getRecentActivityCount(),
-            'pending_staff' => $this->getPendingStaffCount()
+            'pending_staff'   => $this->getPendingStaffCount()
         ];
     }
 
     /**
-     * Get total records count
+     * Get total folders count (directories only)
      */
-   protected function getTotalRecords()
+    protected function getTotalFolders()
     {
         $uploadRoot = FCPATH . 'uploads/academic_records/';
 
@@ -46,8 +47,35 @@ class DashboardModel extends Model
         );
 
         foreach ($iterator as $item) {
-            // Count both files and folders (excluding . and ..)
-            $total++;
+            if ($item->isDir()) {
+                $total++;
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Get total records count (files only)
+     */
+    protected function getTotalRecords()
+    {
+        $uploadRoot = FCPATH . 'uploads/academic_records/';
+
+        if (!is_dir($uploadRoot)) {
+            return 0;
+        }
+
+        $total = 0;
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($uploadRoot, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            if ($item->isFile()) {
+                $total++;
+            }
         }
 
         return $total;
