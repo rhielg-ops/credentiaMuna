@@ -7,6 +7,7 @@ use App\Models\UserModel;
 use App\Models\ActivityLogModel;
 use App\Models\DashboardModel;
 use App\Models\UserPrivilegeModel;
+use App\Models\UserFolderAccessModel;
 use App\Libraries\EmailService;
 
 class SuperAdmin extends BaseController
@@ -48,16 +49,26 @@ class SuperAdmin extends BaseController
         if ($redirect) return $redirect;
 
         // Load dashboard statistics dynamically
-        $stats = $this->dashboardModel->getSuperAdminStats();
+        $stats          = $this->dashboardModel->getSuperAdminStats();
         $recentActivity = $this->dashboardModel->getRecentActivity(5);
 
+        // Compute KPI counts (admin always gets full access)
+        $userId   = (int) session()->get('user_id');
+        $basePath = WRITEPATH . '../public/uploads/academic_records';
+        $kpi      = $this->countAccessibleItems($basePath, $userId);
+
         $data = [
-            'title' => 'Admin Dashboard - CredentiaTAU',
-            'email' => session()->get('email'),
-            'role'  => session()->get('role'),
-            'full_name' => session()->get('full_name') ?? 'Admin',
-            'stats' => $stats,
-            'recent_activity' => $recentActivity
+            'title'               => 'Admin Dashboard - CredentiaTAU',
+            'email'               => session()->get('email'),
+            'role'                => session()->get('role'),
+            'full_name'           => session()->get('full_name') ?? 'Admin',
+            'stats'               => $stats,
+            'recent_activity'     => $recentActivity,
+            'total_files'         => $kpi['files'],
+            'total_folders'       => $kpi['folders'],
+            'file_types'          => $kpi['file_types'],
+            'folder_distribution' => $kpi['folder_distribution'],
+            'monthly_data'        => $kpi['monthly_data'],
         ];
 
         return view('super_admin/dashboard', $data);
@@ -348,7 +359,7 @@ public function approveAdmin($id)
     $approvalModel = new \App\Models\ApprovalRequestModel();
     $request = $approvalModel->where('user_id', $id)->where('status', 'pending')->first();
     if ($request) {
-        $approvalModel->update($request['id'], [
+        $approvalModel->update($request['approval_id'], [
             'status'      => 'approved',
             'reviewed_at' => date('Y-m-d H:i:s'),
             'reviewed_by' => session()->get('user_id'),
@@ -904,4 +915,73 @@ private function _getUserPrivilegesData($userId)
 
         return view('super_admin/activity_logs', $data);
     }
+    // -------------------------------------------------------------------------
+    // KPI helpers (mirrored from Dashboard controller)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Scan $basePath and return counts. Super-admins always get full access.
+     */
+    private function countAccessibleItems(string $basePath, int $userId): array
+    {
+        $fileCount          = 0;
+        $folderCount        = 0;
+        $fileTypes          = [];
+        $folderDistribution = [];
+        $monthlyData        = array_fill(0, 12, 0);
+
+        if (!is_dir($basePath)) {
+            return [
+                'files'               => 0,
+                'folders'             => 0,
+                'file_types'          => [],
+                'folder_distribution' => [],
+                'monthly_data'        => $monthlyData,
+            ];
+        }
+
+        // Super-admins always bypass folder restrictions
+        $hasFullAccess  = true;
+        $allowedFolders = [];
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($basePath, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+
+            foreach ($iterator as $item) {
+                $relativePath = ltrim(
+                    str_replace('\\', '/', str_replace($basePath, '', $item->getPathname())),
+                    '/'
+                );
+
+                if ($item->isDir()) {
+                    $folderCount++;
+                    $topFolder = explode('/', $relativePath)[0];
+                    $folderDistribution[$topFolder] = ($folderDistribution[$topFolder] ?? 0) + 1;
+                } else {
+                    $fileCount++;
+                    $ext = strtolower(pathinfo($item->getFilename(), PATHINFO_EXTENSION));
+                    $fileTypes[$ext] = ($fileTypes[$ext] ?? 0) + 1;
+
+                    $mtime = filemtime($item->getPathname());
+                    if ((int) date('Y', $mtime) === (int) date('Y')) {
+                        $monthlyData[(int) date('n', $mtime) - 1]++;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'SuperAdmin KPI scan error: ' . $e->getMessage());
+        }
+
+        return [
+            'files'               => $fileCount,
+            'folders'             => $folderCount,
+            'file_types'          => $fileTypes,
+            'folder_distribution' => $folderDistribution,
+            'monthly_data'        => $monthlyData,
+        ];
+    }
+
 }

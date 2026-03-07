@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Models\UserPrivilegeModel;
+use App\Services\OcrService;
 
 class AcademicRecords extends BaseController
 {
@@ -486,22 +487,87 @@ public function tempUpload()
         return $this->jsonError('Failed to save temporary file.');
     }
 
-    // Store metadata in session
-    session()->set('temp_upload_' . $token, [
-        'filename' => $safeName,
-        'original_name' => $file->getClientName(),
-        'folder_path' => $folderPath,
-        'size' => $file->getSize(),
-        'ext' => $ext,
-        'uploaded_at' => time()
-    ]);
+    // Run OCR on the temp file (failure does NOT abort the upload)
+$ocrResult = [];
+if (in_array($ext, ['jpg', 'jpeg', 'png', 'pdf'])) {
+    $ocrService = new OcrService();
+    $ocrResult  = $ocrService->extractFromFile(
+        $tempDir . DIRECTORY_SEPARATOR . $safeName,
+        $file->getClientName()
+    );
+}
 
+// Store metadata in session (includes OCR result)
+session()->set('temp_upload_' . $token, [
+    'filename'      => $safeName,
+    'original_name' => $file->getClientName(),
+    'folder_path'   => $folderPath,
+    'size'          => $file->getSize(),
+    'ext'           => $ext,
+    'uploaded_at'   => time(),
+    'ocr'           => $ocrResult,
+]);
+
+return $this->jsonOk([
+    'token'           => $token,
+    'preview_url'     => base_url('academic-records/preview-pending/' . $token),
+    'original_name'   => $file->getClientName(),
+    'size'            => $this->formatBytes($file->getSize()),
+    'ocr_success'     => $ocrResult['success']     ?? false,
+    'ocr_text'        => $ocrResult['text']        ?? '',
+    'ocr_suggestions' => $ocrResult['suggestions'] ?? ['folder' => '', 'filename' => ''],
+]);
+}
+
+public function getOcrResult(string $token): \CodeIgniter\HTTP\ResponseInterface
+{
+    if (!session()->get('logged_in')) {
+        return $this->jsonError('Unauthenticated.', 401);
+    }
+    $metadata = session()->get('temp_upload_' . $token);
+    if (!$metadata) {
+        return $this->jsonError('Token not found or expired.', 404);
+    }
+    $ocr = $metadata['ocr'] ?? [];
     return $this->jsonOk([
-        'token' => $token,
-        'preview_url' => base_url('academic-records/preview-pending/' . $token),
-        'original_name' => $file->getClientName(),
-        'size' => $this->formatBytes($file->getSize())
+        'ocr_success'     => $ocr['success']     ?? false,
+        'ocr_text'        => $ocr['text']        ?? '',
+        'ocr_suggestions' => $ocr['suggestions'] ?? ['folder' => '', 'filename' => ''],
+        'ocr_error'       => $ocr['error']       ?? null,
     ]);
+}
+
+public function testOcr()
+{
+    echo '<pre>';
+    
+    // Search entire project for recently modified jpg/png files
+    $base = FCPATH . '..'; // project root
+    echo 'Project root: ' . realpath($base) . "\n\n";
+    
+    $dirs = [
+        WRITEPATH,
+        sys_get_temp_dir(),
+        FCPATH . 'uploads',
+        ROOTPATH . 'uploads',
+        ROOTPATH . 'storage',
+    ];
+    
+    foreach ($dirs as $dir) {
+        if (!is_dir($dir)) { echo "NOT EXISTS: $dir\n"; continue; }
+        echo "Scanning: $dir\n";
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+        foreach ($iterator as $file) {
+            if (in_array(strtolower($file->getExtension()), ['jpg','jpeg','png'])) {
+                echo '  FOUND: ' . $file->getPathname() . ' (' . $file->getSize() . ' bytes)' . "\n";
+            }
+        }
+    }
+    
+    echo '</pre>';
+    die();
 }
 
 // ================================================================
@@ -657,7 +723,10 @@ public function finalizeUpload()
     }
 
     // Generate final filename with timestamp
-    $finalName = time() . '_' . $this->sanitiseName($metadata['original_name']);
+    $suggestedFilename = $this->request->getPost('suggested_filename') ?? '';
+    $finalName = $suggestedFilename
+    ? $this->sanitiseName($suggestedFilename)
+    : time() . '_' . $this->sanitiseName($metadata['original_name']);
     $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
 
     // Move file from temp to permanent location

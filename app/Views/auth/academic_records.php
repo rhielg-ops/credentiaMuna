@@ -389,6 +389,7 @@
           <input id="recordFileInput" type="file" name="record_file" accept=".pdf,.doc,.docx" class="hidden" onchange="updateRecordFileLabel(this)" />
         </label>
         <p id="recordFileName" class="text-xs text-green-700 font-medium mt-2 hidden"></p>
+        
       </div>
 
       <!-- Choose File from Browser -->
@@ -1760,6 +1761,7 @@
 
         // Open preview/save modal
         openTempPreviewModal(data.token, data.preview_url, data.original_name);
+        applyOcrSuggestions(data);
       });
 
       xhr.addEventListener('error', () => {
@@ -1782,6 +1784,62 @@
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OCR SUGGESTION FUNCTIONS
+  // ═══════════════════════════════════════════════════════════════════════════
+  function applyOcrSuggestions(res) {
+  document.getElementById('ocrSuggestionPanel')?.remove();
+  if (!res.ocr_success) return;
+
+  const suggestions       = res.ocr_suggestions || {};
+  const suggestedFolder   = suggestions.folder   || '';
+  const suggestedFilename = suggestions.filename || '';
+  if (!suggestedFolder && !suggestedFilename) return;
+
+  // Store globally so folder browser can use them
+  window._ocrSuggestedFolder   = suggestedFolder;
+  window._ocrSuggestedFilename = suggestedFilename;
+
+  // Show panel in preview modal
+  const panel = document.createElement('div');
+  panel.id        = 'ocrSuggestionPanel';
+  panel.className = 'mx-6 mb-3 p-3 bg-teal-50 border border-teal-200 rounded-xl text-sm';
+  panel.innerHTML = `
+    <p class="font-semibold text-teal-700 mb-2">✦ OCR Detected — suggestions ready</p>
+    <div class="flex flex-col gap-1 text-gray-700 mb-2">
+      <span>Folder: <strong class="text-teal-800">${suggestedFolder || '(none)'}</strong></span>
+      <span>Filename: <strong class="text-teal-800">${suggestedFilename || '(none)'}</strong></span>
+    </div>
+    <button onclick="applyOcrToFolderBrowser()"
+            class="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg transition-colors">
+      ✦ Apply Suggestions
+    </button>`;
+
+  const footer = document.querySelector('#previewModal .flex.items-center.justify-end.gap-3');
+  if (footer) footer.parentNode.insertBefore(panel, footer);
+}
+
+function applyOcrToFolderBrowser() {
+  const folder   = window._ocrSuggestedFolder   || '';
+  const filename = window._ocrSuggestedFilename || '';
+
+  // Open folder browser
+  openFolderBrowserModal();
+
+  // Wait for folder browser to render then search for the suggested folder
+  setTimeout(() => {
+    if (folder) {
+      const searchInput = document.getElementById('folderSearchInput');
+      if (searchInput) {
+        searchInput.value = folder;
+        filterFoldersInBrowser();
+      }
+    }
+    if (filename && currentTempMetadata) {
+      currentTempMetadata.suggested_filename = filename;
+    }
+  }, 400);
+}
   // ═══════════════════════════════════════════════════════════════════════════
   // NEW: TEMP PREVIEW MODAL FUNCTIONS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2298,6 +2356,9 @@
     formData.append(CSRF_NAME, CSRF_TOKEN);
     formData.append('token', currentTempToken);
     formData.append('folder_path', selectedFolderPath);
+    if (currentTempMetadata?.suggested_filename) {
+  formData.append('suggested_filename', currentTempMetadata.suggested_filename);
+}
     
     // Show loading
     const btn = document.querySelector('#folderBrowserModal button[onclick*="finalizeUpload"]');

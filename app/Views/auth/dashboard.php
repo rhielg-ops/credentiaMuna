@@ -27,13 +27,240 @@ $folder_values = array_values($top_folders);
 
 <?= $this->section('content') ?>
 
-<!-- Page Header -->
+<!-- ── Chart-card styles only (header & KPI cards unchanged) ── -->
+<style>
+  /* Fade-up entrance for chart cards */
+  @keyframes chartRise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Shared chart card shell */
+  .chart-card-styled {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e5ede8;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.05);
+    padding: 24px 26px 22px;
+    animation: chartRise 0.4s ease both;
+    transition: box-shadow 0.2s ease;
+  }
+  .chart-card-styled:hover {
+    box-shadow: 0 4px 24px rgba(21,128,61,0.11);
+  }
+
+  /* Card header row */
+  .chart-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .chart-card-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 3px;
+    letter-spacing: -0.1px;
+  }
+  .chart-card-sub {
+    font-size: 12px;
+    color: #9ca3af;
+    margin: 0;
+  }
+
+  /* Export button — pill style */
+  .chart-export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #15803d;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 999px;
+    padding: 5px 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s;
+    line-height: 1.4;
+  }
+  .chart-export-btn:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+  }
+  .chart-export-btn svg {
+    width: 12px; height: 12px;
+    stroke: #15803d; flex-shrink: 0;
+  }
+
+  /* Hairline divider */
+  .chart-divider {
+    height: 1px;
+    background: linear-gradient(to right, #e5ede8, transparent);
+    margin: 14px 0 18px;
+  }
+
+  /* Stagger the two side-by-side cards */
+  .chart-card-styled:nth-child(2) { animation-delay: 0.08s; }
+  .chart-card-full-styled         { animation-delay: 0.16s; }
+
+  /* Full-width timeline card */
+  .chart-card-full-styled {
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid #e5ede8;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 20px rgba(0,0,0,0.05);
+    padding: 24px 26px 22px;
+    margin-bottom: 8px;
+    animation: chartRise 0.4s ease both;
+    transition: box-shadow 0.2s ease;
+  }
+  .chart-card-full-styled:hover {
+    box-shadow: 0 4px 24px rgba(21,128,61,0.11);
+  }
+
+  /* ── Export Modal ── */
+  @keyframes modalBackdropIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes modalPanelIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .export-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.38);
+    backdrop-filter: blur(3px);
+    z-index: 9998;
+    align-items: center;
+    justify-content: center;
+    animation: modalBackdropIn 0.2s ease both;
+  }
+  .export-modal-backdrop.active {
+    display: flex;
+  }
+
+  .export-modal {
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08);
+    padding: 28px 28px 24px;
+    width: 340px;
+    max-width: calc(100vw - 32px);
+    position: relative;
+    animation: modalPanelIn 0.25s ease both;
+    z-index: 9999;
+  }
+
+  .export-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .export-modal-title {
+    font-size: 15.5px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+  }
+  .export-modal-close {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    border: none;
+    background: #f3f4f6;
+    color: #6b7280;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .export-modal-close:hover { background: #fee2e2; color: #dc2626; }
+  .export-modal-close svg { width: 14px; height: 14px; stroke: currentColor; }
+
+  .export-modal-subtitle {
+    font-size: 12px;
+    color: #9ca3af;
+    margin: 0 0 20px;
+  }
+  .export-modal-subtitle span {
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .export-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .export-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1.5px solid #e5ede8;
+    background: #fafafa;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s;
+    text-align: left;
+    width: 100%;
+  }
+  .export-option-btn:hover {
+    background: #f0fdf4;
+    border-color: #86efac;
+    transform: translateX(3px);
+  }
+  .export-option-btn:active { transform: translateX(1px); }
+
+  .export-option-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .export-option-icon.xlsx { background: #dcfce7; }
+  .export-option-icon.pdf  { background: #fee2e2; }
+  .export-option-icon.png  { background: #dbeafe; }
+
+  .export-option-label {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 2px;
+  }
+  .export-option-desc {
+    font-size: 11.5px;
+    color: #9ca3af;
+    margin: 0;
+  }
+
+  .export-option-arrow {
+    margin-left: auto;
+    color: #d1d5db;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .export-option-btn:hover .export-option-arrow { color: #15803d; }
+  .export-option-arrow svg { width: 15px; height: 15px; stroke: currentColor; }
+</style>
+
+<!-- Page Header — UNCHANGED -->
 <div class="bg-green-700 text-white p-8 rounded-xl mb-6">
   <h2 class="text-3xl font-bold mb-2">Dashboard Overview</h2>
   <p class="text-green-100">Academic records and enrollment statistics</p>
 </div>
 
-<!-- Stats Cards -->
+<!-- Stats Cards — UNCHANGED -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
   <!-- Total Records (Files) -->
   <div class="bg-green-700 rounded-xl p-6 shadow-md border border-green-800 text-white transition-all duration-300 hover:bg-green-600 hover:shadow-lg cursor-default">
@@ -64,113 +291,233 @@ $folder_values = array_values($top_folders);
   </div>
 </div>
 
-<!-- Charts Section -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-  
-  <!-- Files by Type Chart -->
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-    <div class="flex items-center justify-between mb-6">
-      <h3 class="text-lg font-semibold text-gray-800">Files by Type</h3>
-      <button onclick="exportChart('fileTypeChart')" class="text-sm text-green-700 hover:text-green-800 font-medium">
-        <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+<!-- Charts Section — IMPROVED CARDS -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+  <!-- Files by Type -->
+  <div class="chart-card-styled">
+    <div class="chart-card-header">
+      <div>
+        <p class="chart-card-title">Files by Type</p>
+        <p class="chart-card-sub">Breakdown of all accessible records</p>
+      </div>
+      <button class="chart-export-btn" onclick="openExportModal('fileTypeChart', 'Files by Type')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
         </svg>
         Export
       </button>
     </div>
+    <div class="chart-divider"></div>
     <canvas id="fileTypeChart" class="w-full" style="max-height: 300px;"></canvas>
   </div>
 
-  <!-- Folder Distribution Chart -->
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-    <div class="flex items-center justify-between mb-6">
-      <h3 class="text-lg font-semibold text-gray-800">Folder Distribution</h3>
-      <button onclick="exportChart('folderDistChart')" class="text-sm text-green-700 hover:text-green-800 font-medium">
-        <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+  <!-- Folder Distribution -->
+  <div class="chart-card-styled">
+    <div class="chart-card-header">
+      <div>
+        <p class="chart-card-title">Folder Distribution</p>
+        <p class="chart-card-sub">Top 5 folders by file count</p>
+      </div>
+      <button class="chart-export-btn" onclick="openExportModal('folderDistChart', 'Folder Distribution')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
         </svg>
         Export
       </button>
     </div>
+    <div class="chart-divider"></div>
     <canvas id="folderDistChart" class="w-full" style="max-height: 300px;"></canvas>
   </div>
 
 </div>
 
-<!-- Access Timeline Chart -->
-<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-8">
-  <div class="flex items-center justify-between mb-6">
+<!-- Files Added Over Time — full width -->
+<div class="chart-card-full-styled mb-8">
+  <div class="chart-card-header">
     <div>
-      <h3 class="text-lg font-semibold text-gray-800">Files Added Over Time</h3>
-      <p class="text-sm text-gray-500 mt-1">Track file uploads and additions</p>
+      <p class="chart-card-title">Files Added Over Time</p>
+      <p class="chart-card-sub">Monthly uploads (bars) with cumulative total (line)</p>
     </div>
-    <button onclick="exportChart('timelineChart')" class="text-sm text-green-700 hover:text-green-800 font-medium">
-      <svg class="w-5 h-5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+    <button class="chart-export-btn" onclick="openExportModal('timelineChart', 'Files Added Over Time')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
       </svg>
       Export
     </button>
   </div>
+  <div class="chart-divider"></div>
   <canvas id="timelineChart" class="w-full" style="max-height: 350px;"></canvas>
+</div>
+
+<!-- ── Export Modal ── -->
+<div class="export-modal-backdrop" id="exportModalBackdrop">
+  <div class="export-modal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+
+    <div class="export-modal-header">
+      <p class="export-modal-title" id="exportModalTitle">Export Chart</p>
+      <button class="export-modal-close" onclick="closeExportModal()" aria-label="Close">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <p class="export-modal-subtitle">Chart: <span id="exportModalChartName">—</span></p>
+
+    <div class="export-options">
+
+      <!-- XLSX -->
+      <button class="export-option-btn" onclick="doExport('xlsx')">
+        <div class="export-option-icon xlsx">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/><path d="M7 13l2 4m0 0l2-4m-2 4v0"/>
+          </svg>
+        </div>
+        <div>
+          <p class="export-option-label">Excel Spreadsheet</p>
+          <p class="export-option-desc">Download chart data as .xlsx</p>
+        </div>
+        <div class="export-option-arrow">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </div>
+      </button>
+
+      <!-- PDF -->
+      <button class="export-option-btn" onclick="doExport('pdf')">
+        <div class="export-option-icon pdf">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/>
+          </svg>
+        </div>
+        <div>
+          <p class="export-option-label">PDF Document</p>
+          <p class="export-option-desc">Download chart as a .pdf file</p>
+        </div>
+        <div class="export-option-arrow">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </div>
+      </button>
+
+      <!-- PNG -->
+      <button class="export-option-btn" onclick="doExport('png')">
+        <div class="export-option-icon png">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </div>
+        <div>
+          <p class="export-option-label">PNG Image</p>
+          <p class="export-option-desc">Download chart as a .png image</p>
+        </div>
+        <div class="export-option-arrow">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </div>
+      </button>
+
+    </div>
+  </div>
 </div>
 
 <!-- Chart.js Script -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// Chart colors
+// Chart colors — unchanged
 const colors = {
-  primary: '#15803d',
-  secondary: '#16a34a',
-  tertiary: '#22c55e',
+  primary:    '#15803d',
+  secondary:  '#16a34a',
+  tertiary:   '#22c55e',
   quaternary: '#86efac',
-  light: '#dcfce7',
-  border: '#bbf7d0'
+  light:      '#dcfce7',
+  border:     '#bbf7d0'
 };
 
-// Files by Type - Pie Chart
+// Shared polished tooltip
+const tip = {
+  backgroundColor: '#1f2937',
+  titleColor: '#f9fafb',
+  bodyColor: '#d1fae5',
+  borderColor: '#374151',
+  borderWidth: 1,
+  padding: 12,
+  cornerRadius: 10,
+  displayColors: true,
+  boxPadding: 5
+};
+
+// ─── 1. Files by Type — Horizontal Bar ───────────────────────────────────────
 const fileTypeCtx = document.getElementById('fileTypeChart').getContext('2d');
 const fileTypeChart = new Chart(fileTypeCtx, {
-  type: 'doughnut',
+  type: 'bar',
   data: {
     labels: ['PDF', 'Word Documents', 'PNG Images', 'JPEG Images', 'Others'],
     datasets: [{
+      label: 'Files',
       data: [<?= $pdf_count ?>, <?= $docx_count ?>, <?= $png_count ?>, <?= $jpeg_count ?>, <?= $other_count ?>],
       backgroundColor: [
+        'rgba(21,128,61,0.85)',
+        'rgba(22,163,74,0.70)',
+        'rgba(34,197,94,0.58)',
+        'rgba(134,239,172,0.70)',
+        'rgba(209,250,229,0.85)'
+      ],
+      borderColor: [
         colors.primary,
         colors.secondary,
         colors.tertiary,
         colors.quaternary,
-        colors.light
+        '#6ee7b7'
       ],
-      borderColor: '#fff',
-      borderWidth: 2
+      borderWidth: 1.5,
+      borderRadius: 8,
+      borderSkipped: false
     }]
   },
   options: {
+    indexAxis: 'y',
     responsive: true,
     maintainAspectRatio: true,
     plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          padding: 15,
-          font: {
-            size: 12
-          }
-        }
-      },
+      legend: { display: false },
       tooltip: {
+        ...tip,
         callbacks: {
-          label: function(context) {
-            return context.label + ': ' + context.parsed + ' files';
+          label: function(ctx) {
+            const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+            const pct   = total > 0 ? ((ctx.parsed.x / total) * 100).toFixed(1) : 0;
+            return '  ' + ctx.parsed.x + ' files  ·  ' + pct + '%';
           }
         }
+      }
+    },
+    scales: {
+      x: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+          callback: function(value) { return Number.isInteger(value) ? value : null; },
+          color: '#9ca3af'
+        },
+        grid: { color: '#f3f4f6' },
+        border: { dash: [4, 4] }
+      },
+      y: {
+        grid: { display: false },
+        ticks: { font: { weight: '600', size: 12 }, color: '#374151' }
       }
     }
   }
 });
 
-// Folder Distribution - Bar Chart
+// ─── 2. Folder Distribution — Horizontal Bar ─────────────────────────────────
 const folderDistCtx = document.getElementById('folderDistChart').getContext('2d');
 const folderDistChart = new Chart(folderDistCtx, {
   type: 'bar',
@@ -179,119 +526,271 @@ const folderDistChart = new Chart(folderDistCtx, {
     datasets: [{
       label: 'Number of Files',
       data: [<?= !empty($folder_values) ? implode(',', $folder_values) : '0' ?>],
-      backgroundColor: colors.secondary,
-      borderColor: colors.primary,
-      borderWidth: 1,
-      borderRadius: 6
+      backgroundColor: 'rgba(22,163,74,0.15)',
+      borderColor: colors.secondary,
+      borderWidth: 2,
+      borderRadius: 8,
+      borderSkipped: false
     }]
   },
   options: {
+    indexAxis: 'y',
     responsive: true,
     maintainAspectRatio: true,
     plugins: {
-      legend: {
-        display: false
-      },
+      legend: { display: false },
       tooltip: {
+        ...tip,
         callbacks: {
-          label: function(context) {
-            return context.parsed.y + ' files';
-          }
+          label: function(ctx) { return '  ' + ctx.parsed.x + ' files'; }
         }
       }
     },
     scales: {
-      y: {
+      x: {
         beginAtZero: true,
         ticks: {
           stepSize: 1,
-          callback: function(value) {
-            if (Math.floor(value) === value) {
-              return value;
-            }
-          }
+          callback: function(value) { return Number.isInteger(value) ? value : null; },
+          color: '#9ca3af'
         },
-        grid: {
-          color: '#f3f4f6'
-        }
+        grid: { color: '#f3f4f6' },
+        border: { dash: [4, 4] }
       },
-      x: {
-        grid: {
-          display: false
-        }
+      y: {
+        grid: { display: false },
+        ticks: { font: { weight: '600', size: 12 }, color: '#374151' }
       }
     }
   }
 });
 
-// Files Added Over Time - Line Chart
+// ─── 3. Files Added Over Time — Bar + Cumulative Line Combo ──────────────────
+const monthlyRaw = [<?= implode(',', $monthly_data) ?>];
+
+const cumulativeData = monthlyRaw.reduce((acc, val) => {
+  acc.push((acc[acc.length - 1] || 0) + val);
+  return acc;
+}, []);
+
 const timelineCtx = document.getElementById('timelineChart').getContext('2d');
 const timelineChart = new Chart(timelineCtx, {
-  type: 'line',
+  type: 'bar',
   data: {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-    datasets: [{
-      label: 'Files Added',
-      data: [<?= implode(',', $monthly_data) ?>],
-      borderColor: colors.secondary,
-      backgroundColor: 'rgba(22, 163, 74, 0.1)',
-      fill: true,
-      tension: 0.4,
-      pointBackgroundColor: colors.primary,
-      pointBorderColor: '#fff',
-      pointBorderWidth: 2,
-      pointRadius: 5,
-      pointHoverRadius: 7
-    }]
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    datasets: [
+      {
+        type: 'bar',
+        label: 'Files Added',
+        data: monthlyRaw,
+        backgroundColor: 'rgba(22,163,74,0.18)',
+        borderColor: colors.secondary,
+        borderWidth: 2,
+        borderRadius: 7,
+        borderSkipped: false,
+        yAxisID: 'yMonthly',
+        order: 2
+      },
+      {
+        type: 'line',
+        label: 'Cumulative Total',
+        data: cumulativeData,
+        borderColor: colors.primary,
+        backgroundColor: 'rgba(21,128,61,0.07)',
+        fill: true,
+        borderWidth: 2.5,
+        pointBackgroundColor: '#fff',
+        pointBorderColor: colors.primary,
+        pointBorderWidth: 2.5,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.4,
+        yAxisID: 'yCumulative',
+        order: 1
+      }
+    ]
   },
   options: {
     responsive: true,
     maintainAspectRatio: true,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: {
-        display: false
+        display: true,
+        position: 'top',
+        align: 'end',
+        labels: {
+          usePointStyle: true,
+          pointStyleWidth: 10,
+          padding: 20,
+          font: { size: 12, weight: '500' },
+          color: '#374151'
+        }
       },
       tooltip: {
+        ...tip,
         callbacks: {
-          label: function(context) {
-            return context.parsed.y + ' files added';
+          label: function(ctx) {
+            return ctx.dataset.label === 'Files Added'
+              ? '  Added this month: ' + ctx.parsed.y
+              : '  Cumulative total: ' + ctx.parsed.y;
           }
         }
       }
     },
     scales: {
-      y: {
+      yMonthly: {
+        type: 'linear',
+        position: 'left',
         beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Monthly Uploads',
+          color: colors.secondary,
+          font: { size: 11, weight: '600' }
+        },
         ticks: {
           stepSize: 1,
-          callback: function(value) {
-            if (Math.floor(value) === value) {
-              return value;
-            }
-          }
+          color: '#9ca3af',
+          callback: function(value) { return Number.isInteger(value) ? value : null; }
         },
-        grid: {
-          color: '#f3f4f6'
-        }
+        grid: { color: '#f3f4f6' },
+        border: { dash: [4, 4] }
+      },
+      yCumulative: {
+        type: 'linear',
+        position: 'right',
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Cumulative Total',
+          color: colors.primary,
+          font: { size: 11, weight: '600' }
+        },
+        ticks: {
+          stepSize: 1,
+          color: '#9ca3af',
+          callback: function(value) { return Number.isInteger(value) ? value : null; }
+        },
+        grid: { drawOnChartArea: false }
       },
       x: {
-        grid: {
-          display: false
-        }
+        grid: { display: false },
+        ticks: { font: { weight: '500' }, color: '#374151' }
       }
     }
   }
 });
 
-// Export chart function
-function exportChart(chartId) {
-  const chart = Chart.getChart(chartId);
-  if (chart) {
-    const url = chart.toBase64Image();
-    const link = document.createElement('a');
-    link.download = chartId + '_' + new Date().getTime() + '.png';
-    link.href = url;
+// ── Export Modal Logic ────────────────────────────────────────────────────────
+let _exportChartId   = null;
+let _exportChartName = '';
+
+function openExportModal(chartId, chartName) {
+  _exportChartId   = chartId;
+  _exportChartName = chartName;
+  document.getElementById('exportModalChartName').textContent = chartName;
+  document.getElementById('exportModalBackdrop').classList.add('active');
+}
+
+function closeExportModal() {
+  document.getElementById('exportModalBackdrop').classList.remove('active');
+}
+
+// Close on backdrop click
+document.getElementById('exportModalBackdrop').addEventListener('click', function(e) {
+  if (e.target === this) closeExportModal();
+});
+
+// Close on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeExportModal();
+});
+
+function doExport(format) {
+  const chart    = Chart.getChart(_exportChartId);
+  const safeName = _exportChartName.replace(/\s+/g, '_');
+  const ts       = new Date().getTime();
+
+  if (!chart) { closeExportModal(); return; }
+
+  if (format === 'png') {
+    // ── PNG ──────────────────────────────────────────────────────────────────
+    const link    = document.createElement('a');
+    link.download = safeName + '_' + ts + '.png';
+    link.href     = chart.toBase64Image('image/png', 1.0);
     link.click();
+    closeExportModal();
+
+  } else if (format === 'pdf') {
+    // ── PDF (via jsPDF) ──────────────────────────────────────────────────────
+    const script  = document.createElement('script');
+    script.src    = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    script.onload = function() {
+      const { jsPDF } = window.jspdf;
+      const imgData   = chart.toBase64Image('image/png', 1.0);
+      const pdf       = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const pageW     = pdf.internal.pageSize.getWidth();
+      const pageH     = pdf.internal.pageSize.getHeight();
+      const margin    = 40;
+      const imgW      = pageW - margin * 2;
+      const imgH      = imgW * (chart.height / chart.width);
+
+      // Header bar
+      pdf.setFillColor(21, 128, 61);
+      pdf.rect(0, 0, pageW, 36, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(13);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(_exportChartName, margin, 24);
+
+      // Date stamp right-aligned
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      const dateStr = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+      pdf.text(dateStr, pageW - margin, 24, { align: 'right' });
+
+      // Chart image
+      const topY = 36 + 20;
+      pdf.addImage(imgData, 'PNG', margin, topY, imgW, Math.min(imgH, pageH - topY - margin));
+
+      pdf.save(safeName + '_' + ts + '.pdf');
+      closeExportModal();
+    };
+    document.head.appendChild(script);
+
+  } else if (format === 'xlsx') {
+    // ── XLSX (via SheetJS) ───────────────────────────────────────────────────
+    const script  = document.createElement('script');
+    script.src    = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.onload = function() {
+      const cfg    = chart.config;
+      const labels = cfg.data.labels || [];
+      const rows   = [['Label', ...cfg.data.datasets.map(ds => ds.label || 'Value')]];
+
+      labels.forEach(function(label, i) {
+        const row = [label];
+        cfg.data.datasets.forEach(function(ds) {
+          row.push(ds.data[i] !== undefined ? ds.data[i] : '');
+        });
+        rows.push(row);
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+
+      // Auto column width
+      const colWidths = rows[0].map(function(_, ci) {
+        return { wch: Math.max(...rows.map(function(r) { return String(r[ci] || '').length; })) + 4 };
+      });
+      ws['!cols'] = colWidths;
+
+      XLSX.utils.book_append_sheet(wb, ws, _exportChartName.substring(0, 31));
+      XLSX.writeFile(wb, safeName + '_' + ts + '.xlsx');
+      closeExportModal();
+    };
+    document.head.appendChild(script);
   }
 }
 </script>
