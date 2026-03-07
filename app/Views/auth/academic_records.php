@@ -743,6 +743,54 @@
 <div id="moveModal" class="hidden"></div>
 <?php endif; ?>
 
+
+<!-- ============================================================
+     EDIT FILENAME MODAL (shown after Apply Suggestion)
+     ============================================================ -->
+<div id="editFilenameModal" class="hidden fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+      <h3 class="text-lg font-bold text-gray-800">Edit Filename</h3>
+      <p class="text-sm text-gray-500 mt-1">Review the suggested filename or type your own. Format: <span class="font-mono text-teal-700 text-xs">StudentId_StudentName_DocType_Label.pdf</span></p>
+    </div>
+    <div class="px-6 py-5">
+      <label class="block text-xs font-semibold text-gray-600 mb-1">Document Type Label</label>
+      <select id="editFilenameDocType"
+              class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-700 mb-4 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              onchange="onDocTypeLabelChange()">
+        <option value="">-- Select document type --</option>
+        <option value="Transcript_Record">Transcript Record</option>
+        <option value="Enrollment_Certificate">Enrollment Certificate</option>
+        <option value="Clearance_Record">Clearance Record</option>
+        <option value="Good_Moral_Certificate">Good Moral Certificate</option>
+        <option value="Form137_Permanent_Record">Form 137 – Permanent Record</option>
+        <option value="Form138_Report_Card">Form 138 – Report Card</option>
+        <option value="Diploma_Record">Diploma Record</option>
+        <option value="Birth_Certificate">Birth Certificate</option>
+        <option value="Honorable_Dismissal">Honorable Dismissal</option>
+      </select>
+      <label class="block text-xs font-semibold text-gray-600 mb-1">Full Filename <span class="text-gray-400 font-normal">(without extension)</span></label>
+      <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-teal-400">
+        <input id="editFilenameInput" type="text"
+               class="flex-1 px-3 py-2.5 text-sm text-gray-800 outline-none"
+               placeholder="e.g. 2023-001_Juan_dela_Cruz_Transcript_Record" />
+        <span class="px-3 py-2.5 text-sm text-gray-400 bg-gray-50 border-l border-gray-300">.pdf</span>
+      </div>
+      <p class="text-xs text-gray-400 mt-1.5">Spaces will be replaced with underscores automatically.</p>
+    </div>
+    <div class="px-6 pb-6 flex gap-3">
+      <button onclick="closeEditFilenameModal()"
+              class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium text-gray-700 transition-colors text-sm">
+        Cancel
+      </button>
+      <button onclick="confirmEditFilename()"
+              class="flex-1 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition-colors text-sm">
+        ✓ Use This Filename
+      </button>
+    </div>
+  </div>
+</div>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
@@ -1789,12 +1837,15 @@
   // ═══════════════════════════════════════════════════════════════════════════
   function applyOcrSuggestions(res) {
   document.getElementById('ocrSuggestionPanel')?.remove();
-  if (!res.ocr_success) return;
 
+  // Always show panel for PDF/DOCX even if suggestions are empty
+  // so user can still manually enter filename via Apply Suggestion
   const suggestions       = res.ocr_suggestions || {};
   const suggestedFolder   = suggestions.folder   || '';
   const suggestedFilename = suggestions.filename || '';
-  if (!suggestedFolder && !suggestedFilename) return;
+
+  // Show panel if OCR ran (success or not) — user may still want to name the file
+  if (!res.ocr_success && !suggestedFolder && !suggestedFilename) return;
 
   // Store globally so folder browser can use them
   window._ocrSuggestedFolder   = suggestedFolder;
@@ -1820,13 +1871,66 @@
 }
 
 function applyOcrToFolderBrowser() {
-  const folder   = window._ocrSuggestedFolder   || '';
-  const filename = window._ocrSuggestedFilename || '';
+  // Open the Edit Filename modal first before going to folder browser
+  openEditFilenameModal();
+}
 
-  // Open folder browser
+function openEditFilenameModal() {
+  const filename = window._ocrSuggestedFilename || '';
+  // Strip file extension for editing
+  const nameWithoutExt = filename.replace(/\.(pdf|jpg|jpeg|png)$/i, '');
+  document.getElementById('editFilenameInput').value = nameWithoutExt;
+
+  // Try to pre-select the matching doc type label from the dropdown
+  const select = document.getElementById('editFilenameDocType');
+  const knownLabels = Array.from(select.options).map(o => o.value).filter(Boolean);
+  const matched = knownLabels.find(label => nameWithoutExt.includes(label));
+  select.value = matched || '';
+
+  document.getElementById('editFilenameModal').classList.remove('hidden');
+}
+
+function closeEditFilenameModal() {
+  document.getElementById('editFilenameModal').classList.add('hidden');
+}
+
+function onDocTypeLabelChange() {
+  // Replaces the doc type label suffix in the filename input when dropdown changes
+  const select = document.getElementById('editFilenameDocType');
+  const label  = select.value;
+  const input  = document.getElementById('editFilenameInput');
+  if (!label) return;
+
+  let current = input.value.trim();
+  // Remove any existing known label suffix before appending the new one
+  const knownLabels = Array.from(select.options).map(o => o.value).filter(Boolean);
+  knownLabels.forEach(l => {
+    current = current.replace(new RegExp('_?' + l + '$', 'i'), '').replace(/_+$/, '');
+  });
+  input.value = (current ? current + '_' : '') + label;
+}
+
+function confirmEditFilename() {
+  let finalName = document.getElementById('editFilenameInput').value.trim();
+  if (!finalName) {
+    alert('Please enter a filename before continuing.');
+    return;
+  }
+  // Sanitize: replace spaces with underscores, strip unsafe characters
+  finalName = finalName.replace(/\s+/g, '_').replace(/[^\w\-]/g, '');
+
+  // Save confirmed filename globally and in metadata
+  window._ocrSuggestedFilename = finalName + '.pdf';
+  if (currentTempMetadata) {
+    currentTempMetadata.suggested_filename = finalName + '.pdf';
+  }
+
+  closeEditFilenameModal();
+
+  // Now proceed to the folder browser as normal
+  const folder = window._ocrSuggestedFolder || '';
   openFolderBrowserModal();
 
-  // Wait for folder browser to render then search for the suggested folder
   setTimeout(() => {
     if (folder) {
       const searchInput = document.getElementById('folderSearchInput');
@@ -1834,9 +1938,6 @@ function applyOcrToFolderBrowser() {
         searchInput.value = folder;
         filterFoldersInBrowser();
       }
-    }
-    if (filename && currentTempMetadata) {
-      currentTempMetadata.suggested_filename = filename;
     }
   }, 400);
 }

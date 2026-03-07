@@ -9,9 +9,11 @@ class OcrService
         $ext = strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION));
         try {
             $text = match (true) {
-                in_array($ext, ['jpg','jpeg','png']) => $this->ocrImage($absolutePath),
-                default                           => '',
-            };
+            in_array($ext, ['jpg','jpeg','png']) => $this->ocrImage($absolutePath),
+            $ext === 'pdf'                       => $this->extractPdfText($absolutePath),
+             in_array($ext, ['doc','docx'])       => $this->extractDocxText($absolutePath),
+    default                              => '',
+};
             return ['text' => $text, 'success' => true,
                     'suggestions' => $this->buildSuggestions($text, $originalName)];
         } catch (\Throwable $e) {
@@ -29,56 +31,222 @@ class OcrService
     return $ocr->run();
 }
 
-    //private function ocrPdf(string $pdfPath): string
-    //{
-        //if (!extension_loaded('imagick')) {
-         //   throw new \RuntimeException('php-imagick required for PDF OCR.');
-        //}
-        //$imagick = new \Imagick();
-        //$imagick->setResolution(300, 300);
-        //$imagick->readImage($pdfPath . '[0]');
-        //$imagick->setImageFormat('png');
-        //$tmpPng = sys_get_temp_dir() . '/ocr_' . uniqid() . '.png';
-        //$imagick->writeImage($tmpPng);
-        //$imagick->clear(); $imagick->destroy();
-        //try { $text = $this->ocrImage($tmpPng); }
-        //finally { if (file_exists($tmpPng)) unlink($tmpPng); }
-       // return $text;
-   // }
+   // Extracts embedded text from a PDF using pdftotext (Poppler utility)
+  private function extractPdfText(string $pdfPath): string
+{
+    // Step 1: Try pdftotext first (fast, works on text-based PDFs)
+    $text = $this->pdfToText($pdfPath);
 
-    private function buildSuggestions(string $text, string $originalName): array
-    {
-        if (trim($text) === '') return ['folder' => '', 'filename' => ''];
-        $studentName = ''; $studentId = ''; $schoolYear = '';
-        $gradeLevel  = ''; $docType    = '';
-        if (preg_match('/(?:student\s*name|full\s*name)\s*[:\-]?\s*([A-Z][a-zA-Z ,.]{2,50})/i',$text,$m))
-            $studentName = trim($m[1]);
-        if (preg_match('/(?:student\s*id|id\s*no?\.?)\s*[:\-]?\s*([A-Z0-9\-]{3,20})/i',$text,$m))
-            $studentId = trim($m[1]);
-        if (preg_match('/(?:school\s*year|s\.?y\.?)\s*[:\-]?\s*(\d{4}[-–]\d{2,4})/i',$text,$m))
-            $schoolYear = preg_replace('/\s+/','',$m[1]);
-        if (preg_match('/(?:grade|year\s*level)\s*[:\-]?\s*(\d{1,2})/i',$text,$m))
-            $gradeLevel = 'Grade'.$m[1];
-        $docType = $this->detectDocumentType($text);
-        $folder   = implode('/', array_filter([$docType, $schoolYear, $gradeLevel]));
-        $parts    = array_filter([$studentId, $studentName, $docType]);
-        $filename = $parts ? preg_replace('/\s+/','_',implode('_',array_map(
-                       fn($p)=>preg_replace('/[^\w\s\-]/','', $p), $parts))) : '';
-        return ['folder' => $folder, 'filename' => $filename];
+    // Step 2: If no meaningful text found, fall through to image OCR
+    // Use strlen < 10 instead of empty check — pdftotext returns \f (form feed)
+    // character for image-only PDFs which passes trim() but has no real content
+    if (strlen(trim($text)) < 10) {
+        log_message('debug', '[OcrService] pdfToText returned no useful text, trying image OCR');
+        $text = $this->pdfToImageOcr($pdfPath);
+        log_message('debug', '[OcrService] pdfToImageOcr returned ' . strlen($text) . ' chars');
     }
+
+    return $text;
+}
+
+// Extracts embedded text from a text-based PDF using pdftotext (Poppler)
+private function pdfToText(string $pdfPath): string
+{
+    $pdftotext = 'C:\poppler-25.12.0\Library\bin\pdftotext.exe';
+
+    if (!file_exists($pdftotext)) {
+        log_message('error', '[OcrService] pdftotext not found at: ' . $pdftotext);
+        return '';
+    }
+
+    $tmpTxt = sys_get_temp_dir() . '/ocr_' . uniqid() . '.txt';
+    $cmd    = sprintf('"%s" %s %s 2>&1', $pdftotext, escapeshellarg($pdfPath), escapeshellarg($tmpTxt));
+
+    log_message('debug', '[OcrService] pdfToText cmd: ' . $cmd);
+    $output = @shell_exec($cmd);
+    log_message('debug', '[OcrService] pdfToText output: ' . ($output ?? '(null)'));
+
+    if (!file_exists($tmpTxt)) {
+        log_message('warning', '[OcrService] pdfToText: no output file created');
+        return '';
+    }
+
+    $text = file_get_contents($tmpTxt);
+    @unlink($tmpTxt);
+
+   log_message('debug', '[OcrService] pdfToText extracted ' . strlen(trim($text)) . ' chars');
+
+    return trim($text) ?: '';
+}
+
+// Converts each PDF page to a PNG image, then runs Tesseract OCR on each page
+private function pdfToImageOcr(string $pdfPath): string
+{
+    $pdftoppm = 'C:\poppler-25.12.0\Library\bin\pdftoppm.exe';
+
+    if (!file_exists($pdftoppm)) {
+        log_message('error', '[OcrService] pdftoppm not found at: ' . $pdftoppm);
+        return '';
+    }
+
+    // Use sys_get_temp_dir() but replace backslashes — pdftoppm needs forward slashes on Windows
+    $tmpPrefix = str_replace('\\', '/', sys_get_temp_dir()) . '/ocr_pdf_' . uniqid();
+
+    // -png = output as PNG, -r 300 = 300 DPI for good OCR accuracy, -l 1 = first page only (fast test)
+    $cmd = sprintf('"%s" -png -r 300 %s "%s" 2>&1',
+        $pdftoppm,
+        escapeshellarg($pdfPath),
+        $tmpPrefix
+    );
+
+    log_message('debug', '[OcrService] pdftoppm cmd: ' . $cmd);
+    $output = @shell_exec($cmd);
+    log_message('debug', '[OcrService] pdftoppm output: ' . ($output ?? '(null)'));
+
+    // pdftoppm creates: tmpPrefix-1.png, tmpPrefix-01.png, or tmpPrefix-001.png
+    // glob for all variations
+    // Normalize to backslashes on Windows to avoid duplicate matches
+    $globPrefix = str_replace('/', DIRECTORY_SEPARATOR, $tmpPrefix);
+    $pageImages = glob($globPrefix . '-*.png') ?: [];
+
+    log_message('debug', '[OcrService] pdftoppm images found: ' . count($pageImages));
+
+    if (empty($pageImages)) {
+        log_message('warning', '[OcrService] pdftoppm produced no images. cmd was: ' . $cmd);
+        return '';
+    }
+
+    $fullText = '';
+    sort($pageImages);
+    foreach ($pageImages as $imagePath) {
+        log_message('debug', '[OcrService] Running Tesseract on: ' . $imagePath);
+        try {
+            $pageText  = $this->ocrImage($imagePath);
+            $fullText .= $pageText . "\n";
+            log_message('debug', '[OcrService] Page OCR result length: ' . strlen($pageText));
+        } catch (\Throwable $e) {
+            log_message('warning', '[OcrService] OCR failed on page: ' . $e->getMessage());
+        } finally {
+            @unlink($imagePath);
+        }
+    }
+
+    return trim($fullText);
+}
+
+
+
+    // Extracts plain text from a .docx file by reading its XML content directly
+    private function extractDocxText(string $docxPath): string
+    {
+        // .docx files are ZIP archives — word/document.xml contains the text
+        $zip = new \ZipArchive();
+        if ($zip->open($docxPath) !== true) {
+            log_message('warning', '[OcrService] Could not open docx: ' . $docxPath);
+            return '';
+        }
+
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+
+        if (!$xml) return '';
+
+        // Strip XML tags and decode entities to get plain text
+        $text = strip_tags(str_replace('</w:p>', "\n", $xml));
+        return html_entity_decode($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
+   private function buildSuggestions(string $text, string $originalName): array
+{
+    if (trim($text) === '') {
+        log_message('debug', '[OcrService] buildSuggestions: empty text, no suggestions');
+        return ['folder' => '', 'filename' => ''];
+    }
+
+    // Log full text in chunks to avoid CI4 log truncation
+    $chunks = str_split($text, 300);
+    foreach ($chunks as $i => $chunk) {
+        log_message('debug', '[OcrService] buildSuggestions TEXT[' . $i . ']: ' . $chunk);
+    }
+
+    $studentName = '';
+    $studentId   = '';
+    $schoolYear  = '';
+    $docType     = '';
+
+    // Strategy 1: Labeled field — "Student Name: Juan dela Cruz"
+    if (preg_match('/(?:student\s*name|full\s*name|name\s*of\s*student|pupil|learner)\s*[:\-]?\s*([A-Z][a-zA-Z ,.]{2,50})/i', $text, $m)) {
+        $studentName = trim($m[1]);
+    }
+    // Strategy 2: Philippine cert format — "certify that NAME is/was/has/born/officially"
+    elseif (preg_match('/certif(?:y|ied|ication)?\s+that\s+([A-Z][A-Z\s,\.]{4,50}?)\s+(?:is\b|was\b|has\b|be\b|born\b|officially\b|a\s+bona\b)/i', $text, $m)) {
+        $studentName = trim($m[1]);
+    }
+    // Strategy 3: "awarded to / presented to / given to / conferred upon"
+    elseif (preg_match('/(?:awarded\s+to|presented\s+to|given\s+to|conferred\s+upon|issued\s+to)\s*[:\-]?\s*([A-Z][a-zA-Z\s,\.]{4,50})/i', $text, $m)) {
+        $studentName = trim($m[1]);
+    }
+    // Strategy 4: Bold ALL-CAPS name line common in DepEd certs
+    elseif (preg_match('/\n([A-Z][A-Z]+(?:\s+[A-Z][A-Z]*\.?){1,4})\n/m', $text, $m)) {
+        $studentName = trim($m[1]);
+    }
+
+    // Clean up trailing noise words from name
+    $studentName = trim(preg_replace('/\s+(is|was|has|be|a|an|the|of|in|at|to)$/i', '', $studentName));
+
+    // Student ID
+    if (preg_match('/(?:student\s*id|id\s*no?\.?|lrn)\s*[:\-]?\s*([A-Z0-9\-]{3,20})/i', $text, $m)) {
+        $studentId = trim($m[1]);
+    }
+
+    // School year
+    if (preg_match('/(?:school\s*year|s\.?y\.?)\s*[:\-]?\s*(\d{4}[-–]\d{2,4})/i', $text, $m)) {
+        $schoolYear = preg_replace('/\s+/', '', $m[1]);
+    }
+
+    $docType      = $this->detectDocumentType($text);
+    $docTypeLabel = $this->getDocTypeLabel($docType);
+
+    // Folder = student name (spaces → underscores), fallback to doc type
+    $folderName = $studentName
+        ? preg_replace('/\s+/', '_', trim(preg_replace('/[^\w\s\-]/', '', $studentName)))
+        : $docType;
+    $folder = $folderName;
+
+    // Filename = StudentId_StudentName_DocTypeLabel
+    $parts    = array_filter([$studentId, $studentName, $docTypeLabel]);
+    $filename = $parts
+        ? preg_replace('/\s+/', '_', implode('_', array_map(
+            fn($p) => preg_replace('/[^\w\-]/', '', $p), $parts
+          )))
+        : '';
+
+    log_message('debug', '[OcrService] extracted name=' . $studentName . ' folder=' . $folder . ' filename=' . $filename);
+
+    return ['folder' => $folder, 'filename' => $filename, 'doc_type' => $docType];
+}
 
     private function detectDocumentType(string $text): string
     {
         $keywords = [
-            'transcript'          => ['transcript of records','tor','official transcript'],
-            'enrollment'          => ['certificate of enrollment','enrollment form','enrolled'],
-            'clearance'           => ['clearance','cleared'],
-            'good_moral'          => ['good moral','certificate of good moral'],
-            'form_137'            => ['form 137','permanent record'],
-            'form_138'            => ['form 138','report card'],
-            'diploma'             => ['diploma','graduate'],
-            'birth_certificate'   => ['birth certificate'],
-            'honorable_dismissal' => ['honorable dismissal','transfer credential'],
+            'transcript'          => ['transcript of records', 'tor', 'official transcript'],
+            'enrollment'          => ['certificate of enrollment', 'enrollment form', 'certificate of registration', 'enrolled'],
+            'clearance'           => ['clearance', 'cleared'],
+            'good_moral'          => [
+                'good moral',
+                'certificate of good moral',
+                'good moral character',
+                'has not committed any misbehavior',   // ← your PDF has this exact phrase
+                'has not violated any school rules',   // ← your PDF has this too
+                'rules and regulations',               // ← common in Philippine good moral certs
+                'conduct and behavior',
+                'moral character', 'certify'
+            ],
+            'form_137'            => ['form 137', 'permanent record'],
+            'form_138'            => ['form 138', 'report card'],
+            'diploma'             => ['diploma', 'graduate', 'graduation'],
+            'birth_certificate'   => ['birth certificate', 'certificate of live birth'],
+            'honorable_dismissal' => ['honorable dismissal', 'transfer credential'],
         ];
         $t = strtolower($text);
         foreach ($keywords as $type => $phrases)
@@ -86,4 +254,23 @@ class OcrService
                 if (str_contains($t, $phrase)) return $type;
         return '';
     }
+
+    // Maps a detected doc type key to its standardized filename label suffix
+    private function getDocTypeLabel(string $docType): string
+    {
+        return self::DOC_TYPE_LABELS[$docType] ?? '';
+    }
+
+    // Standard document type labels used in filename construction
+    public const DOC_TYPE_LABELS = [
+        'transcript'          => 'Transcript_Record',
+        'enrollment'          => 'Enrollment_Certificate',
+        'clearance'           => 'Clearance_Record',
+        'good_moral'          => 'Good_Moral_Certificate',
+        'form_137'            => 'Form137_Permanent_Record',
+        'form_138'            => 'Form138_Report_Card',
+        'diploma'             => 'Diploma_Record',
+        'birth_certificate'   => 'Birth_Certificate',
+        'honorable_dismissal' => 'Honorable_Dismissal',
+    ];
 }

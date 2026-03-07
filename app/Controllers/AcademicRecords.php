@@ -489,7 +489,8 @@ public function tempUpload()
 
     // Run OCR on the temp file (failure does NOT abort the upload)
 $ocrResult = [];
-if (in_array($ext, ['jpg', 'jpeg', 'png', 'pdf'])) {
+// Run text extraction on all supported file types including docx
+if (in_array($ext, ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'])) {
     $ocrService = new OcrService();
     $ocrResult  = $ocrService->extractFromFile(
         $tempDir . DIRECTORY_SEPARATOR . $safeName,
@@ -722,16 +723,25 @@ public function finalizeUpload()
         mkdir($destDir, 0755, true);
     }
 
-    // Generate final filename with timestamp
-    $suggestedFilename = $this->request->getPost('suggested_filename') ?? '';
-    $finalName = $suggestedFilename
-    ? $this->sanitiseName($suggestedFilename)
-    : time() . '_' . $this->sanitiseName($metadata['original_name']);
-    $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
-
+   // Use confirmed filename from Edit Filename modal, or fall back to timestamped original name
+$suggestedFilename = trim($this->request->getPost('suggested_filename') ?? '');
+if ($suggestedFilename) {
+    // Preserve the dot for extension — sanitize name and extension separately
+    $nameOnly = pathinfo($suggestedFilename, PATHINFO_FILENAME);
+    $extOnly  = pathinfo($suggestedFilename, PATHINFO_EXTENSION);
+    $safeName = preg_replace('/[^\w\-]/', '_', $nameOnly);
+    $finalName = $safeName . ($extOnly ? '.' . $extOnly : '.pdf');
+} else {
+    $finalName = time() . '_' . $this->sanitiseName($metadata['original_name']);
+}
+$finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
     // Move file from temp to permanent location
-    if (!rename($tempPath, $finalPath)) {
-        return $this->jsonError('Failed to save file to permanent location.');
+    // Falls back to copy+delete if rename() fails across different drives/partitions (Windows)
+    if (!@rename($tempPath, $finalPath)) {
+        if (!copy($tempPath, $finalPath)) {
+            return $this->jsonError('Failed to save file to permanent location.');
+        }
+        unlink($tempPath); // delete temp only after successful copy
     }
 
     // Clean up session
