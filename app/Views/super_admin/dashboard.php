@@ -1,4 +1,3 @@
-
 <?= $this->extend('layouts/auth_layout') ?>
 
 <?= $this->section('content') ?>
@@ -197,7 +196,7 @@
     font-size: 18px;
     flex-shrink: 0;
   }
-  .export-option-icon.xlsx { background: #dcfce7; }
+  .export-option-icon.csv  { background: #dcfce7; }
   .export-option-icon.pdf  { background: #fee2e2; }
   .export-option-icon.png  { background: #dbeafe; }
 
@@ -306,9 +305,8 @@ $monthly_data        = $monthly_data        ?? array_fill(0, 12, 0);
 // Group file types for chart
 $pdf_count   = $file_types['pdf']  ?? 0;
 $docx_count  = ($file_types['docx'] ?? 0) + ($file_types['doc'] ?? 0);
-$png_count   = $file_types['png']  ?? 0;
-$jpeg_count  = ($file_types['jpg'] ?? 0) + ($file_types['jpeg'] ?? 0);
-$other_count = $total_files - ($pdf_count + $docx_count + $png_count + $jpeg_count);
+$image_count = ($file_types['png'] ?? 0) + ($file_types['jpg'] ?? 0) + ($file_types['jpeg'] ?? 0);
+$other_count = $total_files - ($pdf_count + $docx_count + $image_count);
 
 // Get top 5 folders by file count
 arsort($folder_distribution);
@@ -319,14 +317,14 @@ $folder_values = array_values($top_folders);
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-  <!-- Files by Type -->
+  <!-- Records by Type -->
   <div class="chart-card-styled">
     <div class="chart-card-header">
       <div>
-        <p class="chart-card-title">Files by Type</p>
+        <p class="chart-card-title">Records by Type</p>
         <p class="chart-card-sub">Breakdown of all accessible records</p>
       </div>
-      <button class="chart-export-btn" onclick="openExportModal('fileTypeChart', 'Files by Type')">
+      <button class="chart-export-btn" onclick="openExportModal('fileTypeChart', 'Records by Type')">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -359,14 +357,14 @@ $folder_values = array_values($top_folders);
 
 </div>
 
-<!-- Files Added Over Time — full width -->
+<!-- Records Added Over Time — full width -->
 <div class="chart-card-full-styled mb-8">
   <div class="chart-card-header">
     <div>
-      <p class="chart-card-title">Files Added Over Time</p>
+      <p class="chart-card-title">Records Added Over Time</p>
       <p class="chart-card-sub">Monthly uploads (bars) with cumulative total (line)</p>
     </div>
-    <button class="chart-export-btn" onclick="openExportModal('timelineChart', 'Files Added Over Time')">
+    <button class="chart-export-btn" onclick="openExportModal('timelineChart', 'Records Added Over Time')">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
           d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
@@ -394,16 +392,16 @@ $folder_values = array_values($top_folders);
 
     <div class="export-options">
 
-      <!-- XLSX -->
-      <button class="export-option-btn" onclick="doExport('xlsx')">
-        <div class="export-option-icon xlsx">
+      <!-- CSV -->
+      <button class="export-option-btn" onclick="doExport('csv')">
+        <div class="export-option-icon csv">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/><path d="M7 13l2 4m0 0l2-4m-2 4v0"/>
           </svg>
         </div>
         <div>
-          <p class="export-option-label">Excel Spreadsheet</p>
-          <p class="export-option-desc">Download chart data as .xlsx</p>
+          <p class="export-option-label">CSV Spreadsheet</p>
+          <p class="export-option-desc">Download chart data as .csv</p>
         </div>
         <div class="export-option-arrow">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -506,23 +504,22 @@ const tip = {
   boxPadding: 5
 };
 
-// ─── 1. Files by Type ────────────────────────────────────────────────────────
+// ─── 1. Records by Type ────────────────────────────────────────────────────────
 const fileTypeCtx = document.getElementById('fileTypeChart').getContext('2d');
 const fileTypeChart = new Chart(fileTypeCtx, {
   type: 'bar',
   data: {
-    labels: ['PDF', 'Word Documents', 'PNG Images', 'JPEG Images', 'Others'],
+    labels: ['PDF', 'Word Documents', 'Images', 'Others'],
     datasets: [{
-      label: 'Files',
-      data: [<?= $pdf_count ?>, <?= $docx_count ?>, <?= $png_count ?>, <?= $jpeg_count ?>, <?= $other_count ?>],
+      label: 'Number of Records',
+      data: [<?= $pdf_count ?>, <?= $docx_count ?>, <?= $image_count ?>, <?= $other_count ?>],
       backgroundColor: [
         'rgba(21,128,61,0.85)',
         'rgba(22,163,74,0.70)',
         'rgba(34,197,94,0.58)',
-        'rgba(134,239,172,0.70)',
-        'rgba(209,250,229,0.85)'
+        'rgba(134,239,172,0.70)'
       ],
-      borderColor: [colors.primary, colors.secondary, colors.tertiary, colors.quaternary, '#6ee7b7'],
+      borderColor: [colors.primary, colors.secondary, colors.tertiary, colors.quaternary],
       borderWidth: 1.5,
       borderRadius: 8,
       borderSkipped: false
@@ -540,7 +537,7 @@ const fileTypeChart = new Chart(fileTypeCtx, {
           label: function(ctx) {
             const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
             const pct   = total > 0 ? ((ctx.parsed.x / total) * 100).toFixed(1) : 0;
-            return '  ' + ctx.parsed.x + ' files  ·  ' + pct + '%';
+            return '  ' + ctx.parsed.x + ' records  ·  ' + pct + '%';
           }
         }
       }
@@ -571,7 +568,7 @@ const folderDistChart = new Chart(folderDistCtx, {
   data: {
     labels: [<?= !empty($folder_labels) ? "'" . implode("','", array_map('addslashes', $folder_labels)) . "'" : "'No Data'" ?>],
     datasets: [{
-      label: 'Number of Files',
+      label: 'Number of Records',
       data: [<?= !empty($folder_values) ? implode(',', $folder_values) : '0' ?>],
       backgroundColor: 'rgba(22,163,74,0.15)',
       borderColor: colors.secondary,
@@ -589,7 +586,7 @@ const folderDistChart = new Chart(folderDistCtx, {
       tooltip: {
         ...tip,
         callbacks: {
-          label: function(ctx) { return '  ' + ctx.parsed.x + ' files'; }
+          label: function(ctx) { return '  ' + ctx.parsed.x + ' records'; }
         }
       }
     },
@@ -612,7 +609,7 @@ const folderDistChart = new Chart(folderDistCtx, {
   }
 });
 
-// ─── 3. Files Added Over Time ────────────────────────────────────────────────
+// ─── 3. Records Added Over Time ────────────────────────────────────────────────
 const monthlyRaw = [<?= implode(',', $monthly_data) ?>];
 
 const cumulativeData = monthlyRaw.reduce((acc, val) => {
@@ -629,7 +626,7 @@ const timelineChart = new Chart(timelineCtx, {
     datasets: [
       {
         type: 'bar',
-        label: 'Files Added',
+        label: 'Records Added',
         data: monthlyRaw,
         backgroundColor: 'rgba(22,163,74,0.18)',
         borderColor: colors.secondary,
@@ -679,7 +676,7 @@ const timelineChart = new Chart(timelineCtx, {
         ...tip,
         callbacks: {
           label: function(ctx) {
-            return ctx.dataset.label === 'Files Added'
+            return ctx.dataset.label === 'Records Added'
               ? '  Added this month: ' + ctx.parsed.y
               : '  Cumulative total: ' + ctx.parsed.y;
           }
@@ -754,20 +751,21 @@ document.addEventListener('keydown', function(e) {
 });
 
 function doExport(format) {
-  const chart    = Chart.getChart(_exportChartId);
-  const safeName = _exportChartName.replace(/\s+/g, '_');
-  const ts       = new Date().getTime();
+  const chart = Chart.getChart(_exportChartId);
+  const ts    = new Date().getTime();
 
   if (!chart) { closeExportModal(); return; }
 
   if (format === 'png') {
+    // ── PNG ──────────────────────────────────────────────────────────────────
     const link    = document.createElement('a');
-    link.download = safeName + '_' + ts + '.png';
+    link.download = 'records_' + ts + '.png';
     link.href     = chart.toBase64Image('image/png', 1.0);
     link.click();
     closeExportModal();
 
   } else if (format === 'pdf') {
+    // ── PDF (via jsPDF) ──────────────────────────────────────────────────────
     const script  = document.createElement('script');
     script.src    = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
     script.onload = function() {
@@ -794,40 +792,40 @@ function doExport(format) {
 
       const topY = 36 + 20;
       pdf.addImage(imgData, 'PNG', margin, topY, imgW, Math.min(imgH, pageH - topY - margin));
-      pdf.save(safeName + '_' + ts + '.pdf');
+      pdf.save('records_' + ts + '.pdf');
       closeExportModal();
     };
     document.head.appendChild(script);
 
-  } else if (format === 'xlsx') {
-    const script  = document.createElement('script');
-    script.src    = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-    script.onload = function() {
-      const cfg    = chart.config;
-      const labels = cfg.data.labels || [];
-      const rows   = [['Label', ...cfg.data.datasets.map(ds => ds.label || 'Value')]];
+  } else if (format === 'csv') {
+    // ── CSV (native, no library needed) ─────────────────────────────────────
+    const cfg     = chart.config;
+    const labels  = cfg.data.labels || [];
+    const headers = ['Record Type', ...cfg.data.datasets.map(ds => ds.label || 'Value')];
+    const rows    = [headers];
 
-      labels.forEach(function(label, i) {
-        const row = [label];
-        cfg.data.datasets.forEach(function(ds) {
-          row.push(ds.data[i] !== undefined ? ds.data[i] : '');
-        });
-        rows.push(row);
+    labels.forEach(function(label, i) {
+      const row = [label];
+      cfg.data.datasets.forEach(function(ds) {
+        row.push(ds.data[i] !== undefined ? ds.data[i] : '');
       });
+      rows.push(row);
+    });
 
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(rows);
+    const csvContent = rows.map(function(row) {
+      return row.map(function(cell) {
+        const str = String(cell);
+        return /[,"\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+      }).join(',');
+    }).join('\n');
 
-      const colWidths = rows[0].map(function(_, ci) {
-        return { wch: Math.max(...rows.map(function(r) { return String(r[ci] || '').length; })) + 4 };
-      });
-      ws['!cols'] = colWidths;
-
-      XLSX.utils.book_append_sheet(wb, ws, _exportChartName.substring(0, 31));
-      XLSX.writeFile(wb, safeName + '_' + ts + '.xlsx');
-      closeExportModal();
-    };
-    document.head.appendChild(script);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.download = 'records_' + ts + '.csv';
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    closeExportModal();
   }
 }
 </script>

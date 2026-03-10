@@ -171,57 +171,89 @@ private function pdfToImageOcr(string $pdfPath): string
 
     $studentName = '';
     $studentId   = '';
-    $schoolYear  = '';
     $docType     = '';
 
-    // Strategy 1: Labeled field — "Student Name: Juan dela Cruz"
-    if (preg_match('/(?:student\s*name|full\s*name|name\s*of\s*student|pupil|learner)\s*[:\-]?\s*([A-Z][a-zA-Z ,.]{2,50})/i', $text, $m)) {
+    // ── Strategy 1: Labeled field with colon/dash ─────────────────────────────
+    // e.g. "Student Name: Juan dela Cruz"  /  "Full Name: ..."
+    // NOTE: "pupil" and "learner" are intentionally NOT here — they appear as
+    // body words ("a bonafide Grade Five pupil of...") and caused false matches.
+    if (preg_match(
+        '/(?:student\s*name|full\s*name|name\s*of\s*student)\s*[:\-]\s*([A-Z][a-zA-Z ,.]{2,50})/i',
+        $text, $m
+    )) {
         $studentName = trim($m[1]);
+        log_message('debug', '[OcrService] Strategy 1 (label) matched: ' . $studentName);
     }
-    // Strategy 2: Philippine cert format — "certify that NAME is/was/has/born/officially"
-    elseif (preg_match('/certif(?:y|ied|ication)?\s+that\s+([A-Z][A-Z\s,\.]{4,50}?)\s+(?:is\b|was\b|has\b|be\b|born\b|officially\b|a\s+bona\b)/i', $text, $m)) {
+
+    // ── Strategy 1b: "Pupil:" or "Learner:" ONLY when used as a form label ────
+    // Requires a colon — prevents matching "Grade Five pupil of Tupi..."
+    elseif (preg_match(
+        '/(?:pupil|learner)\s*:\s*([A-Z][a-zA-Z ,.]{2,50})/i',
+        $text, $m
+    )) {
         $studentName = trim($m[1]);
+        log_message('debug', '[OcrService] Strategy 1b (pupil label) matched: ' . $studentName);
     }
-    // Strategy 3: "awarded to / presented to / given to / conferred upon"
-    elseif (preg_match('/(?:awarded\s+to|presented\s+to|given\s+to|conferred\s+upon|issued\s+to)\s*[:\-]?\s*([A-Z][a-zA-Z\s,\.]{4,50})/i', $text, $m)) {
+
+    // ── Strategy 2: Philippine cert — "certify that NAME is/was/a bonafide" ───
+    // Handles: "This is to certify that JOSHUA DAVE B. AMINOLA is a bonafide..."
+    elseif (preg_match(
+        '/certif(?:y|ied|ication)?\s+that\s+([A-Z][A-Z\s,\.]{4,50}?)\s+(?:is\b|was\b|has\b|be\b|born\b|officially\b|a\s+bona)/i',
+        $text, $m
+    )) {
         $studentName = trim($m[1]);
+        log_message('debug', '[OcrService] Strategy 2 (certify that) matched: ' . $studentName);
     }
-    // Strategy 4: Bold ALL-CAPS name line common in DepEd certs
+
+    // ── Strategy 3: "awarded/issued/presented/conferred to NAME" ─────────────
+    // Uses a lookahead to stop at non-name continuation words (upon, for, as, at…)
+    elseif (preg_match(
+        '/(?:awarded\s+to|presented\s+to|given\s+to|conferred\s+upon|issued\s+to)\s*[:\-]?\s*([A-Z][a-zA-Z,\.\s]{4,40}?)(?=\s+(?:upon\b|for\b|as\b|of\b|in\b|at\b|by\b|the\b|and\b|or\b|to\b|a\s+bona|this\b|that\b|who\b))/i',
+        $text, $m
+    )) {
+        $studentName = trim($m[1]);
+        log_message('debug', '[OcrService] Strategy 3 (awarded/issued to) matched: ' . $studentName);
+    }
+
+    // ── Strategy 4: ALL-CAPS name on its own line (diplomas, DepEd certs) ─────
     elseif (preg_match('/\n([A-Z][A-Z]+(?:\s+[A-Z][A-Z]*\.?){1,4})\n/m', $text, $m)) {
         $studentName = trim($m[1]);
+        log_message('debug', '[OcrService] Strategy 4 (all-caps line) matched: ' . $studentName);
     }
 
-    // Clean up trailing noise words from name
+    // ── Clean trailing noise words (articles, prepositions) ──────────────────
     $studentName = trim(preg_replace('/\s+(is|was|has|be|a|an|the|of|in|at|to)$/i', '', $studentName));
 
-    // Student ID
+    // ── Student ID / LRN ──────────────────────────────────────────────────────
     if (preg_match('/(?:student\s*id|id\s*no?\.?|lrn)\s*[:\-]?\s*([A-Z0-9\-]{3,20})/i', $text, $m)) {
         $studentId = trim($m[1]);
-    }
-
-    // School year
-    if (preg_match('/(?:school\s*year|s\.?y\.?)\s*[:\-]?\s*(\d{4}[-–]\d{2,4})/i', $text, $m)) {
-        $schoolYear = preg_replace('/\s+/', '', $m[1]);
     }
 
     $docType      = $this->detectDocumentType($text);
     $docTypeLabel = $this->getDocTypeLabel($docType);
 
-    // Folder = student name (spaces → underscores), fallback to doc type
-    $folderName = $studentName
-        ? preg_replace('/\s+/', '_', trim(preg_replace('/[^\w\s\-]/', '', $studentName)))
+    // ── Format name for folder and filename ───────────────────────────────────
+    // Convert ALL-CAPS names to Title Case: "JOSHUA DAVE B. AMINOLA" → "Joshua_Dave_B_Aminola"
+    // Mixed-case names (Maria Santos) are kept as-is.
+    $formattedName = $studentName;
+    if ($studentName && strtoupper($studentName) === $studentName) {
+        // All-caps: convert to title case, preserve single-letter initials (B.)
+        $formattedName = implode(' ', array_map(function ($word) {
+            return strlen($word) <= 2 ? rtrim($word, '.') : ucfirst(strtolower($word));
+        }, preg_split('/\s+/', $studentName)));
+    }
+
+    // Folder = formatted student name with underscores, stripping punctuation
+    $folder = $formattedName
+        ? preg_replace('/\s+/', '_', trim(preg_replace('/[^\w\s]/', '', $formattedName)))
         : $docType;
-    $folder = $folderName;
 
-    // Filename = StudentId_StudentName_DocTypeLabel
-    $parts    = array_filter([$studentId, $studentName, $docTypeLabel]);
-    $filename = $parts
-        ? preg_replace('/\s+/', '_', implode('_', array_map(
-            fn($p) => preg_replace('/[^\w\-]/', '', $p), $parts
-          )))
-        : '';
+    // Filename = StudentId_FormattedName_DocTypeLabel  (StudentId omitted if empty)
+    $namePart  = preg_replace('/\s+/', '_', preg_replace('/[^\w\s]/', '', $formattedName));
+    $parts     = array_filter([$studentId, $namePart, $docTypeLabel]);
+    $filename  = implode('_', $parts);
 
-    log_message('debug', '[OcrService] extracted name=' . $studentName . ' folder=' . $folder . ' filename=' . $filename);
+    log_message('debug', '[OcrService] final name=' . $formattedName . ' folder=' . $folder . ' filename=' . $filename);
 
     return ['folder' => $folder, 'filename' => $filename, 'doc_type' => $docType];
 }

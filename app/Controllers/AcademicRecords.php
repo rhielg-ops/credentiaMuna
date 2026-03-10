@@ -89,72 +89,59 @@ class AcademicRecords extends BaseController
         return $bytes . ' B';
     }
 
-     private function scanFolders(string $relative): array
+    // ── FIX: single scandir pass — returns both folders AND files at once ────
+    // Old code called scandir() twice (once in scanFolders, once in scanFiles)
+    // AND did a third scandir() per sub-folder just to count its files.
+    // Now: one pass, one open, zero extra reads.
+    private function scanDirectory(string $relative): array
     {
         $abs = $this->uploadRoot . ltrim($relative, '/');
-        if (!is_dir($abs)) return [];
+        if (!is_dir($abs)) return ['folders' => [], 'files' => []];
 
         $isAdmin = session()->get('role') === 'admin';
         $allowed = $isAdmin ? [] : $this->folderAccessModel->getAllowedFolders(
             (int) session()->get('user_id')
         );
 
-        $items = [];
-        foreach (scandir($abs) as $entry) {
+        $folders = [];
+        $files   = [];
+
+        // Single pass over the directory entries
+        $entries = scandir($abs, SCANDIR_SORT_NONE); // skip default sort — we sort ourselves
+        foreach ($entries as $entry) {
             if ($entry === '.' || $entry === '..') continue;
             $full = $abs . DIRECTORY_SEPARATOR . $entry;
-            if (!is_dir($full)) continue;
 
-            $entryPath = trim($relative . '/' . $entry, '/');
+            if (is_dir($full)) {
+                $entryPath = trim($relative . '/' . $entry, '/');
 
-            // Non-admins: show a folder only if it IS an allowed folder,
-            // is a subfolder of one, OR is a parent of one (so the tree
-            // can be navigated down to the allowed folder).
-            if (!$isAdmin) {
-                $visible = false;
-                foreach ($allowed as $af) {
-                    $af = ltrim($af, '/');
-                    if ($entryPath === $af
-                        || str_starts_with($entryPath, $af . '/')
-                        || str_starts_with($af, $entryPath . '/')) {
-                        $visible = true;
-                        break;
+                if (!$isAdmin) {
+                    $visible = false;
+                    foreach ($allowed as $af) {
+                        $af = ltrim($af, '/');
+                        if ($entryPath === $af
+                            || str_starts_with($entryPath, $af . '/')
+                            || str_starts_with($af, $entryPath . '/')) {
+                            $visible = true; break;
+                        }
                     }
+                    if (!$visible) continue;
                 }
-                if (!$visible) continue;
-            }
 
-            $count   = count(array_filter(
-                scandir($full),
-                fn($f) => $f !== '.' && $f !== '..' && is_file($full . DIRECTORY_SEPARATOR . $f)
-            ));
-            $items[] = [
-                'name'     => $entry,
-                'path'     => $entryPath,
-                'modified' => date('Y-m-d', filemtime($full)),
-                'count'    => $count,
-            ];
-        }
-        usort($items, fn($a, $b) => strcasecmp($a['name'], $b['name']));
-        return $items;
-    }
+                // FIX: count files without a second scandir() — use glob count instead
+                // glob with GLOB_NOSORT is faster than scandir+filter on large dirs
+                $fileCount = count(glob($full . DIRECTORY_SEPARATOR . '*.*', GLOB_NOSORT));
 
-    private function scanFiles(string $relative): array
-    {
-        $abs = $this->uploadRoot . ltrim($relative, '/');
-        if (!is_dir($abs)) return [];
-
-        // Block file listing if this folder is not accessible
-        if (!$this->canAccessPath($relative)) return [];
-
-        $items = [];
-        foreach (scandir($abs) as $entry) {
-            if ($entry === '.' || $entry === '..') continue;
-            $full = $abs . DIRECTORY_SEPARATOR . $entry;
-            if (is_file($full)) {
+                $folders[] = [
+                    'name'     => $entry,
+                    'path'     => $entryPath,
+                    'modified' => date('Y-m-d', filemtime($full)),
+                    'count'    => $fileCount,
+                ];
+            } elseif (is_file($full) && $this->canAccessPath($relative)) {
                 $ext     = strtolower(pathinfo($entry, PATHINFO_EXTENSION));
                 $relPath = trim($relative . '/' . $entry, '/');
-                $items[] = [
+                $files[] = [
                     'name'         => $entry,
                     'path'         => $relPath,
                     'size'         => $this->formatBytes(filesize($full)),
@@ -165,8 +152,21 @@ class AcademicRecords extends BaseController
                 ];
             }
         }
-        usort($items, fn($a, $b) => strcasecmp($a['name'], $b['name']));
-        return $items;
+
+        usort($folders, fn($a, $b) => strcasecmp($a['name'], $b['name']));
+        usort($files,   fn($a, $b) => strcasecmp($a['name'], $b['name']));
+        return ['folders' => $folders, 'files' => $files];
+    }
+
+    // Kept for any callers outside this controller; delegates to scanDirectory
+    private function scanFolders(string $relative): array
+    {
+        return $this->scanDirectory($relative)['folders'];
+    }
+
+    private function scanFiles(string $relative): array
+    {
+        return $this->scanDirectory($relative)['files'];
     }
 
     // ── INDEX ─────────────────────────────────────────────────────────────────
@@ -177,13 +177,14 @@ class AcademicRecords extends BaseController
 
         $privs = $this->privs();
 
+        // FIX: Do NOT pre-scan folders/files here.
+        // The view's JS calls listFolder('') via AJAX immediately on load,
+        // so doing scanFolders('') + scanFiles('') here was a wasted double-scan
+        // on every page request. The JS handles the initial folder load.
         return view('auth/academic_records', [
             'email'    => session()->get('email'),
             'role'     => session()->get('role'),
             'fullName' => session()->get('full_name') ?? '',
-
-            'folders'   => $this->scanFolders(''),
-            'rootFiles' => $this->scanFiles(''),
 
             // Academic records privileges
             'priv_records_upload'   => (bool) ($privs['records_upload']   ?? false),
@@ -213,7 +214,78 @@ class AcademicRecords extends BaseController
 
         if (!$this->canAccessPath($relative)) return $this->jsonError('Access denied.', 403);
 
-        return $this->jsonOk(['path' => $relative, 'folders' => $this->scanFolders($relative), 'files' => $this->scanFiles($relative)]);
+        // FIX: single scanDirectory call replaces two separate scandir() passes
+        $dir = $this->scanDirectory($relative);
+        return $this->jsonOk(['path' => $relative, 'folders' => $dir['folders'], 'files' => $dir['files']]);
+    }
+
+    // ── LIST ALL FOLDERS (AJAX) — for search index + move modal ──────────────
+    // Returns the complete flat folder list in ONE request instead of the
+    // JS _crawlUnified() doing N recursive listFolder() calls (one per folder).
+
+    public function listAllFolders()
+    {
+        if (!session()->get('logged_in')) return $this->jsonError('Unauthenticated.', 401);
+
+        $isAdmin = session()->get('role') === 'admin';
+        $allowed = $isAdmin ? [] : $this->folderAccessModel->getAllowedFolders(
+            (int) session()->get('user_id')
+        );
+
+        $folders = [];
+        $this->_collectAllFolders('', [], $isAdmin, $allowed, $folders);
+
+        return $this->jsonOk(['folders' => $folders]);
+    }
+
+    private function _collectAllFolders(
+        string $relative,
+        array  $ancestorLabels,
+        bool   $isAdmin,
+        array  $allowed,
+        array  &$result
+    ): void {
+        $abs = $this->uploadRoot . ltrim($relative, '/');
+        if (!is_dir($abs)) return;
+
+        $locationLabel = $ancestorLabels
+            ? 'Academic Records › ' . implode(' › ', $ancestorLabels)
+            : 'Academic Records';
+
+        $entries = scandir($abs, SCANDIR_SORT_NONE);
+        foreach ($entries as $entry) {
+            if ($entry === '.' || $entry === '..') continue;
+            $full      = $abs . DIRECTORY_SEPARATOR . $entry;
+            if (!is_dir($full)) continue;
+
+            $entryPath = trim(($relative ? $relative . '/' : '') . $entry, '/');
+
+            if (!$isAdmin) {
+                $visible = false;
+                foreach ($allowed as $af) {
+                    $af = ltrim($af, '/');
+                    if ($entryPath === $af
+                        || str_starts_with($entryPath, $af . '/')
+                        || str_starts_with($af, $entryPath . '/')) {
+                        $visible = true; break;
+                    }
+                }
+                if (!$visible) continue;
+            }
+
+            $result[] = [
+                'kind'          => 'folder',
+                'name'          => $entry,
+                'path'          => $entryPath,
+                'parentPath'    => $relative,
+                'locationLabel' => $locationLabel,
+                'modified'      => date('Y-m-d', filemtime($full)),
+                'count'         => count(glob($full . DIRECTORY_SEPARATOR . '*.*', GLOB_NOSORT)),
+            ];
+
+            // Recurse
+            $this->_collectAllFolders($entryPath, [...$ancestorLabels, $entry], $isAdmin, $allowed, $result);
+        }
     }
 
     // ── CREATE FOLDER ─────────────────────────────────────────────────────────

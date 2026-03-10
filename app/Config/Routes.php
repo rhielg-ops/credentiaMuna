@@ -20,6 +20,7 @@ $routes->get('dashboard', 'Dashboard::index');
 // ── Academic Records (CI4 local file server) ──────────────────────────────────
 $routes->get('academic-records',                'AcademicRecords::index');
 $routes->get('academic-records/list-folder',    'AcademicRecords::listFolder');
+$routes->get('academic-records/list-all-folders', 'AcademicRecords::listAllFolders');
 $routes->post('academic-records/create-folder', 'AcademicRecords::createFolder');
 $routes->post('academic-records/upload',        'AcademicRecords::upload');
 $routes->post('academic-records/upload-folder', 'AcademicRecords::uploadFolder');
