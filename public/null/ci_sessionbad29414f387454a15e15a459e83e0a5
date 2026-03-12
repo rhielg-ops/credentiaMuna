@@ -1,4 +1,4 @@
-__ci_last_regenerate|i:1773139764;_ci_previous_url|s:59:"http://localhost:8081/index.php/super-admin/user-management";user_id|s:1:"1";email|s:18:"artryry6@gmail.com";username|s:9:"artryry60";full_name|s:15:"Rhiel Guillermo";role|s:5:"admin";access_level|s:4:"full";staff_unit|N;logged_in|b:1;temp_upload_70a29fd66d6eaed288456b7db6a0a990|a:7:{s:8:"filename";s:42:"70a29fd66d6eaed288456b7db6a0a990_dummy.pdf";s:13:"original_name";s:9:"dummy.pdf";s:11:"folder_path";s:0:"";s:4:"size";i:274684;s:3:"ext";s:3:"pdf";s:11:"uploaded_at";i:1773129614;s:3:"ocr";a:3:{s:4:"text";s:1725:"Republic of the Philippines
+__ci_last_regenerate|i:1773140858;_ci_previous_url|s:48:"http://localhost:8081/index.php/academic-records";user_id|s:1:"1";email|s:18:"artryry6@gmail.com";username|s:9:"artryry60";full_name|s:15:"Rhiel Guillermo";role|s:5:"admin";access_level|s:4:"full";staff_unit|N;logged_in|b:1;temp_upload_70a29fd66d6eaed288456b7db6a0a990|a:7:{s:8:"filename";s:42:"70a29fd66d6eaed288456b7db6a0a990_dummy.pdf";s:13:"original_name";s:9:"dummy.pdf";s:11:"folder_path";s:0:"";s:4:"size";i:274684;s:3:"ext";s:3:"pdf";s:11:"uploaded_at";i:1773129614;s:3:"ocr";a:3:{s:4:"text";s:1725:"Republic of the Philippines
 
 TARLAC STATE UNIVERSITY
 Tarlac City
@@ -199,4 +199,4 @@ Given this 5th day of November 2015 at Brgy. Poblacion, Tupi, South Cotabato.
 RAMON V. GLORIA
 Principal-I
 
-";s:7:"success";b:1;s:11:"suggestions";a:3:{s:6:"folder";s:21:"Joshua_Dave_B_Aminola";s:8:"filename";s:44:"Joshua_Dave_B_Aminola_Good_Moral_Certificate";s:8:"doc_type";s:10:"good_moral";}}}__ci_vars|a:0:{}
+";s:7:"success";b:1;s:11:"suggestions";a:3:{s:6:"folder";s:21:"Joshua_Dave_B_Aminola";s:8:"filename";s:44:"Joshua_Dave_B_Aminola_Good_Moral_Certificate";s:8:"doc_type";s:10:"good_moral";}}}

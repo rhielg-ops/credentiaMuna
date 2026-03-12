@@ -28,9 +28,27 @@ class AcademicRecords extends BaseController
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function privs(): array
-    {
-        return $this->privilegeModel->getUserPrivileges(session()->get('user_id')) ?? [];
-    }
+     {
+         // Admins always have full privileges regardless of DB rows.
+         // This mirrors canAccessPath() which already bypasses the DB for admins,
+         // and prevents breakage when a privilege row is missing for an admin account.
+         if (session()->get('role') === 'admin') {
+             return [
+                 'records_upload'   => true,
+                 'files_view'       => true,
+                 'records_organize' => true,
+                 'folders_add'      => true,
+                 'records_delete'   => true,
+                 'folders_delete'   => true,
+                 'profile_edit'     => true,
+                 'user_management'  => true,
+                 'system_backup'    => true,
+                 'audit_logs'       => true,
+                 'full_admin'       => true,
+             ];
+         }
+         return $this->privilegeModel->getUserPrivileges(session()->get('user_id')) ?? [];
+     }
 
     private function safePath(string $relative): string
     {

@@ -799,6 +799,7 @@
 
   // ─── Permission flags ──────────────────────────────────────────────────────
   const PRIV_UPLOAD        = <?= json_encode((bool)($can_upload        ?? $priv_records_upload   ?? false)) ?>;
+  const PRIV_VIEW          = <?= json_encode((bool)($can_view          ?? $priv_files_view       ?? false)) ?>;
   const PRIV_ADD_FOLDER    = <?= json_encode((bool)($can_add_folder    ?? $priv_folders_add      ?? false)) ?>;
   const PRIV_DELETE_RECORD = <?= json_encode((bool)($can_delete_record ?? $priv_records_delete   ?? false)) ?>;
   const PRIV_DELETE_FOLDER = <?= json_encode((bool)($can_delete_folder ?? $priv_folders_delete   ?? false)) ?>;
@@ -1308,21 +1309,40 @@ async function buildUnifiedIndex() {
   // FIX #5: Single tracked open-menu reference — no querySelectorAll scans
   // =========================================================================
   let _openMenuEl = null;
+  let _openSubmenuEl = null;
 
   function openMenuById(id, event) {
     event.stopPropagation();
     const next = document.getElementById(id);
     if (!next) return;
-    if (_openMenuEl && _openMenuEl !== next) {
-      _openMenuEl.classList.add('hidden'); // close previous — O(1) not O(n)
+
+    const isSubmenu = id.startsWith('submenu-') || id.startsWith('file-sub-');
+
+    if (isSubmenu) {
+      if (_openSubmenuEl && _openSubmenuEl !== next) {
+        _openSubmenuEl.classList.add('hidden');
+      }
+      next.classList.toggle('hidden');
+      _openSubmenuEl = next.classList.contains('hidden') ? null : next;
+    } else {
+      if (_openSubmenuEl) { _openSubmenuEl.classList.add('hidden'); _openSubmenuEl = null; }
+      if (_openMenuEl && _openMenuEl !== next) {
+        _openMenuEl.classList.add('hidden');
+      }
+      next.classList.toggle('hidden');
+      _openMenuEl = next.classList.contains('hidden') ? null : next;
     }
-    next.classList.toggle('hidden');
-    _openMenuEl = next.classList.contains('hidden') ? null : next;
   }
 
-  // Capture-phase listener closes the open menu before any stopPropagation inside cards
-  document.addEventListener('click', () => {
-    if (_openMenuEl) { _openMenuEl.classList.add('hidden'); _openMenuEl = null; }
+  document.addEventListener('click', (e) => {
+    if (_openSubmenuEl && !_openSubmenuEl.contains(e.target) && !e.target.closest('[data-action="toggle-submenu"],[data-action="toggle-file-sub"]')) {
+      _openSubmenuEl.classList.add('hidden');
+      _openSubmenuEl = null;
+    }
+    if (_openMenuEl && !_openMenuEl.contains(e.target) && !e.target.closest('[data-action="toggle-folder-menu"],[data-action="toggle-file-menu"]')) {
+      _openMenuEl.classList.add('hidden');
+      _openMenuEl = null;
+    }
   }, true);
 
   // ─── Build folder card HTML ───────────────────────────────────────────────
@@ -3301,11 +3321,7 @@ async function buildUnifiedIndex() {
 
 <script>
 /* ── PHP → JS privilege flags ── */
-var PRIV_UPLOAD     = <?= json_encode((bool)($priv_records_upload   ?? false)) ?>;
-var PRIV_VIEW       = <?= json_encode((bool)($priv_files_view       ?? false)) ?>;
-var PRIV_UPDATE     = <?= json_encode((bool)($priv_records_update   ?? false)) ?>;
-var PRIV_ORGANIZE   = <?= json_encode((bool)($priv_records_organize ?? false)) ?>;
-var PRIV_ADD_FOLDER = <?= json_encode((bool)($priv_folders_add      ?? false)) ?>;
+
 var PRIV_DEL_FILE   = <?= json_encode((bool)($priv_records_delete   ?? false)) ?>;
 var PRIV_DEL_FOLDER = <?= json_encode((bool)($priv_folders_delete   ?? false)) ?>;
 
@@ -3343,7 +3359,7 @@ window.addEventListener('load', function() {
     if (!PRIV_UPLOAD || !isModalReal('uploadFolderModal')) { showPermissionDenied(); return; }
     if (_openUploadFolderModal) _openUploadFolderModal();
   };
-  var _openRenameModal = window.openRenameModal;
+ var _openRenameModal = window.openRenameModal;
   window.openRenameModal = function() {
     if (!PRIV_ORGANIZE || !isModalReal('renameModal')) { showPermissionDenied(); return; }
     if (_openRenameModal) _openRenameModal.apply(this, arguments);
