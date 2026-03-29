@@ -8,7 +8,10 @@ use App\Models\ActivityLogModel;
 use App\Models\DashboardModel;
 use App\Models\UserPrivilegeModel;
 use App\Models\UserFolderAccessModel;
+use App\Models\MpinModel;
+use App\Models\GroupPrivilegeModel;
 use App\Libraries\EmailService;
+
 
 class SuperAdmin extends BaseController
 {
@@ -18,16 +21,21 @@ class SuperAdmin extends BaseController
     protected $privilegeModel;
     protected $emailService;
     protected \App\Models\UserFolderAccessModel $folderAccessModel;
+    protected MpinModel $mpinModel;
+    protected GroupPrivilegeModel $groupPrivilegeModel;
 
     public function __construct()
     {
-        $this->userModel         = new UserModel();
-        $this->activityLogModel  = new ActivityLogModel();
-        $this->dashboardModel    = new DashboardModel();
-        $this->privilegeModel    = new UserPrivilegeModel();
-        $this->emailService      = new EmailService();
-        $this->folderAccessModel = new \App\Models\UserFolderAccessModel();
+        $this->userModel           = new UserModel();
+        $this->activityLogModel    = new ActivityLogModel();
+        $this->dashboardModel      = new DashboardModel();
+        $this->privilegeModel      = new UserPrivilegeModel();
+        $this->emailService        = new EmailService();
+        $this->folderAccessModel   = new UserFolderAccessModel();
+        $this->mpinModel           = new MpinModel();
+        $this->groupPrivilegeModel = new GroupPrivilegeModel();
     }
+
 
     /**
      * Check if user is super admin
@@ -103,7 +111,8 @@ class SuperAdmin extends BaseController
             'users' => $users,
             'pending_admins' => $pendingRequests,
             'user_privileges_map' => $userPrivilegesMap,
-            'privilege_definitions' => $this->privilegeModel->getPrivilegeDefinitions()
+            'privilege_definitions' => $this->privilegeModel->getPrivilegeDefinitions(),
+            'group_privilege_matrix' => $this->groupPrivilegeModel->getFullMatrix()
         ];
 
         return view('super_admin/user_management', $data);
@@ -261,6 +270,13 @@ class SuperAdmin extends BaseController
         if (!$existingUser) {
             return redirect()->back()->with('error', 'User not found.');
         }
+        // ERD Rule: Admin cannot edit own privileges or another admin's privileges
+        if (!$this->privilegeModel->canAdminEditPrivilege(
+                (int) session()->get('user_id'), (int) $id)) {
+            return redirect()->back()
+                ->with('error', 'You cannot edit privileges for this account.');
+        }
+
 
         // Validate input
         $validation = \Config\Services::validation();
@@ -633,6 +649,66 @@ public function toggleSuspend($id)
         );
 
         return $this->response->setJSON(['success' => true, 'message' => 'Folder access saved.']);
+    }
+
+    /**
+     * Get Group Privileges matrix (AJAX) — for the Group Privileges modal
+     * Route: GET super-admin/group-privileges
+     */
+    public function getGroupPrivileges()
+    {
+        if ($redirect = $this->checkSuperAdmin()) return $redirect;
+
+        $matrix      = $this->groupPrivilegeModel->getFullMatrix();
+        $definitions = $this->privilegeModel->getPrivilegeDefinitions();
+
+        return $this->response->setJSON([
+            'success'     => true,
+            'matrix'      => $matrix,
+            'definitions' => $definitions,
+        ]);
+    }
+
+    /**
+     * Set or reset a user's MPIN (admin action from User Management)
+     * Route: POST super-admin/set-mpin/:id
+     */
+    public function setUserMpin(int $userId)
+    {
+        if ($redirect = $this->checkSuperAdmin()) return $redirect;
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403)->setJSON(['success' => false]);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User not found.']);
+        }
+
+        $body = $this->request->getJSON(true);
+        $mpin = (string) ($body['mpin'] ?? '');
+
+        if (strlen($mpin) !== 4 || !ctype_digit($mpin)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'MPIN must be exactly 4 digits.',
+            ]);
+        }
+
+        $ok = $this->mpinModel->setMpin($userId, $mpin, (int) session()->get('user_id'));
+
+        if ($ok) {
+            $this->activityLogModel->logActivity(
+                session()->get('user_id'),
+                'mpin_set',
+                'Admin set/reset MPIN for user: ' . $user['email']
+            );
+        }
+
+        return $this->response->setJSON([
+            'success' => $ok,
+            'message' => $ok ? 'MPIN saved successfully.' : 'Failed to save MPIN.',
+        ]);
     }
 
 

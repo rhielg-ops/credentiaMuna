@@ -16,8 +16,13 @@ class UserPrivilegeModel extends Model
     protected $allowedFields = [
         'user_id',
         'privilege_key',
-        'privilege_value'
+        'privilege_value',
+        'status',
+        'locked_by',
+        'locked_at',
     ];
+
+
 
     protected $useTimestamps = true;
     protected $createdField = 'created_at';
@@ -38,6 +43,25 @@ class UserPrivilegeModel extends Model
         return $result;
     }
 
+/**
+     * ERD Rule: Admin cannot edit own or another admin's privileges.
+     * Returns true only if acting admin is allowed to edit target user's privileges.
+     */
+    public function canAdminEditPrivilege(int $actingAdminId, int $targetUserId): bool
+    {
+        if ($actingAdminId === $targetUserId) {
+            return false;
+        }
+        $db     = \Config\Database::connect();
+        $target = $db->table('users')
+                     ->select('role')
+                     ->where('user_id', $targetUserId)
+                     ->get()->getRow();
+        if (!$target) return false;
+        return $target->role !== 'admin';
+    }
+
+
     /**
      * Check if user has a specific privilege
      */
@@ -45,10 +69,12 @@ class UserPrivilegeModel extends Model
     {
         $privilege = $this->where('user_id', $userId)
                           ->where('privilege_key', $privilegeKey)
+                          ->where('status', 'active')
                           ->first();
-        
+
         return $privilege ? (bool) $privilege['privilege_value'] : false;
     }
+
 
     /**
      * Set privilege for user

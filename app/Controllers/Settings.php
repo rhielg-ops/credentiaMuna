@@ -5,17 +5,22 @@ namespace App\Controllers;
 use CodeIgniter\Controller;
 use App\Models\UserModel;
 use App\Models\ActivityLogModel;
+use App\Models\MpinModel;
+
 
 class Settings extends BaseController
 {
     protected $userModel;
     protected $activityLogModel;
+    protected $mpinModel;
 
     public function __construct()
     {
-        $this->userModel = new UserModel();
+        $this->userModel        = new UserModel();
         $this->activityLogModel = new ActivityLogModel();
+        $this->mpinModel        = new MpinModel();
     }
+
 
     /**
      * Settings page - accessible by both Admin and Super Admin
@@ -39,14 +44,15 @@ class Settings extends BaseController
 
         // Prepare data for the view
         $data = [
-            'title' => 'Settings - CredentiaTAU',
-            'email' => $user['email'],
-            'role' => $role,
-            'user_id' => $userId,
-            'full_name' => $user['full_name'],
-            'access_level' => $user['access_level'] ?? 'full',
-            'user' => $user,
-            'is_super_admin' => ($role === 'admin')
+            'title'          => 'Settings - CredentiaTAU',
+            'email'          => $user['email'],
+            'role'           => $role,
+            'user_id'        => $userId,
+            'full_name'      => $user['full_name'],
+            'access_level'   => $user['access_level'] ?? 'full',
+            'user'           => $user,
+            'is_super_admin' => ($role === 'admin'),
+            'has_mpin'       => $this->mpinModel->hasMpin((int) $userId),
         ];
 
         return view('auth/settings', $data);
@@ -238,4 +244,48 @@ class Settings extends BaseController
 
         return view('super_admin/activity_logs', $data);
     }
+    /**
+     * User changes their own MPIN from profile settings
+     * Only available once an admin has set an MPIN for them
+     */
+    public function changeMpin()
+    {
+        if (!session()->get('logged_in')) {
+            return redirect()->to('/login');
+        }
+
+        $userId      = (int) session()->get('user_id');
+        $currentMpin = $this->request->getPost('current_mpin');
+        $newMpin     = $this->request->getPost('new_mpin');
+        $confirmMpin = $this->request->getPost('new_mpin_confirm');
+
+        if (!$this->mpinModel->hasMpin($userId)) {
+            return redirect()->back()
+                ->with('mpin_error', 'No MPIN has been set for your account. Contact your administrator.');
+        }
+
+        if (!$this->mpinModel->verifyMpin($userId, (string) $currentMpin)) {
+            return redirect()->back()->with('mpin_error', 'Current MPIN is incorrect.');
+        }
+
+        if (!$newMpin || strlen((string) $newMpin) !== 4 || !ctype_digit($newMpin)) {
+            return redirect()->back()->with('mpin_error', 'New MPIN must be exactly 4 digits.');
+        }
+
+        if ($newMpin !== $confirmMpin) {
+            return redirect()->back()->with('mpin_error', 'New MPINs do not match.');
+        }
+
+        // Save — set_by = the user themselves (self-change)
+        $this->mpinModel->setMpin($userId, $newMpin, $userId);
+        $this->mpinModel->refreshExpiry($userId);
+
+        $this->activityLogModel->logActivity(
+            $userId, 'mpin_changed', 'User changed their own MPIN'
+        );
+
+        return redirect()->back()
+            ->with('mpin_success', 'MPIN updated successfully. Valid for 7 days.');
+    }
 }
+

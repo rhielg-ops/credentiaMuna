@@ -11,6 +11,8 @@ $routes->post('login',               'Auth::login');
 $routes->get('auth/verify-code',     'Auth::verifyCodePage');
 $routes->post('auth/verify-code',    'Auth::verifyCode');
 $routes->post('auth/resend-code',    'Auth::resendCode');
+$routes->get( 'auth/mpin-entry',     'Auth::mpinEntryPage');
+$routes->post('auth/mpin-entry',     'Auth::verifyMpin');
 $routes->post('auth/send-approval-request', 'Auth::sendApprovalRequest');
 $routes->get('auth/logout',          'Auth::logout');
 
@@ -43,6 +45,8 @@ $routes->get('settings',                  'Settings::index');
 $routes->post('settings/update-profile',  'Settings::updateProfile');
 $routes->post('settings/change-password', 'Settings::changePassword');
 $routes->get('settings/activity-logs',    'Settings::activityLogs');
+$routes->post('settings/change-mpin',     'Settings::changeMpin');
+
 
 // ── Super Admin / privileged pages ───────────────────────────────────────────
 // Note: checkAccess() inside each method enforces privileges.
@@ -65,6 +69,8 @@ $routes->group('super-admin', function ($routes) {
     $routes->post('toggle-suspend/(:num)',          'SuperAdmin::toggleSuspend/$1');
     $routes->get('toggle-suspend/(:num)',           'SuperAdmin::toggleSuspend/$1');
     $routes->post('update-user-privileges/(:num)', 'SuperAdmin::updateUserPrivileges/$1');
+    $routes->get( 'group-privileges',  'SuperAdmin::getGroupPrivileges');
+    $routes->post('set-mpin/(:num)',   'SuperAdmin::setUserMpin/$1');
     $routes->get( 'get-user-folders/(:num)',    'SuperAdmin::getUserFolders/$1');
     $routes->post('update-user-folders/(:num)', 'SuperAdmin::updateUserFolders/$1');
 

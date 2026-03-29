@@ -192,6 +192,64 @@
   </form>
 </div>
 
+<!-- ===== Change MPIN Card (only shown if admin has set an MPIN for this user) ===== -->
+<?php if ($has_mpin): ?>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
+  <h3 class="text-lg font-semibold text-gray-800 mb-1">Change MPIN</h3>
+  <p class="text-sm text-gray-500 mb-4">
+    Your MPIN is valid for 7 days. You can update it here anytime while logged in.
+  </p>
+
+  <?php if (session()->getFlashdata('mpin_success')): ?>
+    <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mb-4">
+      <?= session()->getFlashdata('mpin_success') ?>
+    </div>
+  <?php endif; ?>
+
+  <?php if (session()->getFlashdata('mpin_error')): ?>
+    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+      <?= session()->getFlashdata('mpin_error') ?>
+    </div>
+  <?php endif; ?>
+
+  <form action="<?= base_url('settings/change-mpin') ?>" method="post" class="space-y-4 max-w-sm">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Current MPIN</label>
+      <input type="password" name="current_mpin" maxlength="4" inputmode="numeric"
+             autocomplete="off"
+             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-center
+                    tracking-widest font-mono focus:outline-none focus:border-green-500"
+             placeholder="••••"
+             oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">New MPIN</label>
+      <input type="password" name="new_mpin" maxlength="4" inputmode="numeric"
+             autocomplete="off"
+             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-center
+                    tracking-widest font-mono focus:outline-none focus:border-green-500"
+             placeholder="••••"
+             oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Confirm New MPIN</label>
+      <input type="password" name="new_mpin_confirm" maxlength="4" inputmode="numeric"
+             autocomplete="off"
+             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-center
+                    tracking-widest font-mono focus:outline-none focus:border-green-500"
+             placeholder="••••"
+             oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+    </div>
+    <button type="submit"
+            class="px-6 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 font-medium text-sm">
+      Update MPIN
+    </button>
+  </form>
+</div>
+<?php endif; ?>
+<!-- ===== End Change MPIN Card ===== -->
+
+
 <!-- Advanced Settings -->
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
   <div class="flex items-center gap-3 mb-4">

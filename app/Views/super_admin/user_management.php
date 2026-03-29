@@ -43,13 +43,22 @@
 </div>
 <?php endif; ?>
 
-<!-- Add Admin Button -->
-<div class="mb-6">
+<!-- Add Admin Button + Group Privileges Button -->
+<div class="mb-6 flex gap-3 flex-wrap">
   <button onclick="openAddModal()" class="bg-green-700 text-white px-6 py-3 rounded-lg hover:bg-green-800 font-semibold flex items-center gap-2">
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
     </svg>
     Add User
+  </button>
+  <button onclick="openGroupPrivilegesModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 font-semibold flex items-center gap-2">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0
+               01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622
+               5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+    </svg>
+    Group Privileges
   </button>
 </div>
 
@@ -112,10 +121,12 @@
           <td class="px-6 py-4 text-sm text-gray-600"><?= $user['total_records'] ?? 0; ?></td>
           <td class="px-6 py-4">
             <div class="flex gap-2">
+              <!-- ✅ Edit button now opens modal with MPIN field inside -->
               <button onclick='openEditModal(<?= json_encode($user); ?>, <?= json_encode($user_privileges_map[$user["user_id"]] ?? []); ?>)' 
                       class="text-blue-600 hover:text-blue-800 font-medium text-sm">
                 Edit
               </button>
+              <!-- ❌ Set MPIN button removed from here -->
               <?php if ($user['status'] !== 'inactive'): ?>
                 <a href="<?= base_url('super-admin/toggle-suspend/' . $user['user_id']); ?>" 
                    class="text-orange-600 hover:text-orange-800 font-medium text-sm"
@@ -141,7 +152,7 @@
       <?php else: ?>
         <tr>
           <td colspan="9" class="px-6 py-12 text-center text-gray-500">
-            No users found. Click "Add Admin" to create one.
+            No users found. Click "Add User" to create one.
           </td>
         </tr>
       <?php endif; ?>
@@ -151,11 +162,12 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('modals') ?>
-<!-- Add Admin Modal -->
+
+<!-- ===== Add User Modal ===== -->
 <div id="addModal" class="modal">
   <div class="modal-content bg-white rounded-xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
     <div class="flex items-center justify-between mb-6">
-      <h3 class="text-2xl font-bold text-gray-800">Add New Admin</h3>
+      <h3 class="text-2xl font-bold text-gray-800">Add New User</h3>
       <button onclick="closeAddModal()" class="text-gray-400 hover:text-gray-600">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -206,24 +218,15 @@
           </select>
         </div>
 
-        <!-- Password field with eye toggle -->
+        <!-- Initial Password -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Initial Password *</label>
           <div class="relative">
-            <input 
-              type="password" 
-              name="initial_password" 
-              id="initial_password"
-              required 
-              minlength="8"
-              class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Minimum 8 characters"
-            >
-            <button 
-              type="button"
-              id="toggleInitialPassword"
-              class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none"
-            >
+            <input type="password" name="initial_password" id="initial_password" required minlength="8"
+                   class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                   placeholder="Minimum 8 characters">
+            <button type="button" id="toggleInitialPassword"
+                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                 <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
@@ -231,6 +234,25 @@
             </button>
           </div>
           <p class="text-xs text-gray-500 mt-1">User will be required to change this password on first login</p>
+        </div>
+
+        <!-- ✅ NEW: MPIN field in Add modal -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">MPIN <span class="text-gray-400 font-normal">(Optional)</span></label>
+          <div class="relative">
+            <input type="password" name="mpin" id="add_mpin" maxlength="4"
+                   class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                   placeholder="4-digit PIN (e.g. 1234)"
+                   oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+            <button type="button" id="toggleAddMpin"
+                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">Digits only, exactly 4 digits. Leave blank to skip. The user can change this in their profile.</p>
         </div>
 
         <!-- User Privileges -->
@@ -337,18 +359,18 @@
         </button>
         <button type="submit" 
                 class="flex-1 px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800">
-          Create Admin Account
+          Create User Account
         </button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- Edit Admin Modal -->
+<!-- ===== Edit User Modal ===== -->
 <div id="editModal" class="modal">
   <div class="modal-content bg-white rounded-xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
     <div class="flex items-center justify-between mb-6">
-      <h3 class="text-2xl font-bold text-gray-800">Edit Admin</h3>
+      <h3 class="text-2xl font-bold text-gray-800">Edit User</h3>
       <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -406,23 +428,15 @@
           </select>
         </div>
 
-        <!-- Password field with eye toggle -->
+        <!-- New Password -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">New Password (Optional)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">New Password <span class="text-gray-400 font-normal">(Optional)</span></label>
           <div class="relative">
-            <input 
-              type="password" 
-              name="new_password" 
-              id="edit_new_password"
-              minlength="8"
-              class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Leave blank to keep current password"
-            >
-            <button 
-              type="button"
-              id="toggleEditPassword"
-              class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none"
-            >
+            <input type="password" name="new_password" id="edit_new_password" minlength="8"
+                   class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                   placeholder="Leave blank to keep current password">
+            <button type="button" id="toggleEditPassword"
+                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                 <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
@@ -430,6 +444,26 @@
             </button>
           </div>
           <p class="text-xs text-gray-500 mt-1">Only fill this if you want to reset the password</p>
+        </div>
+
+        <!-- ✅ NEW: MPIN field in Edit modal -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">MPIN <span class="text-gray-400 font-normal">(Optional)</span></label>
+          <div class="relative">
+            <input type="password" name="mpin" id="edit_mpin" maxlength="4"
+                   class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                   placeholder="Leave blank to keep current MPIN"
+                   oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+            <button type="button" id="toggleEditMpin"
+                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">Digits only, exactly 4 digits. Leave blank to keep current MPIN.</p>
+          <p id="edit_mpin_status" class="text-xs text-purple-600 mt-1 hidden"></p>
         </div>
 
         <!-- User Privileges -->
@@ -453,7 +487,6 @@
                 <p class="text-xs text-gray-500">View, download, and print archived records</p>
               </div>
             </label>
-    
             <label class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-green-50">
               <input type="checkbox" id="ep_records_organize" data-key="records_organize"
                      class="edit-priv-cb mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
@@ -527,7 +560,8 @@
               </div>
             </label>
           </div>
-<!-- ── Folder Access ──────────────────────────────── -->
+
+          <!-- Folder Access -->
           <div class="border-t border-gray-200 pt-4 mt-2">
             <p class="text-sm font-semibold text-gray-700 mb-1">📁 Folder Access</p>
             <p class="text-xs text-gray-500 mb-3">
@@ -539,7 +573,6 @@
               <p class="text-xs text-gray-400 italic">Loading folders…</p>
             </div>
           </div>
-          <!-- Hidden input carries folder selections through form POST -->
           <input type="hidden" name="folder_access" id="folderAccessInput">
           <div id="editPrivilegeError" class="hidden mt-2 text-sm text-red-600"></div>
         </div>
@@ -552,10 +585,36 @@
         </button>
         <button type="submit" 
                 class="flex-1 px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800">
-          Update Admin
+          Update User
         </button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ===== Group Privileges Modal ===== -->
+<div id="groupPrivilegesModal" class="modal">
+  <div class="modal-content bg-white rounded-xl p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h3 class="text-2xl font-bold text-gray-800">Group Privileges</h3>
+        <p class="text-sm text-gray-500 mt-1">Default privileges per role across system modules</p>
+      </div>
+      <button onclick="closeGroupPrivilegesModal()" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div id="groupPrivilegesContent">
+      <p class="text-gray-400 text-center py-8">Loading...</p>
+    </div>
+    <div class="flex gap-3 mt-6">
+      <button type="button" onclick="closeGroupPrivilegesModal()"
+              class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+        Close
+      </button>
+    </div>
   </div>
 </div>
 
@@ -570,11 +629,7 @@
         </svg>
       </button>
     </div>
-
-    <div id="privilegesContent" class="space-y-4">
-      <!-- Privileges will be loaded here dynamically -->
-    </div>
-
+    <div id="privilegesContent" class="space-y-4"></div>
     <div class="flex gap-3 mt-6">
       <button type="button" onclick="closePrivilegesModal()" 
               class="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
@@ -583,6 +638,7 @@
     </div>
   </div>
 </div>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('additional_styles') ?>
@@ -597,22 +653,18 @@
   background-color: rgba(0,0,0,0.5);
   animation: fadeIn 0.3s;
 }
-
 .modal.active {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
 .modal-content {
   animation: slideUp 0.3s;
 }
-
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
 @keyframes slideUp {
   from { transform: translateY(50px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -622,284 +674,266 @@
 <?= $this->section('scripts') ?>
 <script>
 // ────────────────────────────────────────────────
-//   Password toggle helper function
+//   Password / PIN toggle helper
 // ────────────────────────────────────────────────
 function togglePasswordVisibility(inputId, buttonId) {
-  const input = document.getElementById(inputId);
+  const input  = document.getElementById(inputId);
   const button = document.getElementById(buttonId);
   if (!input || !button) return;
-
   button.addEventListener('click', () => {
     const isPassword = input.type === 'password';
     input.type = isPassword ? 'text' : 'password';
-
     const svg = button.querySelector('svg');
     if (!svg) return;
-
     svg.innerHTML = isPassword
-      ? `
-    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-    <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-  `
-  : `
-    <path d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19 12 19c.38 0 .747-.027 1.102-.08M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    <path d="M2.999 3l14 14M9.172 9.172a3 3 0 014.656 4.656M16.02 11.777A10.477 10.477 0 0118.066 12c-1.292 4.338-5.31 7-10.066 7-1.066 0-2.09-.166-3.058-.477" />
-  `;
+      ? `<path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+         <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />`
+      : `<path d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19 12 19c.38 0 .747-.027 1.102-.08M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+         <path d="M2.999 3l14 14M9.172 9.172a3 3 0 014.656 4.656M16.02 11.777A10.477 10.477 0 0118.066 12c-1.292 4.338-5.31 7-10.066 7-1.066 0-2.09-.166-3.058-.477" />`;
   });
 }
 
 // ────────────────────────────────────────────────
-//   Modal functions
+//   Group Privileges Modal
 // ────────────────────────────────────────────────
+function openGroupPrivilegesModal() {
+  document.getElementById('groupPrivilegesModal').classList.add('active');
+  loadGroupPrivileges();
+}
+function closeGroupPrivilegesModal() {
+  document.getElementById('groupPrivilegesModal').classList.remove('active');
+}
+function loadGroupPrivileges() {
+  const container = document.getElementById('groupPrivilegesContent');
+  container.innerHTML = '<p class="text-gray-400 text-center py-8">Loading...</p>';
+  fetch('<?= base_url('super-admin/group-privileges') ?>')
+    .then(r => r.json())
+    .then(data => {
+      if (!data.success) { container.innerHTML = '<p class="text-red-500 text-center py-8">Failed to load.</p>'; return; }
+      container.innerHTML = buildGroupPrivilegesTable(data.matrix, data.definitions);
+    })
+    .catch(() => { container.innerHTML = '<p class="text-red-500 text-center py-8">Network error.</p>'; });
+}
+function buildGroupPrivilegesTable(matrix, definitions) {
+  const categories = {};
+  Object.entries(definitions).forEach(([key, def]) => {
+    if (!categories[def.category]) categories[def.category] = [];
+    categories[def.category].push({ key, ...def });
+  });
+  const check = `<span class="text-green-600 font-bold text-lg">&#10003;</span>`;
+  const dash  = `<span class="text-gray-300 text-lg">&ndash;</span>`;
+  let html = `<table class="w-full text-sm border-collapse">
+    <thead><tr class="bg-gray-100">
+      <th class="text-left px-4 py-3 font-semibold text-gray-700 border border-gray-200 w-1/2">Privilege</th>
+      <th class="text-center px-4 py-3 font-semibold text-indigo-700 border border-gray-200">ADMIN</th>
+      <th class="text-center px-4 py-3 font-semibold text-green-700 border border-gray-200">USER</th>
+    </tr></thead><tbody>`;
+  Object.entries(categories).forEach(([catName, privs]) => {
+    html += `<tr class="bg-gray-50"><td colspan="3" class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500 border border-gray-200">${catName}</td></tr>`;
+    privs.forEach(priv => {
+      const adminHas = matrix['admin'] && matrix['admin'][priv.key] !== undefined;
+      const userHas  = matrix['user']  && matrix['user'][priv.key]  !== undefined;
+      html += `<tr class="hover:bg-gray-50">
+        <td class="px-4 py-2 border border-gray-200"><div class="font-medium text-gray-800">${priv.label}</div><div class="text-xs text-gray-400">${priv.description}</div></td>
+        <td class="text-center px-4 py-2 border border-gray-200">${adminHas ? check : dash}</td>
+        <td class="text-center px-4 py-2 border border-gray-200">${userHas  ? check : dash}</td>
+      </tr>`;
+    });
+  });
+  html += `</tbody></table><p class="text-xs text-gray-400 mt-4">* Group privileges are fixed defaults. Individual overrides are tracked in the Activity Log.</p>`;
+  return html;
+}
+document.addEventListener('DOMContentLoaded', function() {
+  const gpModal = document.getElementById('groupPrivilegesModal');
+  if (gpModal) gpModal.addEventListener('click', function(e) { if (e.target === this) closeGroupPrivilegesModal(); });
+});
 
+// ────────────────────────────────────────────────
+//   Add Modal
+// ────────────────────────────────────────────────
 function openAddModal() {
   document.getElementById('addModal').classList.add('active');
 }
-
 function closeAddModal() {
   document.getElementById('addModal').classList.remove('active');
 }
 
+// ────────────────────────────────────────────────
+//   Edit Modal
+// ────────────────────────────────────────────────
 function openEditModal(user, userPrivileges) {
-  document.getElementById('edit_full_name').value = user.full_name;
-  document.getElementById('edit_email').value = user.email;
-  document.getElementById('edit_username').value = user.username || '';
-  document.getElementById('edit_role').value = user.role;
+  document.getElementById('edit_full_name').value    = user.full_name;
+  document.getElementById('edit_email').value        = user.email;
+  document.getElementById('edit_username').value     = user.username || '';
+  document.getElementById('edit_role').value         = user.role;
   document.getElementById('edit_access_level').value = user.access_level || 'full';
-  document.getElementById('edit_status').value = user.status;
-  
-  document.getElementById('editForm').action = '<?= base_url('super-admin/edit-admin/'); ?>' + user.user_id;
+  document.getElementById('edit_status').value       = user.status;
 
-  // Store user id for the AJAX privilege save
+  // Clear MPIN field and status note when opening
+  document.getElementById('edit_mpin').value = '';
+  const mpinStatus = document.getElementById('edit_mpin_status');
+  if (user.has_mpin) {
+    mpinStatus.textContent = '🔒 This user already has an MPIN set. Enter a new one to replace it.';
+    mpinStatus.classList.remove('hidden');
+  } else {
+    mpinStatus.textContent = '';
+    mpinStatus.classList.add('hidden');
+  }
+
+  document.getElementById('editForm').action = '<?= base_url('super-admin/edit-admin/'); ?>' + user.user_id;
   document.getElementById('editForm').dataset.userId = user.user_id;
 
-  // Populate privilege checkboxes from the server-supplied map
+  // Populate privilege checkboxes
   var privMap = userPrivileges || {};
   document.querySelectorAll('.edit-priv-cb').forEach(function(cb) {
     cb.checked = privMap[cb.dataset.key] === true || privMap[cb.dataset.key] === 1;
   });
 
-  // Clear any previous error message
   document.getElementById('editPrivilegeError').classList.add('hidden');
-
   document.getElementById('editModal').classList.add('active');
- loadFolderAccess(user.user_id);// ← populate folder checkboxes
+  loadFolderAccess(user.user_id);
 }
-
 function closeEditModal() {
   document.getElementById('editModal').classList.remove('active');
 }
 
+// ────────────────────────────────────────────────
+//   Privileges View Modal
+// ────────────────────────────────────────────────
 function openPrivilegesModal(user) {
-  console.log('Opening privileges modal for user:', user);
-  const modal = document.getElementById('privilegesModal');
+  const modal   = document.getElementById('privilegesModal');
   const content = document.getElementById('privilegesContent');
-  
-  if (!modal || !content) {
-    console.error('Modal elements not found');
-    return;
-  }
-  
+  if (!modal || !content) return;
   modal.classList.add('active');
   displayPrivilegesForRole(user);
 }
-
 function displayPrivilegesForRole(user) {
-  const content = document.getElementById('privilegesContent');
-  
-  const dbRole = user.role;
+  const content    = document.getElementById('privilegesContent');
+  const dbRole     = user.role;
   const roleDisplay = (dbRole === '' || dbRole === 'admin') ? 'Admin' : 'User';
-  const isAdmin = (dbRole === '' || dbRole === 'admin');
-  
+  const isAdmin    = (dbRole === '' || dbRole === 'admin');
   const definitions = {
-    'records_upload':   { label: 'Upload Records',    description: 'Upload digitized academic records',                          category: 'Records Management' },
-    'files_view':       { label: 'View Files',         description: 'View, download, and print archived records',                 category: 'Records Management' },
-    'records_organize': { label: 'Organize Records',   description: 'Move files/folders, rename files, manage file structure',   category: 'Records Management' },
-    'folders_add':      { label: 'Add Folders',        description: 'Create new folders or categories',                          category: 'Records Management' },
-    'records_delete':   { label: 'Delete Records',     description: 'Delete archived files',                                     category: 'Records Management' },
-    'folders_delete':   { label: 'Delete Folders',     description: 'Delete folders or categories',                              category: 'Records Management' },
-    'profile_edit':     { label: 'Edit Profile',       description: 'Edit user profile and personal settings',                   category: 'Profile Management' },
-    'user_management':  { label: 'Manage Users',       description: 'Add, edit, and assign roles to users',                     category: 'Administration' },
-    'system_backup':    { label: 'System Backup',      description: 'Access system backup and restore features',                 category: 'Administration' },
-    'audit_logs':       { label: 'Audit Logs',         description: 'View system activity logs',                                 category: 'Administration' },
-    'full_admin':       { label: 'Full Admin Access',  description: 'Automatically grants all privileges when selected',         category: 'Administration' }
+    'records_upload':   { label: 'Upload Records',    description: 'Upload digitized academic records',                        category: 'Records Management' },
+    'files_view':       { label: 'View Files',         description: 'View, download, and print archived records',               category: 'Records Management' },
+    'records_organize': { label: 'Organize Records',   description: 'Move files/folders, rename files, manage file structure', category: 'Records Management' },
+    'folders_add':      { label: 'Add Folders',        description: 'Create new folders or categories',                        category: 'Records Management' },
+    'records_delete':   { label: 'Delete Records',     description: 'Delete archived files',                                   category: 'Records Management' },
+    'folders_delete':   { label: 'Delete Folders',     description: 'Delete folders or categories',                            category: 'Records Management' },
+    'profile_edit':     { label: 'Edit Profile',       description: 'Edit user profile and personal settings',                 category: 'Profile Management' },
+    'user_management':  { label: 'Manage Users',       description: 'Add, edit, and assign roles to users',                   category: 'Administration' },
+    'system_backup':    { label: 'System Backup',      description: 'Access system backup and restore features',               category: 'Administration' },
+    'audit_logs':       { label: 'Audit Logs',         description: 'View system activity logs',                               category: 'Administration' },
+    'full_admin':       { label: 'Full Admin Access',  description: 'Automatically grants all privileges when selected',       category: 'Administration' }
   };
-  
   const privileges = {
-    'records_upload':   true,
-    'files_view':       true,
-    'records_organize': isAdmin,
-    'folders_add':      isAdmin,
-    'records_delete':   isAdmin,
-    'folders_delete':   isAdmin,
-    'profile_edit':     isAdmin,
-    'user_management':  isAdmin,
-    'system_backup':    isAdmin,
-    'audit_logs':       isAdmin,
-    'full_admin':       isAdmin
+    'records_upload': true, 'files_view': true,
+    'records_organize': isAdmin, 'folders_add': isAdmin, 'records_delete': isAdmin,
+    'folders_delete': isAdmin, 'profile_edit': isAdmin, 'user_management': isAdmin,
+    'system_backup': isAdmin, 'audit_logs': isAdmin, 'full_admin': isAdmin
   };
-  
-  let html = `
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-      <p class="text-sm text-blue-800">
-        <strong>User:</strong> ${user.full_name} (${user.email})<br>
-        <strong>Role:</strong> ${roleDisplay}<br>
-        <strong>Access Level:</strong> ${isAdmin ? 'Full Access' : 'Limited Access'}
-      </p>
-    </div>
-    
+  let html = `<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+    <p class="text-sm text-blue-800"><strong>User:</strong> ${user.full_name} (${user.email})<br>
+    <strong>Role:</strong> ${roleDisplay}<br>
+    <strong>Access Level:</strong> ${isAdmin ? 'Full Access' : 'Limited Access'}</p></div>
     <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-      <p class="text-sm text-yellow-800">
-        <strong>Note:</strong> Privileges are automatically assigned based on role and cannot be individually modified.
-      </p>
-    </div>
-  `;
-  
+    <p class="text-sm text-yellow-800"><strong>Note:</strong> Privileges are automatically assigned based on role and cannot be individually modified.</p></div>`;
   const categories = {};
   for (const [key, def] of Object.entries(definitions)) {
     const cat = def.category || 'Other';
     if (!categories[cat]) categories[cat] = [];
-    categories[cat].push({
-      key,
-      label: def.label,
-      description: def.description,
-      enabled: privileges[key] || false
-    });
+    categories[cat].push({ key, label: def.label, description: def.description, enabled: privileges[key] || false });
   }
-  
   for (const [category, items] of Object.entries(categories)) {
-    html += `
-      <div class="mb-6">
-        <h4 class="font-semibold text-gray-800 mb-3">${category}</h4>
-        <div class="space-y-2">
-    `;
-    
+    html += `<div class="mb-6"><h4 class="font-semibold text-gray-800 mb-3">${category}</h4><div class="space-y-2">`;
     for (const item of items) {
-      const iconColor = item.enabled ? 'text-green-600' : 'text-gray-400';
-      const icon = item.enabled ? '✓' : '✗';
-      
-      html += `
-        <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-          <span class="text-xl ${iconColor}">${icon}</span>
-          <div class="flex-1">
-            <p class="font-medium text-gray-800">${item.label}</p>
-            <p class="text-xs text-gray-600">${item.description}</p>
-          </div>
-        </div>
-      `;
+      html += `<div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+        <span class="text-xl ${item.enabled ? 'text-green-600' : 'text-gray-400'}">${item.enabled ? '✓' : '✗'}</span>
+        <div class="flex-1"><p class="font-medium text-gray-800">${item.label}</p><p class="text-xs text-gray-600">${item.description}</p></div>
+      </div>`;
     }
-    
     html += `</div></div>`;
   }
-  
   content.innerHTML = html;
 }
-
 function closePrivilegesModal() {
   document.getElementById('privilegesModal').classList.remove('active');
 }
 
-// Search Table
+// ────────────────────────────────────────────────
+//   Search Table
+// ────────────────────────────────────────────────
 function searchTable() {
-  const input = document.getElementById('searchInput');
-  const filter = input.value.toLowerCase();
-  const table = document.getElementById('usersTable');
-  const rows = table.getElementsByTagName('tr');
-
+  const filter = document.getElementById('searchInput').value.toLowerCase();
+  const rows   = document.getElementById('usersTable').getElementsByTagName('tr');
   for (let i = 1; i < rows.length; i++) {
     const cells = rows[i].getElementsByTagName('td');
     let found = false;
-    
     for (let j = 0; j < cells.length; j++) {
-      const cell = cells[j];
-      if (cell) {
-        const textValue = cell.textContent || cell.innerText;
-        if (textValue.toLowerCase().indexOf(filter) > -1) {
-          found = true;
-          break;
-        }
-      }
+      if ((cells[j].textContent || cells[j].innerText).toLowerCase().indexOf(filter) > -1) { found = true; break; }
     }
-    
     rows[i].style.display = found ? '' : 'none';
   }
 }
 
-// ── Folder Access helpers ─────────────────────────────────────────────────
-
-/**
- * Called when the Edit modal opens.
- * Fetches all root folders from disk + which ones this user is assigned.
- * Renders them as checkboxes inside #folderCheckboxList.
- */
+// ────────────────────────────────────────────────
+//   Folder Access helpers
+// ────────────────────────────────────────────────
 function loadFolderAccess(userId) {
   var container = document.getElementById('folderCheckboxList');
   container.innerHTML = '<p class="text-xs text-gray-400 italic">Loading…</p>';
-
-  fetch('<?= base_url('super-admin/get-user-folders/') ?>' + userId, {
-    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (!data.success || !data.folders.length) {
-      container.innerHTML = '<p class="text-xs text-gray-400 italic">No folders found in the archive root yet.</p>';
-      return;
-    }
-    container.innerHTML = data.folders.map(function(folder) {
-      var checked = data.assigned.includes(folder) ? 'checked' : '';
-      return '<label class="flex items-center gap-2 p-2 bg-gray-50 rounded cursor-pointer hover:bg-green-50">'
-        + '<input type="checkbox" class="folder-access-cb h-4 w-4 rounded border-gray-300 text-green-600" value="' + folder + '" ' + checked + '>'
-        + '<span class="text-sm text-gray-700">📁 ' + folder + '</span>'
-        + '</label>';
-    }).join('');
-  })
-  .catch(function() {
-    container.innerHTML = '<p class="text-xs text-red-500">Could not load folders. Check your connection.</p>';
-  });
+  fetch('<?= base_url('super-admin/get-user-folders/') ?>' + userId, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success || !data.folders.length) {
+        container.innerHTML = '<p class="text-xs text-gray-400 italic">No folders found in the archive root yet.</p>';
+        return;
+      }
+      container.innerHTML = data.folders.map(function(folder) {
+        var checked = data.assigned.includes(folder) ? 'checked' : '';
+        return '<label class="flex items-center gap-2 p-2 bg-gray-50 rounded cursor-pointer hover:bg-green-50">'
+          + '<input type="checkbox" class="folder-access-cb h-4 w-4 rounded border-gray-300 text-green-600" value="' + folder + '" ' + checked + '>'
+          + '<span class="text-sm text-gray-700">📁 ' + folder + '</span></label>';
+      }).join('');
+    })
+    .catch(function() { container.innerHTML = '<p class="text-xs text-red-500">Could not load folders.</p>'; });
 }
-
-/**
- * Called just before the edit form submits.
- * Reads all checked folder checkboxes and puts them as JSON
- * into the hidden #folderAccessInput field.
- */
 function collectFolderAccess() {
-  var checked = Array.from(document.querySelectorAll('.folder-access-cb:checked'))
-                     .map(function(cb) { return cb.value; });
+  var checked = Array.from(document.querySelectorAll('.folder-access-cb:checked')).map(function(cb) { return cb.value; });
   document.getElementById('folderAccessInput').value = JSON.stringify(checked);
 }
 
-// ── END Folder Access helpers ──────────────
 // ────────────────────────────────────────────────
-//   Edit form: save privileges via AJAX, then submit
+//   Edit form submit: save privileges + MPIN via AJAX, then submit
 // ────────────────────────────────────────────────
 document.getElementById('editForm').addEventListener('submit', function(e) {
   e.preventDefault();
+  collectFolderAccess();
 
- collectFolderAccess();        // ← serialize folder checkboxes into hidden input first
-  var form     = this;
-  var userId   = form.dataset.userId;
-
-  var errorBox = document.getElementById('editPrivilegeError');
+  var form      = this;
+  var userId    = form.dataset.userId;
+  var errorBox  = document.getElementById('editPrivilegeError');
   var submitBtn = form.querySelector('button[type="submit"]');
-  var originalText = submitBtn.textContent;
+  var origText  = submitBtn.textContent;
 
-  // Build privileges object from checkboxes
+  // Validate MPIN if filled in
+  var mpinVal = document.getElementById('edit_mpin').value.trim();
+  if (mpinVal !== '' && !/^\d{4}$/.test(mpinVal)) {
+    errorBox.textContent = 'MPIN must be exactly 4 digits, or leave it blank to keep the current one.';
+    errorBox.classList.remove('hidden');
+    return;
+  }
+
   var privileges = {};
-  document.querySelectorAll('.edit-priv-cb').forEach(function(cb) {
-    privileges[cb.dataset.key] = cb.checked;
-  });
+  document.querySelectorAll('.edit-priv-cb').forEach(function(cb) { privileges[cb.dataset.key] = cb.checked; });
 
-  submitBtn.disabled = true;
+  submitBtn.disabled    = true;
   submitBtn.textContent = 'Saving…';
   errorBox.classList.add('hidden');
 
+  // Step 1: Save privileges
   fetch('<?= base_url('super-admin/update-user-privileges/'); ?>' + userId, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Requested-With': 'XMLHttpRequest'
-    },
+    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
     body: JSON.stringify({ privileges: privileges })
   })
   .then(function(res) { return res.json(); })
@@ -907,104 +941,92 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
     if (!json.success) {
       errorBox.textContent = json.message || 'Failed to save privileges.';
       errorBox.classList.remove('hidden');
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalText;
+      submitBtn.disabled    = false;
+      submitBtn.textContent = origText;
       return;
     }
-    // Privilege save succeeded – now submit the main form
-    form.submit();
+
+    // Step 2: Save MPIN if provided
+    if (mpinVal !== '') {
+      return fetch('<?= base_url('super-admin/set-mpin/'); ?>' + userId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ mpin: mpinVal })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(mpinJson) {
+        if (!mpinJson.success) {
+          errorBox.textContent = 'User updated but MPIN failed: ' + (mpinJson.message || 'Unknown error');
+          errorBox.classList.remove('hidden');
+          submitBtn.disabled    = false;
+          submitBtn.textContent = origText;
+          return;
+        }
+        form.submit();
+      });
+    } else {
+      // No MPIN entered — just submit the form
+      form.submit();
+    }
   })
   .catch(function() {
-    errorBox.textContent = 'Network error saving privileges. Please try again.';
+    errorBox.textContent = 'Network error. Please try again.';
     errorBox.classList.remove('hidden');
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
+    submitBtn.disabled    = false;
+    submitBtn.textContent = origText;
   });
 });
 
 // ────────────────────────────────────────────────
 //   Full Admin checkbox: check/uncheck all others
 // ────────────────────────────────────────────────
-(function () {
-  // The 11 individual privilege keys (everything except full_admin itself)
-  var ALL_PRIV_KEYS = [
-    'records_upload', 'files_view', 'records_organize',
-    'folders_add', 'records_delete', 'folders_delete',
-    'profile_edit', 'user_management', 'system_backup', 'audit_logs'
-  ];
-
-  // ── Add modal ──────────────────────────────────
+(function() {
   var addFullAdmin = document.getElementById('add_full_admin');
   if (addFullAdmin) {
-    addFullAdmin.addEventListener('change', function () {
-      var addCbs = document.querySelectorAll('.add-priv-cb');
-      addCbs.forEach(function (cb) {
-        if (cb !== addFullAdmin) cb.checked = addFullAdmin.checked;
-      });
+    addFullAdmin.addEventListener('change', function() {
+      document.querySelectorAll('.add-priv-cb').forEach(function(cb) { if (cb !== addFullAdmin) cb.checked = addFullAdmin.checked; });
     });
-
-    // If any individual add-checkbox is unchecked, uncheck Full Admin
-    document.querySelectorAll('.add-priv-cb').forEach(function (cb) {
+    document.querySelectorAll('.add-priv-cb').forEach(function(cb) {
       if (cb === addFullAdmin) return;
-      cb.addEventListener('change', function () {
+      cb.addEventListener('change', function() {
         if (!cb.checked) addFullAdmin.checked = false;
-        var allChecked = Array.from(document.querySelectorAll('.add-priv-cb')).every(function (c) {
-          return c.checked;
-        });
-        addFullAdmin.checked = allChecked;
+        addFullAdmin.checked = Array.from(document.querySelectorAll('.add-priv-cb')).every(function(c) { return c.checked; });
       });
     });
   }
-
-  // ── Edit modal ─────────────────────────────────
   var editFullAdmin = document.getElementById('ep_full_admin');
   if (editFullAdmin) {
-    editFullAdmin.addEventListener('change', function () {
-      var editCbs = document.querySelectorAll('.edit-priv-cb');
-      editCbs.forEach(function (cb) {
-        if (cb !== editFullAdmin) cb.checked = editFullAdmin.checked;
-      });
+    editFullAdmin.addEventListener('change', function() {
+      document.querySelectorAll('.edit-priv-cb').forEach(function(cb) { if (cb !== editFullAdmin) cb.checked = editFullAdmin.checked; });
     });
-
-    // If any individual edit-checkbox is unchecked, uncheck Full Admin
-    document.querySelectorAll('.edit-priv-cb').forEach(function (cb) {
+    document.querySelectorAll('.edit-priv-cb').forEach(function(cb) {
       if (cb === editFullAdmin) return;
-      cb.addEventListener('change', function () {
+      cb.addEventListener('change', function() {
         if (!cb.checked) editFullAdmin.checked = false;
-        var allChecked = Array.from(document.querySelectorAll('.edit-priv-cb')).every(function (c) {
-          return c.checked;
-        });
-        editFullAdmin.checked = allChecked;
+        editFullAdmin.checked = Array.from(document.querySelectorAll('.edit-priv-cb')).every(function(c) { return c.checked; });
       });
     });
   }
 })();
 
 // ────────────────────────────────────────────────
-//   Attach password toggles
+//   Attach password/PIN toggles
 // ────────────────────────────────────────────────
-togglePasswordVisibility('initial_password', 'toggleInitialPassword');
+togglePasswordVisibility('initial_password',  'toggleInitialPassword');
 togglePasswordVisibility('edit_new_password', 'toggleEditPassword');
+togglePasswordVisibility('add_mpin',          'toggleAddMpin');
+togglePasswordVisibility('edit_mpin',         'toggleEditMpin');
 
 // ────────────────────────────────────────────────
-//   Global event listeners
+//   Global close on backdrop click / Escape key
 // ────────────────────────────────────────────────
 window.onclick = function(event) {
-  const addModal = document.getElementById('addModal');
-  const editModal = document.getElementById('editModal');
-  const privilegesModal = document.getElementById('privilegesModal');
-  
-  if (event.target === addModal) closeAddModal();
-  if (event.target === editModal) closeEditModal();
-  if (event.target === privilegesModal) closePrivilegesModal();
+  if (event.target === document.getElementById('addModal'))        closeAddModal();
+  if (event.target === document.getElementById('editModal'))       closeEditModal();
+  if (event.target === document.getElementById('privilegesModal')) closePrivilegesModal();
 };
-
 document.addEventListener('keydown', function(event) {
-  if (event.key === 'Escape') {
-    closeAddModal();
-    closeEditModal();
-    closePrivilegesModal();
-  }
+  if (event.key === 'Escape') { closeAddModal(); closeEditModal(); closePrivilegesModal(); }
 });
 </script>
 <?= $this->endSection() ?>

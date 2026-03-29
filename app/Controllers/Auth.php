@@ -8,7 +8,9 @@ use App\Models\LoginAttemptModel;
 use App\Models\AccountLockModel;
 use App\Models\VerificationCodeModel;
 use App\Models\ActivityLogModel;
+use App\Models\MpinModel;
 use App\Libraries\EmailService;
+
 
 class Auth extends BaseController
 {
@@ -18,16 +20,19 @@ class Auth extends BaseController
     protected $verificationCodeModel;
     protected $activityLogModel;
     protected $emailService;
+    protected $mpinModel;
 
     public function __construct()
     {
-        $this->userModel = new UserModel();
-        $this->loginAttemptModel = new LoginAttemptModel();
-        $this->accountLockModel = new AccountLockModel();
+        $this->userModel             = new UserModel();
+        $this->loginAttemptModel     = new LoginAttemptModel();
+        $this->accountLockModel      = new AccountLockModel();
         $this->verificationCodeModel = new VerificationCodeModel();
-        $this->activityLogModel = new ActivityLogModel();
-        $this->emailService = new EmailService();
+        $this->activityLogModel      = new ActivityLogModel();
+        $this->emailService          = new EmailService();
+        $this->mpinModel             = new MpinModel();
     }
+
 
     /**
      * Show login page
@@ -158,23 +163,95 @@ class Auth extends BaseController
 
         // Store user info in session temporarily (not fully logged in yet)
         session()->set([
-            'temp_user_id' => $user['user_id'],
-            'temp_email' => $email,
+            'temp_user_id'   => $user['user_id'],
+            'temp_email'     => $email,
             'temp_full_name' => $user['full_name'],
-            'temp_role' => $user['role'],
-            'awaiting_2fa' => true
+            'temp_role'      => $user['role'],
+            'awaiting_2fa'   => true,
         ]);
 
-        // Log activity
-        $this->activityLogModel->logActivity($user['user_id'], 'password_verified', 'Password verified, awaiting 2FA');
+        $this->activityLogModel->logActivity($user['user_id'], 'password_verified', 'Password verified');
 
-        // Redirect to verification page
+        // MPIN shortcut: if admin has already set a valid non-expired MPIN for this
+        // user, skip OTP entirely and go straight to the MPIN entry page instead.
+        if ($this->mpinModel->hasMpin((int) $user['user_id'])
+            && !$this->mpinModel->isExpired((int) $user['user_id'])) {
+            session()->set('awaiting_mpin', true);
+            return redirect()->to('/auth/mpin-entry');
+        }
+
+        // No MPIN set yet, or MPIN expired → send OTP email as normal
+        $code = $this->verificationCodeModel->generateCode($user['user_id'], $email, 10);
+        if (!$code) {
+            return redirect()->back()->with('error', 'Failed to generate verification code. Please try again.');
+        }
+        $this->emailService->sendVerificationCode($email, $user['full_name'], $code);
+
         return redirect()->to('/auth/verify-code');
+    }
+
+    /**
+     * Show MPIN entry page
+     * Shown instead of OTP when admin has set a valid non-expired MPIN for this user
+     */
+    public function mpinEntryPage()
+    {
+        if (!session()->get('awaiting_mpin')) {
+            return redirect()->to('/login')->with('error', 'Please login first.');
+        }
+
+        return view('auth/mpin_entry', [
+            'full_name' => session()->get('temp_full_name'),
+            'email'     => session()->get('temp_email'),
+        ]);
+    }
+
+    /**
+     * Handle MPIN entry submission
+     */
+    public function verifyMpin()
+    {
+        if (!session()->get('awaiting_mpin')) {
+            return redirect()->to('/login')->with('error', 'Please login first.');
+        }
+
+        $userId = (int) session()->get('temp_user_id');
+        $mpin   = $this->request->getPost('mpin');
+
+        if (!$mpin || strlen((string) $mpin) !== 4 || !ctype_digit($mpin)) {
+            return redirect()->back()->with('error', 'Please enter your 4-digit MPIN.');
+        }
+
+        if (!$this->mpinModel->verifyMpin($userId, $mpin)) {
+            $this->activityLogModel->logActivity($userId, 'mpin_failed', 'Incorrect MPIN entered');
+            return redirect()->back()->with('error', 'Incorrect MPIN. Please try again.');
+        }
+
+        // MPIN correct — complete login
+        $user = $this->userModel->find($userId);
+        $this->userModel->updateLastLogin($userId);
+
+        session()->set([
+            'user_id'      => $user['user_id'],
+            'email'        => $user['email'],
+            'username'     => $user['username'] ?? null,
+            'full_name'    => $user['full_name'],
+            'role'         => $user['role'],
+            'access_level' => $user['access_level'],
+            'staff_unit'   => $user['staff_unit'] ?? null,
+            'logged_in'    => true,
+        ]);
+
+        $this->clearTempSession();
+        $this->activityLogModel->logActivity($userId, 'login_success', 'Logged in with MPIN');
+
+        return $this->redirectToDashboard();
     }
 
     /**
      * Show verification code page
      */
+
     public function verifyCodePage()
     {
         // Check if user is awaiting 2FA
