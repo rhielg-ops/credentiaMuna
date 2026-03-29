@@ -21,6 +21,26 @@ class Settings extends BaseController
         $this->mpinModel        = new MpinModel();
     }
 
+    /**
+     * Returns a redirect if the logged-in limited-admin lacks the given privilege.
+     * Full-access admins always pass.
+     */
+    protected function checkPrivilege(string $privilegeKey)
+    {
+        if (session()->get('access_level') === 'full') {
+            return null;
+        }
+
+        $privilegeModel = new \App\Models\UserPrivilegeModel();
+        $privs          = $privilegeModel->getUserPrivileges((int) session()->get('user_id'));
+
+        if (!($privs[$privilegeKey] ?? false)) {
+            return redirect()->to('/dashboard')
+                ->with('error', 'You do not have permission to access that page.');
+        }
+        return null;
+    }
+
 
     /**
      * Settings page - accessible by both Admin and Super Admin
@@ -43,17 +63,24 @@ class Settings extends BaseController
         }
 
         // Prepare data for the view
-        $data = [
-            'title'          => 'Settings - CredentiaTAU',
-            'email'          => $user['email'],
-            'role'           => $role,
-            'user_id'        => $userId,
-            'full_name'      => $user['full_name'],
-            'access_level'   => $user['access_level'] ?? 'full',
-            'user'           => $user,
-            'is_super_admin' => ($role === 'admin'),
-            'has_mpin'       => $this->mpinModel->hasMpin((int) $userId),
-        ];
+        $privilegeModel = new \App\Models\UserPrivilegeModel();
+$userPrivs      = $privilegeModel->getUserPrivileges((int) $userId);
+
+// Can edit if: full admin OR any role with profile_edit privilege checked
+$canEditProfile = ($role === 'admin' && ($user['access_level'] === 'full'))
+               || ($userPrivs['profile_edit'] ?? false);
+
+$data = [
+    'title'          => 'Settings - CredentiaTAU',
+    'email'          => $user['email'],
+    'role'           => $role,
+    'user_id'        => $userId,
+    'full_name'      => $user['full_name'],
+    'access_level'   => $user['access_level'] ?? 'full',
+    'user'           => $user,
+    'is_super_admin' => $canEditProfile,  // controls edit vs read-only in view
+    'has_mpin'       => $this->mpinModel->hasMpin((int) $userId),
+];
 
         return view('auth/settings', $data);
     }
@@ -63,14 +90,21 @@ class Settings extends BaseController
      */
     public function updateProfile()
     {
-        // Check if user is logged in and is super admin
         if (!session()->get('logged_in')) {
             return redirect()->to('/login')->with('error', 'Please log in first.');
         }
 
-        if (session()->get('role') !== 'admin') {
-            return redirect()->back()->with('error', 'Unauthorized. Only Admin can update profile.');
-        }
+       // Allow any role if they have the profile_edit privilege
+// Full admins bypass the privilege check entirely
+$privilegeModel = new \App\Models\UserPrivilegeModel();
+$userPrivs      = $privilegeModel->getUserPrivileges((int) session()->get('user_id'));
+$isFullAdmin    = (session()->get('role') === 'admin'
+               && session()->get('access_level') === 'full');
+
+if (!$isFullAdmin && !($userPrivs['profile_edit'] ?? false)) {
+    return redirect()->back()
+        ->with('error', 'You do not have permission to edit your profile.');
+}
 
         $userId = session()->get('user_id');
 
@@ -124,15 +158,19 @@ class Settings extends BaseController
      */
     public function changePassword()
     {
-        // Check if user is logged in and is super admin
         if (!session()->get('logged_in')) {
             return redirect()->to('/login')->with('error', 'Please log in first.');
         }
 
-        if (session()->get('role') !== 'admin') {
-            return redirect()->back()->with('error', 'Unauthorized. Only Admin can change password.');
-        }
+        $privilegeModel = new \App\Models\UserPrivilegeModel();
+$userPrivs      = $privilegeModel->getUserPrivileges((int) session()->get('user_id'));
+$isFullAdmin    = (session()->get('role') === 'admin'
+               && session()->get('access_level') === 'full');
 
+if (!$isFullAdmin && !($userPrivs['profile_edit'] ?? false)) {
+    return redirect()->back()
+        ->with('error', 'You do not have permission to change your password.');
+}
         $userId = session()->get('user_id');
 
         // Validate input
@@ -178,14 +216,16 @@ class Settings extends BaseController
      */
     public function activityLogs()
     {
-        // Check if user is logged in and is super admin
         if (!session()->get('logged_in')) {
             return redirect()->to('/login')->with('error', 'Please log in first.');
         }
 
         if (session()->get('role') !== 'admin') {
-            return redirect()->to('/dashboard')->with('error', 'Unauthorized. Super Admin access required.');
+            return redirect()->to('/dashboard')->with('error', 'You do not have permission to access the activity logs page.');
         }
+
+        $redirect = $this->checkPrivilege('audit_logs');
+        if ($redirect) return $redirect;
 
         // Get filter parameters
         $actionFilter = $this->request->getGet('action') ?? 'all';

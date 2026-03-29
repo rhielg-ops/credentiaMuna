@@ -606,6 +606,23 @@
         </svg>
       </button>
     </div>
+
+    <!-- Group tab bar -->
+    <div class="flex gap-1 mb-6 border-b border-gray-200">
+      <button id="gpTab_default" onclick="switchGpTab('default')"
+              class="gp-tab px-5 py-2 text-sm font-semibold rounded-t-lg border border-b-0 border-gray-200 bg-indigo-600 text-white">
+        Default Privileges
+      </button>
+      <button id="gpTab_admin" onclick="switchGpTab('admin')"
+              class="gp-tab px-5 py-2 text-sm font-semibold rounded-t-lg border border-b-0 border-gray-200 bg-white text-gray-600 hover:bg-gray-50">
+        Admin
+      </button>
+      <button id="gpTab_user" onclick="switchGpTab('user')"
+              class="gp-tab px-5 py-2 text-sm font-semibold rounded-t-lg border border-b-0 border-gray-200 bg-white text-gray-600 hover:bg-gray-50">
+        User
+      </button>
+    </div>
+
     <div id="groupPrivilegesContent">
       <p class="text-gray-400 text-center py-8">Loading...</p>
     </div>
@@ -698,11 +715,33 @@ function togglePasswordVisibility(inputId, buttonId) {
 // ────────────────────────────────────────────────
 function openGroupPrivilegesModal() {
   document.getElementById('groupPrivilegesModal').classList.add('active');
-  loadGroupPrivileges();
+  switchGpTab('default');
 }
 function closeGroupPrivilegesModal() {
   document.getElementById('groupPrivilegesModal').classList.remove('active');
 }
+
+// ── Tab switcher ──────────────────────────────────────────────────────────────
+function switchGpTab(tab) {
+  // Update tab button styles
+  ['default', 'admin', 'user'].forEach(function(t) {
+    var btn = document.getElementById('gpTab_' + t);
+    if (!btn) return;
+    if (t === tab) {
+      btn.className = 'gp-tab px-5 py-2 text-sm font-semibold rounded-t-lg border border-b-0 border-gray-200 bg-indigo-600 text-white';
+    } else {
+      btn.className = 'gp-tab px-5 py-2 text-sm font-semibold rounded-t-lg border border-b-0 border-gray-200 bg-white text-gray-600 hover:bg-gray-50';
+    }
+  });
+
+  if (tab === 'default') {
+    loadGroupPrivileges();
+  } else {
+    loadGroupUserList(tab);
+  }
+}
+
+// ── Default Privileges tab ────────────────────────────────────────────────────
 function loadGroupPrivileges() {
   const container = document.getElementById('groupPrivilegesContent');
   container.innerHTML = '<p class="text-gray-400 text-center py-8">Loading...</p>';
@@ -741,6 +780,91 @@ function buildGroupPrivilegesTable(matrix, definitions) {
     });
   });
   html += `</tbody></table><p class="text-xs text-gray-400 mt-4">* Group privileges are fixed defaults. Individual overrides are tracked in the Activity Log.</p>`;
+  return html;
+}
+
+// ── Admin / User tabs — individual user privilege list ─────────────────────────
+// ── Admin / User tabs — individual user privilege list ─────────────────────────
+function loadGroupUserList(role) {
+  var container = document.getElementById('groupPrivilegesContent');
+  container.innerHTML = '<p class="text-gray-400 text-center py-8">Loading...</p>';
+
+  var privKeys = [
+    { key: 'records_upload',   label: 'Upload Records' },
+    { key: 'files_view',       label: 'View Files' },
+    { key: 'records_organize', label: 'Organize Records' },
+    { key: 'folders_add',      label: 'Add Folders' },
+    { key: 'records_delete',   label: 'Delete Records' },
+    { key: 'folders_delete',   label: 'Delete Folders' },
+    { key: 'profile_edit',     label: 'Edit Profile' },
+    { key: 'user_management',  label: 'Manage Users' },
+    { key: 'system_backup',    label: 'System Backup' },
+    { key: 'audit_logs',       label: 'Audit Logs' },
+    { key: 'full_admin',       label: 'Full Admin' },
+  ];
+
+  fetch('<?= base_url('super-admin/users-by-role/') ?>' + role)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.success) {
+        container.innerHTML = '<p class="text-red-500 text-center py-8">Failed to load users.</p>';
+        return;
+      }
+      if (!data.users || data.users.length === 0) {
+        var label = (role === 'admin') ? 'admin' : 'user';
+        container.innerHTML = '<p class="text-gray-400 text-center py-8">No ' + label + ' accounts found.</p>';
+        return;
+      }
+      // Map API response to the shape expected by buildUserPrivilegesTable
+      var enrichedUsers = data.users.map(function(u) {
+        return {
+          id:         u.user_id,
+          name:       u.full_name,
+          email:      u.email,
+          privileges: u.privileges || {}
+        };
+      });
+      container.innerHTML = buildUserPrivilegesTable(enrichedUsers, privKeys, role);
+    })
+    .catch(function() {
+      container.innerHTML = '<p class="text-red-500 text-center py-8">Network error. Please try again.</p>';
+    });
+}
+
+
+function buildUserPrivilegesTable(users, privKeys, role) {
+  var roleLabel = role === 'admin' ? 'Admin' : 'User';
+  var check = '<span class="text-green-600 font-bold text-lg">&#10003;</span>';
+  var dash  = '<span class="text-gray-300 text-lg">&ndash;</span>';
+
+  // Header row: first col = Privilege, then one col per user
+  var html = '<div class="overflow-x-auto">';
+  html += '<table class="w-full text-sm border-collapse">';
+  html += '<thead><tr class="bg-gray-100">';
+  html += '<th class="text-left px-4 py-3 font-semibold text-gray-700 border border-gray-200 sticky left-0 bg-gray-100" style="min-width:160px;">Privilege</th>';
+  users.forEach(function(u) {
+    var initials = u.name.split(' ').map(function(w){ return w[0]; }).slice(0,2).join('').toUpperCase();
+    html += '<th class="text-center px-3 py-3 border border-gray-200" style="min-width:110px;">'
+          + '<div class="flex flex-col items-center gap-1">'
+          + '<div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-semibold">' + initials + '</div>'
+          + '<span class="font-semibold text-gray-700 text-xs leading-tight text-center" style="max-width:100px;word-break:break-word;">' + u.name + '</span>'
+          + '</div></th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  // One row per privilege
+  privKeys.forEach(function(priv) {
+    html += '<tr class="hover:bg-gray-50">';
+    html += '<td class="px-4 py-2 border border-gray-200 font-medium text-gray-800 sticky left-0 bg-white">' + priv.label + '</td>';
+    users.forEach(function(u) {
+      var has = u.privileges[priv.key] === true || u.privileges[priv.key] === 1;
+      html += '<td class="text-center px-3 py-2 border border-gray-200">' + (has ? check : dash) + '</td>';
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  html += '<p class="text-xs text-gray-400 mt-4">Showing individual privilege assignments for all <strong>' + roleLabel + '</strong> accounts. Edit via the User Management table.</p>';
   return html;
 }
 document.addEventListener('DOMContentLoaded', function() {

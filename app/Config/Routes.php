@@ -73,6 +73,7 @@ $routes->group('super-admin', function ($routes) {
     $routes->post('set-mpin/(:num)',   'SuperAdmin::setUserMpin/$1');
     $routes->get( 'get-user-folders/(:num)',    'SuperAdmin::getUserFolders/$1');
     $routes->post('update-user-folders/(:num)', 'SuperAdmin::updateUserFolders/$1');
+    $routes->get('users-by-role/(:alpha)',      'SuperAdmin::getUsersByRole/$1');
 
 
     // Requires audit_logs privilege (or admin role)

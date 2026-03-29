@@ -29,7 +29,7 @@
 </div>
 <?php endif; ?>
 
-<?php $is_super_admin = ($user['role'] === 'admin' && $user['access_level'] === 'full'); ?>
+
 
 <?php if (!$is_super_admin): ?>
 <!-- Info Notice for Admin -->

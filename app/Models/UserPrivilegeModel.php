@@ -86,12 +86,16 @@ class UserPrivilegeModel extends Model
                          ->first();
         
         if ($existing) {
-           return $this->update($existing['privilege_id'], ['privilege_value' => $value ? 1 : 0]);
+            return $this->update($existing['privilege_id'], [
+                'privilege_value' => $value ? 1 : 0,
+                'status'          => 'active',
+            ]);
         } else {
             return $this->insert([
-                'user_id' => $userId,
-                'privilege_key' => $privilegeKey,
-                'privilege_value' => $value ? 1 : 0
+                'user_id'         => $userId,
+                'privilege_key'   => $privilegeKey,
+                'privilege_value' => $value ? 1 : 0,
+                'status'          => 'active',
             ]);
         }
     }

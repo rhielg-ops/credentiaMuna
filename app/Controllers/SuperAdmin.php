@@ -41,13 +41,40 @@ class SuperAdmin extends BaseController
      * Check if user is super admin
      */
     protected function checkSuperAdmin()
-    {
-        if (!session()->get('logged_in') || session()->get('role') !== 'admin') {
-            return redirect()->to('/login')->with('error', 'Unauthorized access.');
-        }
+{
+    if (!session()->get('logged_in')) {
+        return redirect()->to('/login')->with('error', 'Unauthorized access.');
+    }
+    return null;
+}
+
+    /**
+     * Check if the logged-in user has a specific privilege.
+     * Admins with access_level='full' always pass (they are the true super-admins).
+     * Admins with access_level='limited' must have the privilege explicitly set to true.
+     */
+    protected function checkPrivilege(string $privilegeKey)
+{
+    // Full admins always pass — they have unrestricted access
+    if (session()->get('role') === 'admin' 
+        && session()->get('access_level') === 'full') {
         return null;
     }
 
+    $userId = (int) session()->get('user_id');
+    $privs  = $this->privilegeModel->getUserPrivileges($userId);
+
+    if (!($privs[$privilegeKey] ?? false)) {
+        // Redirect users to their own dashboard, admins to super-admin dashboard
+        $redirectTo = session()->get('role') === 'admin'
+            ? '/super-admin/dashboard'
+            : '/dashboard';
+
+        return redirect()->to($redirectTo)
+            ->with('error', 'You do not have permission to access that page.');
+    }
+    return null;
+}
     /**
      * Dashboard
      */
@@ -87,7 +114,11 @@ class SuperAdmin extends BaseController
      */
     public function userManagement()
     {
-        $redirect = $this->checkSuperAdmin();
+        if (!session()->get('logged_in')) {
+        return redirect()->to('/login');
+    }
+
+        $redirect = $this->checkPrivilege('user_management');
         if ($redirect) return $redirect;
 
         // Get all users with record counts
@@ -144,6 +175,9 @@ class SuperAdmin extends BaseController
         $redirect = $this->checkSuperAdmin();
         if ($redirect) return $redirect;
 
+        $redirect = $this->checkPrivilege('system_backup');
+        if ($redirect) return $redirect;
+
         $data = [
             'title' => 'System Backup - CredentiaTAU',
             'email' => session()->get('email'),
@@ -157,21 +191,23 @@ class SuperAdmin extends BaseController
     /**
      * Settings
      */
-    public function settings()
+   public function settings()
     {
         $redirect = $this->checkSuperAdmin();
         if ($redirect) return $redirect;
 
-        $data = [
-            'title' => 'Settings - CredentiaTAU',
-            'email' => session()->get('email'),
-            'role'  => session()->get('role'),
-            'full_name' => session()->get('full_name') ?? 'Admin',
-            'user_id' => session()->get('user_id')
-        ];
+        // Only block limited admins who lack profile_edit.
+        // Full admins always pass through.
+        if (session()->get('access_level') !== 'full') {
+            $redirect = $this->checkPrivilege('profile_edit');
+            if ($redirect) return $redirect;
+        }
 
-        return view('super_admin/settings', $data);
+        // Delegate to the Settings controller so the full settings page
+        // (profile edit, password change, MPIN, activity logs) is shown.
+        return (new \App\Controllers\Settings())->index();
     }
+
 
     /**
      * Add Admin
@@ -271,11 +307,15 @@ class SuperAdmin extends BaseController
             return redirect()->back()->with('error', 'User not found.');
         }
         // ERD Rule: Admin cannot edit own privileges or another admin's privileges
-        if (!$this->privilegeModel->canAdminEditPrivilege(
-                (int) session()->get('user_id'), (int) $id)) {
-            return redirect()->back()
-                ->with('error', 'You cannot edit privileges for this account.');
+        // or their own account. Full admins (super-admins) bypass this check.
+        if (session()->get('access_level') !== 'full') {
+            if (!$this->privilegeModel->canAdminEditPrivilege(
+                    (int) session()->get('user_id'), (int) $id)) {
+                return redirect()->back()
+                    ->with('error', 'You cannot edit privileges for this account.');
+            }
         }
+
 
 
         // Validate input
@@ -310,11 +350,11 @@ class SuperAdmin extends BaseController
             $updateData['password'] = $newPassword; // Will be hashed by model
         }
 
-        // If role changed, update privileges
-        if ($existingUser['role'] !== $updateData['role']) {
-            $this->privilegeModel->deleteUserPrivileges($id);
-            $this->privilegeModel->initializeUserPrivileges($id, $updateData['role']);
-        }
+        // NOTE: Privileges are saved separately via AJAX (update-user-privileges).
+        // Do NOT reset them here — doing so would overwrite the admin's selections.
+        // If you need to seed privileges for a brand-new role assignment, do it
+        // only when no privileges exist yet for this user (handled in approveAdmin).
+
 
         if ($this->userModel->update($id, $updateData)) {
             // Log activity
@@ -944,6 +984,9 @@ private function _getUserPrivilegesData($userId)
         $redirect = $this->checkSuperAdmin();
         if ($redirect) return $redirect;
 
+        $redirect = $this->checkPrivilege('audit_logs');
+        if ($redirect) return $redirect;
+
         // Get filter parameters
         $action = $this->request->getGet('action');
         $timeRange = $this->request->getGet('time_range') ?? '7';
@@ -1058,6 +1101,52 @@ private function _getUserPrivilegesData($userId)
             'folder_distribution' => $folderDistribution,
             'monthly_data'        => $monthlyData,
         ];
+    }
+
+/**
+     * Get all users of a given role with their privileges (AJAX)
+     * Route: GET super-admin/users-by-role/{role}
+     */
+    public function getUsersByRole(string $role)
+    {
+        if ($redirect = $this->checkSuperAdmin()) return $redirect;
+
+        if (!in_array($role, ['admin', 'user'])) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid role.']);
+        }
+
+        $db = \Config\Database::connect();
+
+        $users = $db->table('users')
+            ->select('user_id, full_name, email, username, role, status, access_level')
+            ->where('role', $role)
+            ->orderBy('full_name', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        if (empty($users)) {
+            return $this->response->setJSON(['success' => true, 'users' => []]);
+        }
+
+        $userIds = array_column($users, 'user_id');
+
+        $privRows = $db->table('user_privileges')
+            ->select('user_id, privilege_key, privilege_value')
+            ->whereIn('user_id', $userIds)
+            ->where('status', 'active')
+            ->get()
+            ->getResultArray();
+
+        $privMap = [];
+        foreach ($privRows as $row) {
+            $privMap[$row['user_id']][$row['privilege_key']] = (bool) $row['privilege_value'];
+        }
+
+        foreach ($users as &$user) {
+            $user['privileges'] = $privMap[$user['user_id']] ?? [];
+        }
+
+        return $this->response->setJSON(['success' => true, 'users' => $users]);
     }
 
 }
