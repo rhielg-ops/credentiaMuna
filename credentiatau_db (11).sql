@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3307
--- Generation Time: Mar 02, 2026 at 01:13 PM
+-- Generation Time: Mar 13, 2026 at 10:28 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -72,12 +72,20 @@ CREATE TABLE `access_requests` (
 
 CREATE TABLE `account_locks` (
   `lock_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
   `email` varchar(255) NOT NULL,
   `lock_type` enum('password_attempts','code_attempts') NOT NULL,
   `locked_at` timestamp NULL DEFAULT NULL,
   `unlock_at` timestamp NULL DEFAULT NULL,
   `is_unlocked` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `account_locks`
+--
+
+INSERT INTO `account_locks` (`lock_id`, `user_id`, `email`, `lock_type`, `locked_at`, `unlock_at`, `is_unlocked`) VALUES
+(1, 7, 'rhielg1@gmail.com', 'password_attempts', '2026-03-05 19:00:54', '2026-03-05 19:05:54', 0);
 
 -- --------------------------------------------------------
 
@@ -461,7 +469,73 @@ INSERT INTO `activity_logs` (`log_id`, `user_id`, `action`, `description`, `ip_a
 (358, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 11:29:01'),
 (359, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 11:30:38'),
 (360, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 03:29:59'),
-(361, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 03:30:16');
+(361, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 03:30:16'),
+(362, 7, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 15:03:05'),
+(363, 7, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 15:03:25'),
+(364, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:42:10'),
+(365, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:43:46'),
+(366, 1, 'privileges_updated', 'Updated privileges for user: rhielg1@gmail.com (username: rhiel)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:44:18'),
+(367, 1, 'user_updated', 'Updated user: rhielg1@gmail.com - Updated user details', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:44:19'),
+(368, 1, 'logout', 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:44:23'),
+(369, 7, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:45:09'),
+(370, 7, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:45:42'),
+(371, 7, 'logout', 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 03:20:50'),
+(372, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 03:28:37'),
+(373, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 03:29:46'),
+(374, 1, 'user_deactivated', 'Deactivated user: rhielg1@gmail.com (username: rhiel)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 04:02:28'),
+(375, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:41:09'),
+(376, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:41:37'),
+(377, 1, 'logout', 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:41:49'),
+(378, 7, 'reactivation_requested', 'User submitted reactivation request', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:42:44'),
+(379, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:43:17'),
+(380, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:43:56'),
+(381, 1, 'user_deactivated', 'Deactivated user: caldona.jayancarlo15@gmail.com (username: jayan12)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 14:36:29'),
+(382, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 13:59:19'),
+(383, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 13:59:33'),
+(384, 1, 'user_approved', 'Approved user: rhielg1@gmail.com (username: rhiel)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 15:54:23'),
+(385, 1, 'logout', 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 15:55:47'),
+(386, 7, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 15:56:08'),
+(387, 7, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 15:57:14'),
+(388, 7, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 02:25:56'),
+(389, 7, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 02:26:18'),
+(390, 7, 'logout', 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 02:31:26'),
+(391, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 02:31:48'),
+(392, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 02:32:05'),
+(393, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 08:35:13'),
+(394, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 08:35:45'),
+(395, 7, 'account_locked', 'Account locked due to failed password attempts', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-06 03:01:01'),
+(396, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-07 06:18:57'),
+(397, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-07 06:19:17'),
+(398, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 07:37:00'),
+(399, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 07:39:03'),
+(400, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 13:00:02'),
+(401, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 13:00:13'),
+(402, 1, 'logout', 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:12:22'),
+(403, 7, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:12:44'),
+(404, 7, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:13:18'),
+(405, 7, 'logout', 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:15:02'),
+(406, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:15:20'),
+(407, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:15:37'),
+(408, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-09 07:03:30'),
+(409, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-09 07:03:42'),
+(410, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 07:38:31'),
+(411, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 07:39:00'),
+(412, 1, 'privileges_updated', 'Updated privileges for user: rhielg1@gmail.com (username: rhiel)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 11:24:33'),
+(413, 1, 'user_updated', 'Updated user: rhielg1@gmail.com - Updated user details', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 11:24:33'),
+(414, 1, 'logout', 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 11:24:37'),
+(415, 7, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 11:24:56'),
+(416, 7, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 11:25:24'),
+(417, 7, 'logout', 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 11:26:42'),
+(418, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-12 06:50:24'),
+(419, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-12 06:50:39'),
+(420, 1, 'user_created', 'Created new Admin (Former Super Admin): johnbenedictr45@gmail.com (username: benedict)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-12 06:55:24'),
+(421, 1, 'user_created', 'Created new Admin (Former Super Admin): oliverfiesta30@gmail.com (username: oliver)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-12 06:57:39'),
+(422, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 04:08:29'),
+(423, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 04:08:48'),
+(424, 1, 'password_verified', 'Password verified', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 08:07:58'),
+(425, 1, 'otp_verified', 'OTP verified successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 08:08:19'),
+(426, 1, 'password_verified', 'Password verified, awaiting 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 08:46:28'),
+(427, 1, 'login_success', 'Successfully logged in with 2FA', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 08:46:46');
 
 -- --------------------------------------------------------
 
@@ -489,7 +563,8 @@ CREATE TABLE `approval_requests` (
 --
 
 INSERT INTO `approval_requests` (`approval_id`, `user_id`, `email`, `full_name`, `request_type`, `status`, `message`, `ip_address`, `user_agent`, `requested_at`, `reviewed_at`, `reviewed_by`) VALUES
-(2, 5, 'teamorjj@gmail.com', 'Orjj', 'reactivation', 'approved', 'User requesting account reactivation', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 12:41:40', '2026-02-25 04:44:55', 1);
+(2, 5, 'teamorjj@gmail.com', 'Orjj', 'reactivation', 'approved', 'User requesting account reactivation', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 12:41:40', '2026-02-25 04:44:55', 1),
+(3, 7, 'rhielg1@gmail.com', 'Rhiel', 'reactivation', 'approved', 'User requesting account reactivation', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:42:34', '2026-03-04 07:54:23', 1);
 
 -- --------------------------------------------------------
 
@@ -513,12 +588,49 @@ CREATE TABLE `file_metadata` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `group_privileges`
+--
+
+CREATE TABLE `group_privileges` (
+  `gprivilege_id` int(11) NOT NULL,
+  `role_id` int(11) NOT NULL,
+  `privilege_key` varchar(50) NOT NULL,
+  `group_modules` varchar(100) DEFAULT NULL COMMENT 'System module this privilege applies to',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `group_privileges`
+--
+
+INSERT INTO `group_privileges` (`gprivilege_id`, `role_id`, `privilege_key`, `group_modules`, `created_at`) VALUES
+(1, 1, 'records_upload', 'Records Management', '2026-03-13 03:27:29'),
+(2, 1, 'files_view', 'Records Management', '2026-03-13 03:27:29'),
+(3, 1, 'records_organize', 'Records Management', '2026-03-13 03:27:29'),
+(4, 1, 'folders_add', 'Records Management', '2026-03-13 03:27:29'),
+(5, 1, 'records_delete', 'Records Management', '2026-03-13 03:27:29'),
+(6, 1, 'folders_delete', 'Records Management', '2026-03-13 03:27:29'),
+(7, 1, 'records_update', 'Records Management', '2026-03-13 03:27:29'),
+(8, 1, 'profile_edit', 'Profile Management', '2026-03-13 03:27:29'),
+(9, 1, 'user_management', 'Administration', '2026-03-13 03:27:29'),
+(10, 1, 'system_backup', 'Administration', '2026-03-13 03:27:29'),
+(11, 1, 'audit_logs', 'Administration', '2026-03-13 03:27:29'),
+(12, 1, 'full_admin', 'Administration', '2026-03-13 03:27:29'),
+(13, 2, 'records_upload', 'Records Management', '2026-03-13 03:27:29'),
+(14, 2, 'files_view', 'Records Management', '2026-03-13 03:27:29'),
+(16, 2, 'records_organize', 'Records Management', '2026-03-13 04:37:11'),
+(17, 2, 'folders_add', 'Records Management', '2026-03-13 04:37:11');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `login_attempts`
 --
 
 CREATE TABLE `login_attempts` (
   `attempt_id` int(11) NOT NULL,
   `email` varchar(255) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
   `attempt_type` enum('password','verification_code') NOT NULL,
   `is_successful` tinyint(1) DEFAULT 0,
   `ip_address` varchar(45) DEFAULT NULL,
@@ -530,242 +642,347 @@ CREATE TABLE `login_attempts` (
 -- Dumping data for table `login_attempts`
 --
 
-INSERT INTO `login_attempts` (`attempt_id`, `email`, `attempt_type`, `is_successful`, `ip_address`, `user_agent`, `attempted_at`) VALUES
-(1, 'artryry6@gmail.com', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 03:21:58'),
-(2, 'artryry6@gmail.com', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 03:22:18'),
-(3, 'artryry6@gmail.com', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 03:23:53'),
-(4, 'artryry6@gmail.com', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 03:40:58'),
-(5, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 08:54:32'),
-(6, 'artryry6@gmail.com', 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 08:56:56'),
-(7, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 08:57:28'),
-(8, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 11:06:57'),
-(9, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 11:07:26'),
-(10, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 11:23:08'),
-(11, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 11:23:30'),
-(12, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 15:12:41'),
-(13, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 15:13:05'),
-(14, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 15:15:50'),
-(15, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 15:16:31'),
-(16, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:05:03'),
-(17, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:05:45'),
-(18, 'mltripoli@tau.edu.ph', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:08:54'),
-(19, 'mltripoli@tau.edu.ph', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:09:40'),
-(20, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:11:13'),
-(21, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:11:37'),
-(22, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 13:37:18'),
-(23, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 13:37:39'),
-(24, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 14:44:20'),
-(25, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 14:44:47'),
-(26, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 15:51:47'),
-(27, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 15:52:11'),
-(28, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 15:56:02'),
-(29, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 15:56:19'),
-(30, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:07:27'),
-(31, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:07:58'),
-(32, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:13:11'),
-(33, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:13:36'),
-(34, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:14:17'),
-(35, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:14:39'),
-(36, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 04:51:52'),
-(37, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 04:52:21'),
-(38, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:18:18'),
-(39, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:18:59'),
-(40, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:21:21'),
-(41, 'abalaryxel@gmail.com', 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:22:04'),
-(42, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:22:26'),
-(43, 'artryry6@gmail.com', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:28:04'),
-(44, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:28:27'),
-(45, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:28:53'),
-(46, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-30 15:30:27'),
-(47, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-30 15:30:43'),
-(48, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-31 09:44:46'),
-(49, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-31 09:45:06'),
-(50, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-01 05:06:11'),
-(51, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-01 05:06:38'),
-(52, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-01 09:41:48'),
-(53, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-01 09:42:11'),
-(54, 'artryry6@gmail.com', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:07:05'),
-(55, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:07:27'),
-(56, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:08:09'),
-(57, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:20:04'),
-(58, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:20:32'),
-(59, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:24:34'),
-(60, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:25:05'),
-(61, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:47:48'),
-(62, 'abalaryxel@gmail.com', 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:48:52'),
-(63, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:49:08'),
-(64, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 14:40:40'),
-(65, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 14:41:10'),
-(66, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 03:06:24'),
-(67, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 03:06:51'),
-(68, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 03:46:00'),
-(69, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 08:04:13'),
-(70, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 08:04:41'),
-(71, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 08:15:07'),
-(72, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 08:15:39'),
-(73, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 09:09:58'),
-(74, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 09:10:29'),
-(75, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 09:47:36'),
-(76, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 09:48:07'),
-(77, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-05 15:30:01'),
-(78, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-05 15:30:35'),
-(79, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-05 15:34:51'),
-(80, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-05 15:35:10'),
-(81, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 01:52:38'),
-(82, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 01:53:00'),
-(83, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 07:18:58'),
-(84, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 07:19:22'),
-(85, 'artryry6@gmail.com', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:00:28'),
-(86, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:00:43'),
-(87, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:01:12'),
-(88, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:02:57'),
-(89, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:03:17'),
-(90, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:05:09'),
-(91, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:05:27'),
-(92, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:19:10'),
-(93, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:19:33'),
-(94, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 18:02:38'),
-(95, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 18:02:56'),
-(96, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 02:12:53'),
-(97, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 02:13:18'),
-(98, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:18:04'),
-(99, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:18:44'),
-(100, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:20:24'),
-(101, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:20:43'),
-(102, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:44:11'),
-(103, 'abalaryxel@gmail.com', 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:45:06'),
-(104, 'abalaryxel@gmail.com', 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:45:15'),
-(105, 'abalaryxel@gmail.com', 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:45:41'),
-(106, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:46:10'),
-(107, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:48:13'),
-(108, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:48:38'),
-(109, 'artryry6@gmail.com', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:27:15'),
-(110, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:27:24'),
-(111, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:27:29'),
-(112, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:27:53'),
-(113, 'abalaryxel@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:29:26'),
-(114, 'abalaryxel@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:29:52'),
-(115, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 04:09:43'),
-(116, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 04:10:14'),
-(117, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 13:58:46'),
-(118, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 13:59:24'),
-(119, 'teamorjj@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:27:07'),
-(120, 'teamorjj@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:27:27'),
-(121, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:27:54'),
-(122, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:28:18'),
-(123, 'teamorjj@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:30:48'),
-(124, 'teamorjj@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:31:16'),
-(125, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:32:18'),
-(126, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:32:36'),
-(127, 'artryry6@username.login', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-14 14:54:08'),
-(128, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-14 14:54:41'),
-(129, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-14 14:55:07'),
-(130, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-15 08:15:40'),
-(131, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-15 08:16:01'),
-(132, 'orrr123@username.login', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-15 09:09:25'),
-(133, 'teamorjj@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-15 09:10:15'),
-(134, 'teamorjj@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-15 09:10:41'),
-(135, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 06:25:11'),
-(136, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 06:26:10'),
-(137, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 12:13:08'),
-(138, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 12:13:29'),
-(139, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 15:25:42'),
-(140, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 15:26:11'),
-(141, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-18 02:35:13'),
-(142, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-18 02:35:32'),
-(143, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:22:23'),
-(144, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:22:48'),
-(145, 'caldona.jayancarlo15@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:48:46'),
-(146, 'caldona.jayancarlo15@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:49:05'),
-(147, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:49:44'),
-(148, 'artryry6@gmail.com', 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:50:12'),
-(149, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:50:24'),
-(150, 'caldona.jayancarlo15@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:51:08'),
-(151, 'caldona.jayancarlo15@gmail.com', 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:51:29'),
-(152, 'caldona.jayancarlo15@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:51:48'),
-(153, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:53:36'),
-(154, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:53:54'),
-(155, 'caldona.jayancarlo15@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 07:49:59'),
-(156, 'caldona.jayancarlo15@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 07:50:18'),
-(157, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 07:53:08'),
-(158, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 07:53:34'),
-(159, 'caldona.jayancarlo15@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 09:29:56'),
-(160, 'caldona.jayancarlo15@gmail.com', 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 09:30:15'),
-(161, 'caldona.jayancarlo15@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 09:30:29'),
-(162, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 09:32:03'),
-(163, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 09:32:43'),
-(164, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-19 14:49:57'),
-(165, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-19 14:51:29'),
-(166, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-19 23:06:30'),
-(167, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-19 23:07:04'),
-(168, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 01:12:57'),
-(169, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 01:13:37'),
-(170, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 04:37:55'),
-(171, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 04:39:08'),
-(172, 'artryry6@gmail.com', 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 13:09:30'),
-(173, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 13:09:45'),
-(174, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 13:10:03'),
-(175, 'teamorjj@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 13:19:30'),
-(176, 'teamorjj@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 13:19:49'),
-(177, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-22 12:38:08'),
-(178, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-22 12:38:50'),
-(179, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-23 09:51:18'),
-(180, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-23 09:52:12'),
-(181, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-24 14:16:34'),
-(182, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-24 14:16:55'),
-(183, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 06:30:21'),
-(184, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 06:30:46'),
-(185, 'teamorjj@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 07:52:08'),
-(186, 'teamorjj@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 07:52:38'),
-(187, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 07:54:15'),
-(188, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 07:54:34'),
-(189, 'teamorjj@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:07:52'),
-(190, 'teamorjj@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:08:40'),
-(191, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:09:59'),
-(192, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:10:16'),
-(193, 'teamorjj@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:11:03'),
-(194, 'teamorjj@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:11:36'),
-(195, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:27:51'),
-(196, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:30:05'),
-(197, 'teamorjj@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:31:35'),
-(198, 'teamorjj@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:32:12'),
-(199, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:56:46'),
-(200, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:57:34'),
-(201, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 12:42:33'),
-(202, 'artryry6@gmail.com', 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 12:43:38'),
-(203, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 12:44:04'),
-(204, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 09:14:38'),
-(205, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 09:14:57'),
-(206, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 15:00:41'),
-(207, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 15:01:29'),
-(208, 'teamorjj@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:43:56'),
-(209, 'teamorjj@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:44:18'),
-(210, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:49:13'),
-(211, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:49:40'),
-(212, 'teamorjj@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:51:56'),
-(213, 'teamorjj@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:52:20'),
-(214, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:05:24'),
-(215, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:06:13'),
-(216, 'rhielg1@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:09:00'),
-(217, 'rhielg1@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:13:26'),
-(218, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:14:07'),
-(219, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:15:26'),
-(220, 'rhielg1@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:17:47'),
-(221, 'rhielg1@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:18:16'),
-(222, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:21:57'),
-(223, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:22:22'),
-(224, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 03:52:56'),
-(225, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 03:53:14'),
-(226, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 06:45:58'),
-(227, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 06:46:27'),
-(228, 'rhielg1@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 07:00:19'),
-(229, 'rhielg1@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 07:00:45'),
-(230, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 08:30:56'),
-(231, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 08:31:19'),
-(232, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 11:28:56'),
-(233, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 11:30:38'),
-(234, 'artryry6@gmail.com', 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 03:29:50'),
-(235, 'artryry6@gmail.com', 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 03:30:16');
+INSERT INTO `login_attempts` (`attempt_id`, `email`, `user_id`, `attempt_type`, `is_successful`, `ip_address`, `user_agent`, `attempted_at`) VALUES
+(1, 'artryry6@gmail.com', 1, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 03:21:58'),
+(2, 'artryry6@gmail.com', 1, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 03:22:18'),
+(3, 'artryry6@gmail.com', 1, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 03:23:53'),
+(4, 'artryry6@gmail.com', 1, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 03:40:58'),
+(5, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 08:54:32'),
+(6, 'artryry6@gmail.com', 1, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 08:56:56'),
+(7, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 08:57:28'),
+(8, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 11:06:57'),
+(9, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 11:07:26'),
+(10, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 11:23:08'),
+(11, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 11:23:30'),
+(12, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 15:12:41'),
+(13, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 15:13:05'),
+(14, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 15:15:50'),
+(15, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 15:16:31'),
+(16, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:05:03'),
+(17, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:05:45'),
+(18, 'mltripoli@tau.edu.ph', NULL, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:08:54'),
+(19, 'mltripoli@tau.edu.ph', NULL, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:09:40'),
+(20, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:11:13'),
+(21, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 10:11:37'),
+(22, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 13:37:18'),
+(23, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 13:37:39'),
+(24, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 14:44:20'),
+(25, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 14:44:47'),
+(26, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 15:51:47'),
+(27, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 15:52:11'),
+(28, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 15:56:02'),
+(29, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 15:56:19'),
+(30, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:07:27'),
+(31, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:07:58'),
+(32, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:13:11'),
+(33, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:13:36'),
+(34, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:14:17'),
+(35, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 03:14:39'),
+(36, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 04:51:52'),
+(37, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 04:52:21'),
+(38, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:18:18'),
+(39, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:18:59'),
+(40, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:21:21'),
+(41, 'abalaryxel@gmail.com', 2, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:22:04'),
+(42, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:22:26'),
+(43, 'artryry6@gmail.com', 1, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:28:04'),
+(44, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:28:27'),
+(45, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-29 06:28:53'),
+(46, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-30 15:30:27'),
+(47, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-30 15:30:43'),
+(48, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-31 09:44:46'),
+(49, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-31 09:45:06'),
+(50, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-01 05:06:11'),
+(51, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-01 05:06:38'),
+(52, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-01 09:41:48'),
+(53, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-01 09:42:11'),
+(54, 'artryry6@gmail.com', 1, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:07:05'),
+(55, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:07:27'),
+(56, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:08:09'),
+(57, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:20:04'),
+(58, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:20:32'),
+(59, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:24:34'),
+(60, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:25:05'),
+(61, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:47:48'),
+(62, 'abalaryxel@gmail.com', 2, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:48:52'),
+(63, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 10:49:08'),
+(64, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 14:40:40'),
+(65, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-02 14:41:10'),
+(66, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 03:06:24'),
+(67, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 03:06:51'),
+(68, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 03:46:00'),
+(69, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 08:04:13'),
+(70, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 08:04:41'),
+(71, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 08:15:07'),
+(72, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 08:15:39'),
+(73, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 09:09:58'),
+(74, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 09:10:29'),
+(75, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 09:47:36'),
+(76, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 09:48:07'),
+(77, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-05 15:30:01'),
+(78, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-05 15:30:35'),
+(79, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-05 15:34:51'),
+(80, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-05 15:35:10'),
+(81, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 01:52:38'),
+(82, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 01:53:00'),
+(83, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 07:18:58'),
+(84, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 07:19:22'),
+(85, 'artryry6@gmail.com', 1, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:00:28'),
+(86, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:00:43'),
+(87, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:01:12'),
+(88, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:02:57'),
+(89, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:03:17'),
+(90, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:05:09'),
+(91, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:05:27'),
+(92, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:19:10'),
+(93, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 17:19:33'),
+(94, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 18:02:38'),
+(95, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-07 18:02:56'),
+(96, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 02:12:53'),
+(97, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 02:13:18'),
+(98, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:18:04'),
+(99, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:18:44'),
+(100, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:20:24'),
+(101, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:20:43'),
+(102, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:44:11'),
+(103, 'abalaryxel@gmail.com', 2, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:45:06'),
+(104, 'abalaryxel@gmail.com', 2, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:45:15'),
+(105, 'abalaryxel@gmail.com', 2, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:45:41'),
+(106, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:46:10'),
+(107, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:48:13'),
+(108, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 04:48:38'),
+(109, 'artryry6@gmail.com', 1, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:27:15'),
+(110, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:27:24'),
+(111, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:27:29'),
+(112, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:27:53'),
+(113, 'abalaryxel@gmail.com', 2, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:29:26'),
+(114, 'abalaryxel@gmail.com', 2, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-08 16:29:52'),
+(115, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 04:09:43'),
+(116, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 04:10:14'),
+(117, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 13:58:46'),
+(118, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 13:59:24'),
+(119, 'teamorjj@gmail.com', 5, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:27:07'),
+(120, 'teamorjj@gmail.com', 5, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:27:27'),
+(121, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:27:54'),
+(122, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:28:18'),
+(123, 'teamorjj@gmail.com', 5, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:30:48'),
+(124, 'teamorjj@gmail.com', 5, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:31:16'),
+(125, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:32:18'),
+(126, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-09 14:32:36'),
+(127, 'artryry6@username.login', NULL, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-14 14:54:08'),
+(128, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-14 14:54:41'),
+(129, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-14 14:55:07'),
+(130, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-15 08:15:40'),
+(131, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-15 08:16:01'),
+(132, 'orrr123@username.login', NULL, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-15 09:09:25'),
+(133, 'teamorjj@gmail.com', 5, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-15 09:10:15'),
+(134, 'teamorjj@gmail.com', 5, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-15 09:10:41'),
+(135, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 06:25:11'),
+(136, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 06:26:10'),
+(137, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 12:13:08'),
+(138, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 12:13:29'),
+(139, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 15:25:42'),
+(140, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-17 15:26:11'),
+(141, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-18 02:35:13'),
+(142, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-18 02:35:32'),
+(143, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:22:23'),
+(144, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:22:48'),
+(145, 'caldona.jayancarlo15@gmail.com', 6, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:48:46'),
+(146, 'caldona.jayancarlo15@gmail.com', 6, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:49:05'),
+(147, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:49:44'),
+(148, 'artryry6@gmail.com', 1, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:50:12'),
+(149, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:50:24'),
+(150, 'caldona.jayancarlo15@gmail.com', 6, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:51:08'),
+(151, 'caldona.jayancarlo15@gmail.com', 6, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:51:29'),
+(152, 'caldona.jayancarlo15@gmail.com', 6, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:51:48'),
+(153, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:53:36'),
+(154, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 06:53:54'),
+(155, 'caldona.jayancarlo15@gmail.com', 6, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 07:49:59'),
+(156, 'caldona.jayancarlo15@gmail.com', 6, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 07:50:18'),
+(157, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 07:53:08'),
+(158, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 07:53:34'),
+(159, 'caldona.jayancarlo15@gmail.com', 6, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 09:29:56'),
+(160, 'caldona.jayancarlo15@gmail.com', 6, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 09:30:15'),
+(161, 'caldona.jayancarlo15@gmail.com', 6, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 09:30:29'),
+(162, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 09:32:03'),
+(163, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-19 09:32:43'),
+(164, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-19 14:49:57'),
+(165, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-19 14:51:29'),
+(166, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-19 23:06:30'),
+(167, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-19 23:07:04'),
+(168, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 01:12:57'),
+(169, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 01:13:37'),
+(170, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 04:37:55'),
+(171, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 04:39:08'),
+(172, 'artryry6@gmail.com', 1, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 13:09:30'),
+(173, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 13:09:45'),
+(174, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 13:10:03'),
+(175, 'teamorjj@gmail.com', 5, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 13:19:30'),
+(176, 'teamorjj@gmail.com', 5, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-20 13:19:49'),
+(177, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-22 12:38:08'),
+(178, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-22 12:38:50'),
+(179, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-23 09:51:18'),
+(180, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-23 09:52:12'),
+(181, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-24 14:16:34'),
+(182, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-24 14:16:55'),
+(183, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 06:30:21'),
+(184, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 06:30:46'),
+(185, 'teamorjj@gmail.com', 5, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 07:52:08'),
+(186, 'teamorjj@gmail.com', 5, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 07:52:38'),
+(187, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 07:54:15'),
+(188, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 07:54:34'),
+(189, 'teamorjj@gmail.com', 5, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:07:52'),
+(190, 'teamorjj@gmail.com', 5, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:08:40'),
+(191, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:09:59'),
+(192, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:10:16'),
+(193, 'teamorjj@gmail.com', 5, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:11:03'),
+(194, 'teamorjj@gmail.com', 5, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 08:11:36'),
+(195, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:27:51'),
+(196, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:30:05'),
+(197, 'teamorjj@gmail.com', 5, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:31:35'),
+(198, 'teamorjj@gmail.com', 5, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:32:12'),
+(199, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:56:46'),
+(200, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 10:57:34'),
+(201, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 12:42:33'),
+(202, 'artryry6@gmail.com', 1, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 12:43:38'),
+(203, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-25 12:44:04'),
+(204, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 09:14:38'),
+(205, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 09:14:57'),
+(206, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 15:00:41'),
+(207, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 15:01:29'),
+(208, 'teamorjj@gmail.com', 5, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:43:56'),
+(209, 'teamorjj@gmail.com', 5, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:44:18'),
+(210, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:49:13'),
+(211, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:49:40'),
+(212, 'teamorjj@gmail.com', 5, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:51:56'),
+(213, 'teamorjj@gmail.com', 5, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-26 16:52:20'),
+(214, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:05:24'),
+(215, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:06:13'),
+(216, 'rhielg1@gmail.com', 7, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:09:00'),
+(217, 'rhielg1@gmail.com', 7, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:13:26'),
+(218, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:14:07'),
+(219, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:15:26'),
+(220, 'rhielg1@gmail.com', 7, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:17:47'),
+(221, 'rhielg1@gmail.com', 7, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:18:16'),
+(222, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:21:57'),
+(223, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-27 08:22:22'),
+(224, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 03:52:56'),
+(225, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 03:53:14'),
+(226, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 06:45:58'),
+(227, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 06:46:27'),
+(228, 'rhielg1@gmail.com', 7, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 07:00:19'),
+(229, 'rhielg1@gmail.com', 7, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 07:00:45'),
+(230, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 08:30:56'),
+(231, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 08:31:19'),
+(232, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 11:28:56'),
+(233, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-01 11:30:38'),
+(234, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 03:29:50'),
+(235, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 03:30:16'),
+(236, 'teamorjj@gmail.com', 5, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 15:02:40'),
+(237, 'rhielg1@gmail.com', 7, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 15:03:00'),
+(238, 'rhielg1@gmail.com', 7, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-02 15:03:25'),
+(239, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:42:05'),
+(240, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:43:46'),
+(241, 'rhielg1@gmail.com', 7, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:45:04'),
+(242, 'rhielg1@gmail.com', 7, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 02:45:42'),
+(243, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 03:28:32'),
+(244, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 03:29:46'),
+(245, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:41:04'),
+(246, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:41:37'),
+(247, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:43:12'),
+(248, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-03 13:43:56'),
+(249, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 13:59:13'),
+(250, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 13:59:33'),
+(251, 'rhielg1@gmail.com', 7, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 15:56:03'),
+(252, 'rhielg1@gmail.com', 7, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 15:56:34'),
+(253, 'rhielg1@gmail.com', 7, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-04 15:57:14'),
+(254, 'rhielg1@gmail.com', 7, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 02:25:51'),
+(255, 'rhielg1@gmail.com', 7, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 02:26:18');
+INSERT INTO `login_attempts` (`attempt_id`, `email`, `user_id`, `attempt_type`, `is_successful`, `ip_address`, `user_agent`, `attempted_at`) VALUES
+(256, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 02:31:43'),
+(257, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 02:32:04'),
+(258, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 08:35:06'),
+(259, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-05 08:35:45'),
+(260, 'rhielg1@gmail.com', 7, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-06 03:00:11'),
+(261, 'rhielg1@gmail.com', 7, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-06 03:00:21'),
+(262, 'rhielg1@gmail.com', 7, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-06 03:00:37'),
+(263, 'rhielg1@gmail.com', 7, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-06 03:00:45'),
+(264, 'rhielg1@gmail.com', 7, 'password', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-06 03:00:54'),
+(265, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-07 06:18:41'),
+(266, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-07 06:19:17'),
+(267, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 07:36:54'),
+(268, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 07:39:03'),
+(269, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 12:59:56'),
+(270, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 13:00:13'),
+(271, 'rhielg1@gmail.com', 7, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:12:40'),
+(272, 'rhielg1@gmail.com', 7, 'verification_code', 0, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:13:01'),
+(273, 'rhielg1@gmail.com', 7, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:13:18'),
+(274, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:15:15'),
+(275, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-08 15:15:37'),
+(276, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-09 07:03:25'),
+(277, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-09 07:03:42'),
+(278, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 07:38:27'),
+(279, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 07:39:00'),
+(280, 'rhielg1@gmail.com', 7, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 11:24:51'),
+(281, 'rhielg1@gmail.com', 7, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-10 11:25:24'),
+(282, 'artryry6@gmail.com', 1, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-12 06:50:18'),
+(283, 'artryry6@gmail.com', 1, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-12 06:50:39'),
+(284, 'artryry6@gmail.com', NULL, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 04:08:24'),
+(285, 'artryry6@gmail.com', NULL, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 04:08:48'),
+(286, 'artryry6@gmail.com', NULL, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 08:07:54'),
+(287, 'artryry6@gmail.com', NULL, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 08:08:19'),
+(288, 'artryry6@gmail.com', NULL, 'password', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 08:46:22'),
+(289, 'artryry6@gmail.com', NULL, 'verification_code', 1, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-03-13 08:46:46');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `privileges`
+--
+
+CREATE TABLE `privileges` (
+  `privilege_key` varchar(50) NOT NULL,
+  `label` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `privileges`
+--
+
+INSERT INTO `privileges` (`privilege_key`, `label`, `description`, `created_at`) VALUES
+('audit_logs', 'Audit Logs', 'View system activity logs', '2026-03-13 03:25:16'),
+('files_view', 'View Files', 'View, download, and print archived records', '2026-03-13 03:25:16'),
+('folders_add', 'Add Folders', 'Create new folders or categories', '2026-03-13 03:25:16'),
+('folders_delete', 'Delete Folders', 'Delete folders or categories', '2026-03-13 03:25:16'),
+('full_admin', 'Full Admin Access', 'Automatically grants all privileges when selected', '2026-03-13 03:25:16'),
+('profile_edit', 'Edit Profile', 'Edit own profile and personal settings', '2026-03-13 03:25:16'),
+('records_delete', 'Delete Records', 'Delete archived files', '2026-03-13 03:25:16'),
+('records_organize', 'Organize Records', 'Move/rename files and manage file structure', '2026-03-13 03:25:16'),
+('records_update', 'Update Records', 'Edit metadata of existing records', '2026-03-13 03:25:16'),
+('records_upload', 'Upload Records', 'Upload digitized academic records', '2026-03-13 03:25:16'),
+('system_backup', 'System Backup', 'Access system backup and restore features', '2026-03-13 03:25:16'),
+('user_management', 'Manage Users', 'Add, edit, and assign roles to users', '2026-03-13 03:25:16');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `roles`
+--
+
+CREATE TABLE `roles` (
+  `role_id` int(11) NOT NULL,
+  `role_name` varchar(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `roles`
+--
+
+INSERT INTO `roles` (`role_id`, `role_name`) VALUES
+(1, 'admin'),
+(2, 'user');
 
 -- --------------------------------------------------------
 
@@ -827,6 +1044,7 @@ CREATE TABLE `users` (
   `username` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
   `role` enum('admin','user') NOT NULL,
+  `role_id` int(11) DEFAULT NULL,
   `access_level` enum('full','limited') NOT NULL DEFAULT 'full',
   `status` enum('active','inactive') NOT NULL DEFAULT 'inactive',
   `initial_password_changed` tinyint(1) DEFAULT 0,
@@ -840,12 +1058,14 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `full_name`, `email`, `username`, `password`, `role`, `access_level`, `status`, `initial_password_changed`, `created_at`, `updated_at`, `created_by`, `last_login`) VALUES
-(1, 'Rhiel Guillermo', 'artryry6@gmail.com', 'artryry60', '$2y$10$RyGBR7m.NjnnzzlJbRPUi.VIQQ9ob.5X0cN3VW6LvrKN4druJ1cLq', 'admin', 'full', 'active', 1, '2026-01-24 06:36:49', '2026-03-01 19:30:16', NULL, '2026-03-01 19:30:16'),
-(2, 'Monay bread', 'abalaryxel@gmail.com', 'abalaryxel00', '$2y$10$VjCEEBKmXFOHkBE4bKPUf.5RIji5BhASBn3V5qyW3SGhDobm2pUnu', 'admin', 'full', 'active', 0, '2026-01-27 07:14:19', '2026-02-28 20:17:08', 1, '2026-02-08 08:29:52'),
-(5, 'Orjj', 'teamorjj@gmail.com', 'orrrr123', '$2y$10$ZWFXL4oKpvQnivjf1OId3.klZo8Dy2LOgGAFRO4TVeotFGaDIePj6', 'user', 'limited', 'active', 0, '2026-02-09 06:25:50', '2026-02-26 08:52:20', 1, '2026-02-26 08:52:20'),
-(6, 'Jayan', 'caldona.jayancarlo15@gmail.com', 'jayan12', '$2y$10$31g4gfDIYnjAjtK6BRltROjuZ0LrXENIlnHwviYkcErkOQrkygDBq', 'user', 'full', 'active', 0, '2026-02-18 22:48:09', '2026-02-19 01:30:29', 1, '2026-02-19 01:30:29'),
-(7, 'Rhiel', 'rhielg1@gmail.com', 'rhiel', '$2y$10$ss4XH4XWvaAWM/bQXqXaxORdjgiFd1ME8ppBE4iWfLokZKKrI8OTW', 'user', 'full', 'active', 0, '2026-02-27 00:08:16', '2026-02-28 23:00:45', 1, '2026-02-28 23:00:45');
+INSERT INTO `users` (`user_id`, `full_name`, `email`, `username`, `password`, `role`, `role_id`, `access_level`, `status`, `initial_password_changed`, `created_at`, `updated_at`, `created_by`, `last_login`) VALUES
+(1, 'Rhiel Guillermo', 'artryry6@gmail.com', 'artryry60', '$2y$10$RyGBR7m.NjnnzzlJbRPUi.VIQQ9ob.5X0cN3VW6LvrKN4druJ1cLq', 'admin', 1, 'full', 'active', 1, '2026-01-24 06:36:49', '2026-03-13 00:46:46', NULL, '2026-03-13 00:46:46'),
+(2, 'Monay bread', 'abalaryxel@gmail.com', 'abalaryxel00', '$2y$10$VjCEEBKmXFOHkBE4bKPUf.5RIji5BhASBn3V5qyW3SGhDobm2pUnu', 'admin', 1, 'full', 'active', 0, '2026-01-27 07:14:19', '2026-03-13 03:23:53', 1, '2026-02-08 08:29:52'),
+(5, 'Orjj', 'teamorjj@gmail.com', 'orrrr123', '$2y$10$ZWFXL4oKpvQnivjf1OId3.klZo8Dy2LOgGAFRO4TVeotFGaDIePj6', 'user', 2, 'limited', 'active', 0, '2026-02-09 06:25:50', '2026-03-13 03:23:53', 1, '2026-02-26 08:52:20'),
+(6, 'Jayan', 'caldona.jayancarlo15@gmail.com', 'jayan12', '$2y$10$31g4gfDIYnjAjtK6BRltROjuZ0LrXENIlnHwviYkcErkOQrkygDBq', 'user', 2, 'full', 'inactive', 0, '2026-02-18 22:48:09', '2026-03-13 03:23:53', 1, '2026-02-19 01:30:29'),
+(7, 'Rhiel', 'rhielg1@gmail.com', 'rhiel', '$2y$10$ss4XH4XWvaAWM/bQXqXaxORdjgiFd1ME8ppBE4iWfLokZKKrI8OTW', 'user', 2, 'full', 'active', 0, '2026-02-27 00:08:16', '2026-03-13 03:23:53', 1, '2026-03-10 03:25:24'),
+(8, 'John Benedict Reyes', 'johnbenedictr45@gmail.com', 'benedict', '$2y$10$5apiN8hh8IQxgQ6R7En54O2CnBnDu.Vyr2uplkEM1cg0VHAoZYwoe', 'admin', 1, 'full', 'active', 0, '2026-03-11 22:55:24', '2026-03-13 03:23:53', 1, NULL),
+(9, 'Oliver Fiesta', 'oliverfiesta30@gmail.com', 'oliver', '$2y$10$zX8g8OS8spIw9id0UIj7HucKHmrxGJyPKZ.L06wJmWX67qrwaCjlK', 'admin', 1, 'full', 'active', 0, '2026-03-11 22:57:39', '2026-03-13 03:23:53', 1, NULL);
 
 -- --------------------------------------------------------
 
@@ -868,8 +1088,26 @@ CREATE TABLE `user_folder_access` (
 INSERT INTO `user_folder_access` (`access_id`, `user_id`, `folder_path`, `created_by`, `created_at`) VALUES
 (2, 5, '2021', 1, '2026-02-26 16:50:20'),
 (3, 5, 'example', 1, '2026-02-26 16:50:20'),
-(4, 7, '2021', 1, '2026-02-27 08:17:24'),
-(5, 2, '2021', 1, '2026-03-01 04:17:08');
+(5, 2, '2021', 1, '2026-03-01 04:17:08'),
+(7, 7, '2022', 1, '2026-03-10 11:24:33'),
+(8, 7, '2023', 1, '2026-03-10 11:24:33');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_mpin`
+--
+
+CREATE TABLE `user_mpin` (
+  `mpin_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `mpin` varchar(255) NOT NULL COMMENT 'bcrypt-hashed 4-digit PIN',
+  `set_by` int(11) DEFAULT NULL COMMENT 'user_id of the admin who set this MPIN',
+  `mpin_changed_at` timestamp NULL DEFAULT NULL,
+  `mpin_verified_at` timestamp NULL DEFAULT NULL,
+  `mpin_expires_at` timestamp NULL DEFAULT NULL COMMENT 'MPIN valid for 7 days; after expiry, OTP required to refresh',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -882,6 +1120,9 @@ CREATE TABLE `user_privileges` (
   `user_id` int(11) NOT NULL,
   `privilege_key` varchar(50) NOT NULL,
   `privilege_value` tinyint(1) DEFAULT 1,
+  `status` enum('active','revoked') NOT NULL DEFAULT 'active',
+  `locked_by` int(11) DEFAULT NULL,
+  `locked_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -890,62 +1131,84 @@ CREATE TABLE `user_privileges` (
 -- Dumping data for table `user_privileges`
 --
 
-INSERT INTO `user_privileges` (`privilege_id`, `user_id`, `privilege_key`, `privilege_value`, `created_at`, `updated_at`) VALUES
-(38, 1, 'records_delete', 1, '2026-02-07 00:42:03', '2026-02-07 00:42:03'),
-(42, 2, 'records_delete', 1, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
-(43, 2, 'profile_edit', 0, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
-(44, 2, 'user_management', 0, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
-(45, 2, 'system_backup', 0, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
-(46, 2, 'audit_logs', 0, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
-(47, 2, 'full_admin', 0, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
-(55, 5, 'records_delete', 1, '2026-02-09 06:25:50', '2026-02-26 08:50:19'),
-(56, 5, 'profile_edit', 0, '2026-02-15 01:07:01', '2026-02-26 08:50:19'),
-(57, 5, 'user_management', 1, '2026-02-15 01:07:01', '2026-02-26 08:50:19'),
-(58, 5, 'system_backup', 0, '2026-02-15 01:07:01', '2026-02-26 08:50:19'),
-(59, 5, 'audit_logs', 0, '2026-02-15 01:07:01', '2026-02-26 08:50:19'),
-(60, 5, 'full_admin', 0, '2026-02-15 01:07:01', '2026-02-26 08:50:19'),
-(61, 1, 'records_upload', 1, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
-(62, 2, 'records_upload', 1, '2026-02-17 08:38:10', '2026-02-28 20:17:07'),
-(65, 5, 'records_upload', 1, '2026-02-17 08:38:10', '2026-02-26 08:50:19'),
-(68, 1, 'files_view', 1, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
-(69, 2, 'files_view', 1, '2026-02-17 08:38:10', '2026-02-28 20:17:07'),
-(72, 5, 'files_view', 1, '2026-02-17 08:38:10', '2026-02-26 08:50:19'),
-(82, 1, 'records_organize', 1, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
-(83, 2, 'records_organize', 1, '2026-02-17 08:38:10', '2026-02-28 20:17:07'),
-(86, 5, 'records_organize', 1, '2026-02-17 08:38:10', '2026-02-26 08:50:19'),
-(89, 1, 'folders_add', 1, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
-(90, 2, 'folders_add', 1, '2026-02-17 08:38:10', '2026-02-28 20:17:07'),
-(93, 5, 'folders_add', 1, '2026-02-17 08:38:10', '2026-02-26 08:50:19'),
-(96, 1, 'folders_delete', 1, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
-(97, 2, 'folders_delete', 1, '2026-02-17 08:38:10', '2026-02-28 20:17:07'),
-(100, 5, 'folders_delete', 1, '2026-02-17 08:38:10', '2026-02-26 08:50:19'),
-(103, 1, 'profile_edit', 1, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
-(106, 1, 'user_management', 1, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
-(109, 1, 'system_backup', 1, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
-(112, 1, 'audit_logs', 1, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
-(115, 1, 'full_admin', 1, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
-(118, 6, 'records_upload', 1, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
-(119, 6, 'files_view', 1, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
-(121, 6, 'records_organize', 0, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
-(122, 6, 'folders_add', 1, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
-(123, 6, 'records_delete', 1, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
-(124, 6, 'folders_delete', 0, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
-(125, 6, 'profile_edit', 1, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
-(126, 6, 'user_management', 0, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
-(127, 6, 'system_backup', 0, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
-(128, 6, 'audit_logs', 0, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
-(129, 6, 'full_admin', 0, '2026-02-18 22:48:09', '2026-02-19 01:29:18'),
-(130, 7, 'records_upload', 1, '2026-02-27 00:08:16', '2026-02-27 00:17:24'),
-(131, 7, 'files_view', 1, '2026-02-27 00:08:17', '2026-02-27 00:17:24'),
-(132, 7, 'records_organize', 1, '2026-02-27 00:08:17', '2026-02-27 00:17:24'),
-(133, 7, 'folders_add', 1, '2026-02-27 00:08:17', '2026-02-27 00:17:24'),
-(134, 7, 'records_delete', 1, '2026-02-27 00:08:17', '2026-02-27 00:17:24'),
-(135, 7, 'folders_delete', 1, '2026-02-27 00:08:17', '2026-02-27 00:17:24'),
-(136, 7, 'profile_edit', 1, '2026-02-27 00:08:17', '2026-02-27 00:17:24'),
-(137, 7, 'user_management', 1, '2026-02-27 00:08:17', '2026-02-27 00:17:24'),
-(138, 7, 'system_backup', 1, '2026-02-27 00:08:17', '2026-02-27 00:17:24'),
-(139, 7, 'audit_logs', 1, '2026-02-27 00:08:17', '2026-02-27 00:17:24'),
-(140, 7, 'full_admin', 1, '2026-02-27 00:08:17', '2026-02-27 00:17:24');
+INSERT INTO `user_privileges` (`privilege_id`, `user_id`, `privilege_key`, `privilege_value`, `status`, `locked_by`, `locked_at`, `created_at`, `updated_at`) VALUES
+(38, 1, 'records_delete', 1, 'active', NULL, NULL, '2026-02-07 00:42:03', '2026-02-07 00:42:03'),
+(42, 2, 'records_delete', 1, 'active', NULL, NULL, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
+(43, 2, 'profile_edit', 0, 'active', NULL, NULL, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
+(44, 2, 'user_management', 0, 'active', NULL, NULL, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
+(45, 2, 'system_backup', 0, 'active', NULL, NULL, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
+(46, 2, 'audit_logs', 0, 'active', NULL, NULL, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
+(47, 2, 'full_admin', 0, 'active', NULL, NULL, '2026-02-07 00:42:56', '2026-02-28 20:17:07'),
+(55, 5, 'records_delete', 1, 'active', NULL, NULL, '2026-02-09 06:25:50', '2026-02-26 08:50:19'),
+(56, 5, 'profile_edit', 0, 'active', NULL, NULL, '2026-02-15 01:07:01', '2026-02-26 08:50:19'),
+(57, 5, 'user_management', 1, 'active', NULL, NULL, '2026-02-15 01:07:01', '2026-02-26 08:50:19'),
+(58, 5, 'system_backup', 0, 'active', NULL, NULL, '2026-02-15 01:07:01', '2026-02-26 08:50:19'),
+(59, 5, 'audit_logs', 0, 'active', NULL, NULL, '2026-02-15 01:07:01', '2026-02-26 08:50:19'),
+(60, 5, 'full_admin', 0, 'active', NULL, NULL, '2026-02-15 01:07:01', '2026-02-26 08:50:19'),
+(61, 1, 'records_upload', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
+(62, 2, 'records_upload', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-28 20:17:07'),
+(65, 5, 'records_upload', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-26 08:50:19'),
+(68, 1, 'files_view', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
+(69, 2, 'files_view', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-28 20:17:07'),
+(72, 5, 'files_view', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-26 08:50:19'),
+(82, 1, 'records_organize', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
+(83, 2, 'records_organize', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-28 20:17:07'),
+(86, 5, 'records_organize', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-26 08:50:19'),
+(89, 1, 'folders_add', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
+(90, 2, 'folders_add', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-28 20:17:07'),
+(93, 5, 'folders_add', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-26 08:50:19'),
+(96, 1, 'folders_delete', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
+(97, 2, 'folders_delete', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-28 20:17:07'),
+(100, 5, 'folders_delete', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-26 08:50:19'),
+(103, 1, 'profile_edit', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
+(106, 1, 'user_management', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
+(109, 1, 'system_backup', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
+(112, 1, 'audit_logs', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
+(115, 1, 'full_admin', 1, 'active', NULL, NULL, '2026-02-17 08:38:10', '2026-02-17 08:38:10'),
+(118, 6, 'records_upload', 1, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
+(119, 6, 'files_view', 1, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
+(121, 6, 'records_organize', 0, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
+(122, 6, 'folders_add', 1, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
+(123, 6, 'records_delete', 1, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
+(124, 6, 'folders_delete', 0, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
+(125, 6, 'profile_edit', 1, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
+(126, 6, 'user_management', 0, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
+(127, 6, 'system_backup', 0, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
+(128, 6, 'audit_logs', 0, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:17'),
+(129, 6, 'full_admin', 0, 'active', NULL, NULL, '2026-02-18 22:48:09', '2026-02-19 01:29:18'),
+(130, 7, 'records_upload', 1, 'active', NULL, NULL, '2026-02-27 00:08:16', '2026-03-10 03:24:33'),
+(131, 7, 'files_view', 1, 'active', NULL, NULL, '2026-02-27 00:08:17', '2026-03-10 03:24:33'),
+(132, 7, 'records_organize', 1, 'active', NULL, NULL, '2026-02-27 00:08:17', '2026-03-10 03:24:33'),
+(133, 7, 'folders_add', 1, 'active', NULL, NULL, '2026-02-27 00:08:17', '2026-03-10 03:24:33'),
+(134, 7, 'records_delete', 1, 'active', NULL, NULL, '2026-02-27 00:08:17', '2026-03-10 03:24:33'),
+(135, 7, 'folders_delete', 1, 'active', NULL, NULL, '2026-02-27 00:08:17', '2026-03-10 03:24:33'),
+(136, 7, 'profile_edit', 1, 'active', NULL, NULL, '2026-02-27 00:08:17', '2026-03-10 03:24:33'),
+(137, 7, 'user_management', 1, 'active', NULL, NULL, '2026-02-27 00:08:17', '2026-03-10 03:24:33'),
+(138, 7, 'system_backup', 1, 'active', NULL, NULL, '2026-02-27 00:08:17', '2026-03-10 03:24:33'),
+(139, 7, 'audit_logs', 1, 'active', NULL, NULL, '2026-02-27 00:08:17', '2026-03-10 03:24:33'),
+(140, 7, 'full_admin', 1, 'active', NULL, NULL, '2026-02-27 00:08:17', '2026-03-10 03:24:33'),
+(141, 8, 'records_upload', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(142, 8, 'files_view', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(143, 8, 'records_organize', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(144, 8, 'folders_add', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(145, 8, 'records_delete', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(146, 8, 'folders_delete', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(147, 8, 'profile_edit', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(148, 8, 'user_management', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(149, 8, 'system_backup', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(150, 8, 'audit_logs', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(151, 8, 'full_admin', 1, 'active', NULL, NULL, '2026-03-11 22:55:24', '2026-03-11 22:55:24'),
+(152, 9, 'records_upload', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39'),
+(153, 9, 'files_view', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39'),
+(154, 9, 'records_organize', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39'),
+(155, 9, 'folders_add', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39'),
+(156, 9, 'records_delete', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39'),
+(157, 9, 'folders_delete', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39'),
+(158, 9, 'profile_edit', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39'),
+(159, 9, 'user_management', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39'),
+(160, 9, 'system_backup', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39'),
+(161, 9, 'audit_logs', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39'),
+(162, 9, 'full_admin', 1, 'active', NULL, NULL, '2026-03-11 22:57:39', '2026-03-11 22:57:39');
 
 -- --------------------------------------------------------
 
@@ -1078,7 +1341,31 @@ INSERT INTO `verification_codes` (`code_id`, `user_id`, `email`, `code`, `expire
 (108, 7, 'rhielg1@gmail.com', '967930', '2026-02-28 23:10:19', 1, '2026-02-28 23:00:45', '2026-03-01 07:00:19'),
 (109, 1, 'artryry6@gmail.com', '903400', '2026-03-01 00:40:56', 1, '2026-03-01 00:31:19', '2026-03-01 08:30:56'),
 (110, 1, 'artryry6@gmail.com', '899542', '2026-03-01 03:38:56', 1, '2026-03-01 03:30:38', '2026-03-01 11:28:56'),
-(111, 1, 'artryry6@gmail.com', '695025', '2026-03-01 19:39:50', 1, '2026-03-01 19:30:16', '2026-03-02 03:29:50');
+(111, 1, 'artryry6@gmail.com', '695025', '2026-03-01 19:39:50', 1, '2026-03-01 19:30:16', '2026-03-02 03:29:50'),
+(112, 7, 'rhielg1@gmail.com', '217471', '2026-03-02 07:13:00', 1, '2026-03-02 07:03:25', '2026-03-02 15:03:00'),
+(113, 1, 'artryry6@gmail.com', '677763', '2026-03-02 18:52:05', 1, '2026-03-02 18:43:46', '2026-03-03 02:42:05'),
+(114, 7, 'rhielg1@gmail.com', '613054', '2026-03-02 18:55:04', 1, '2026-03-02 18:45:42', '2026-03-03 02:45:04'),
+(115, 1, 'artryry6@gmail.com', '810471', '2026-03-02 19:38:32', 1, '2026-03-02 19:29:46', '2026-03-03 03:28:32'),
+(116, 1, 'artryry6@gmail.com', '896281', '2026-03-03 05:51:04', 1, '2026-03-03 05:41:37', '2026-03-03 13:41:04'),
+(117, 1, 'artryry6@gmail.com', '788269', '2026-03-03 05:53:12', 1, '2026-03-03 05:43:56', '2026-03-03 13:43:12'),
+(118, 1, 'artryry6@gmail.com', '735103', '2026-03-04 06:09:13', 1, '2026-03-04 05:59:33', '2026-03-04 13:59:13'),
+(119, 7, 'rhielg1@gmail.com', '209565', '2026-03-04 08:06:03', 1, '2026-03-04 07:57:14', '2026-03-04 15:56:03'),
+(120, 7, 'rhielg1@gmail.com', '609310', '2026-03-04 18:35:51', 1, '2026-03-04 18:26:18', '2026-03-05 02:25:51'),
+(121, 1, 'artryry6@gmail.com', '397011', '2026-03-04 18:41:43', 1, '2026-03-04 18:32:04', '2026-03-05 02:31:43'),
+(122, 1, 'artryry6@gmail.com', '052981', '2026-03-05 00:45:06', 1, '2026-03-05 00:35:44', '2026-03-05 08:35:06'),
+(123, 1, 'artryry6@gmail.com', '205385', '2026-03-06 22:28:41', 1, '2026-03-06 22:19:17', '2026-03-07 06:18:41'),
+(124, 1, 'artryry6@gmail.com', '767951', '2026-03-07 23:46:54', 1, '2026-03-07 23:39:03', '2026-03-08 07:36:54'),
+(125, 1, 'artryry6@gmail.com', '507350', '2026-03-08 05:09:56', 1, '2026-03-08 05:00:13', '2026-03-08 12:59:56'),
+(126, 7, 'rhielg1@gmail.com', '889856', '2026-03-08 07:22:40', 1, '2026-03-08 07:13:18', '2026-03-08 15:12:40'),
+(127, 1, 'artryry6@gmail.com', '668321', '2026-03-08 07:25:15', 1, '2026-03-08 07:15:37', '2026-03-08 15:15:15'),
+(128, 1, 'artryry6@gmail.com', '096515', '2026-03-08 23:13:25', 1, '2026-03-08 23:03:42', '2026-03-09 07:03:25'),
+(129, 1, 'artryry6@gmail.com', '712971', '2026-03-09 23:48:27', 1, '2026-03-09 23:39:00', '2026-03-10 07:38:27'),
+(130, 7, 'rhielg1@gmail.com', '888842', '2026-03-10 03:34:51', 1, '2026-03-10 03:25:24', '2026-03-10 11:24:51'),
+(131, 1, 'artryry6@gmail.com', '739398', '2026-03-11 23:00:18', 1, '2026-03-11 22:50:38', '2026-03-12 06:50:18'),
+(132, 1, 'artryry6@gmail.com', '828134', '2026-03-12 20:18:24', 1, '2026-03-12 20:08:48', '2026-03-13 04:08:24'),
+(133, 1, 'artryry6@gmail.com', '202451', '2026-03-13 00:17:54', 1, NULL, '2026-03-13 08:07:54'),
+(134, 1, 'artryry6@gmail.com', '723469', '2026-03-13 00:17:58', 1, '2026-03-13 00:08:19', '2026-03-13 08:07:58'),
+(135, 1, 'artryry6@gmail.com', '013740', '2026-03-13 00:56:22', 1, '2026-03-13 00:46:46', '2026-03-13 08:46:22');
 
 -- --------------------------------------------------------
 
@@ -1172,7 +1459,8 @@ ALTER TABLE `access_requests`
 ALTER TABLE `account_locks`
   ADD PRIMARY KEY (`lock_id`),
   ADD KEY `idx_email` (`email`),
-  ADD KEY `idx_unlock_at` (`unlock_at`);
+  ADD KEY `idx_unlock_at` (`unlock_at`),
+  ADD KEY `fk_al_user_id` (`user_id`);
 
 --
 -- Indexes for table `activity_logs`
@@ -1202,12 +1490,34 @@ ALTER TABLE `file_metadata`
   ADD KEY `file_metadata_ibfk_1` (`uploaded_by`);
 
 --
+-- Indexes for table `group_privileges`
+--
+ALTER TABLE `group_privileges`
+  ADD PRIMARY KEY (`gprivilege_id`),
+  ADD UNIQUE KEY `uq_role_privilege` (`role_id`,`privilege_key`),
+  ADD KEY `fk_gp_privilege_key` (`privilege_key`);
+
+--
 -- Indexes for table `login_attempts`
 --
 ALTER TABLE `login_attempts`
   ADD PRIMARY KEY (`attempt_id`),
   ADD KEY `idx_email` (`email`),
-  ADD KEY `idx_attempted_at` (`attempted_at`);
+  ADD KEY `idx_attempted_at` (`attempted_at`),
+  ADD KEY `fk_lattempts_user_id` (`user_id`);
+
+--
+-- Indexes for table `privileges`
+--
+ALTER TABLE `privileges`
+  ADD PRIMARY KEY (`privilege_key`);
+
+--
+-- Indexes for table `roles`
+--
+ALTER TABLE `roles`
+  ADD PRIMARY KEY (`role_id`),
+  ADD UNIQUE KEY `uq_role_name` (`role_name`);
 
 --
 -- Indexes for table `student_folders`
@@ -1237,7 +1547,8 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `idx_username` (`username`),
   ADD KEY `idx_email` (`email`),
   ADD KEY `idx_status` (`status`),
-  ADD KEY `fk_users_created_by` (`created_by`);
+  ADD KEY `fk_users_created_by` (`created_by`),
+  ADD KEY `fk_users_role_id` (`role_id`);
 
 --
 -- Indexes for table `user_folder_access`
@@ -1249,12 +1560,22 @@ ALTER TABLE `user_folder_access`
   ADD KEY `ufa_creator_fk` (`created_by`);
 
 --
+-- Indexes for table `user_mpin`
+--
+ALTER TABLE `user_mpin`
+  ADD PRIMARY KEY (`mpin_id`),
+  ADD UNIQUE KEY `uq_user_mpin` (`user_id`),
+  ADD KEY `fk_mpin_set_by` (`set_by`);
+
+--
 -- Indexes for table `user_privileges`
 --
 ALTER TABLE `user_privileges`
   ADD PRIMARY KEY (`privilege_id`),
   ADD UNIQUE KEY `user_privilege_unique` (`user_id`,`privilege_key`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `fk_up_privilege_key` (`privilege_key`),
+  ADD KEY `fk_up_locked_by` (`locked_by`);
 
 --
 -- Indexes for table `verification_codes`
@@ -1285,19 +1606,19 @@ ALTER TABLE `access_requests`
 -- AUTO_INCREMENT for table `account_locks`
 --
 ALTER TABLE `account_locks`
-  MODIFY `lock_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `lock_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `log_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=362;
+  MODIFY `log_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=428;
 
 --
 -- AUTO_INCREMENT for table `approval_requests`
 --
 ALTER TABLE `approval_requests`
-  MODIFY `approval_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `approval_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `file_metadata`
@@ -1306,10 +1627,22 @@ ALTER TABLE `file_metadata`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `group_privileges`
+--
+ALTER TABLE `group_privileges`
+  MODIFY `gprivilege_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+
+--
 -- AUTO_INCREMENT for table `login_attempts`
 --
 ALTER TABLE `login_attempts`
-  MODIFY `attempt_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=236;
+  MODIFY `attempt_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=290;
+
+--
+-- AUTO_INCREMENT for table `roles`
+--
+ALTER TABLE `roles`
+  MODIFY `role_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `student_folders`
@@ -1327,25 +1660,31 @@ ALTER TABLE `system_settings`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `user_folder_access`
 --
 ALTER TABLE `user_folder_access`
-  MODIFY `access_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `access_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `user_mpin`
+--
+ALTER TABLE `user_mpin`
+  MODIFY `mpin_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `user_privileges`
 --
 ALTER TABLE `user_privileges`
-  MODIFY `privilege_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=141;
+  MODIFY `privilege_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=163;
 
 --
 -- AUTO_INCREMENT for table `verification_codes`
 --
 ALTER TABLE `verification_codes`
-  MODIFY `code_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=112;
+  MODIFY `code_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=136;
 
 --
 -- Constraints for dumped tables
@@ -1364,6 +1703,12 @@ ALTER TABLE `academic_records`
 ALTER TABLE `access_requests`
   ADD CONSTRAINT `access_requests_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
   ADD CONSTRAINT `access_requests_ibfk_2` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `account_locks`
+--
+ALTER TABLE `account_locks`
+  ADD CONSTRAINT `fk_al_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `activity_logs`
@@ -1385,6 +1730,19 @@ ALTER TABLE `file_metadata`
   ADD CONSTRAINT `file_metadata_ibfk_1` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `group_privileges`
+--
+ALTER TABLE `group_privileges`
+  ADD CONSTRAINT `fk_gp_privilege_key` FOREIGN KEY (`privilege_key`) REFERENCES `privileges` (`privilege_key`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_gp_role_id` FOREIGN KEY (`role_id`) REFERENCES `roles` (`role_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `login_attempts`
+--
+ALTER TABLE `login_attempts`
+  ADD CONSTRAINT `fk_lattempts_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
+
+--
 -- Constraints for table `student_folders`
 --
 ALTER TABLE `student_folders`
@@ -1400,7 +1758,8 @@ ALTER TABLE `system_settings`
 -- Constraints for table `users`
 --
 ALTER TABLE `users`
-  ADD CONSTRAINT `fk_users_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `fk_users_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_users_role_id` FOREIGN KEY (`role_id`) REFERENCES `roles` (`role_id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Constraints for table `user_folder_access`
@@ -1410,9 +1769,18 @@ ALTER TABLE `user_folder_access`
   ADD CONSTRAINT `ufa_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `user_mpin`
+--
+ALTER TABLE `user_mpin`
+  ADD CONSTRAINT `fk_mpin_set_by` FOREIGN KEY (`set_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_mpin_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `user_privileges`
 --
 ALTER TABLE `user_privileges`
+  ADD CONSTRAINT `fk_up_locked_by` FOREIGN KEY (`locked_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_up_privilege_key` FOREIGN KEY (`privilege_key`) REFERENCES `privileges` (`privilege_key`) ON UPDATE CASCADE,
   ADD CONSTRAINT `user_privileges_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --

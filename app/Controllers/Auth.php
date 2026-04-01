@@ -145,49 +145,38 @@ class Auth extends BaseController
         }
 
         // Password is correct - record successful attempt
-        $this->loginAttemptModel->recordAttempt($email, 'password', true);
+$this->loginAttemptModel->recordAttempt($email, 'password', true);
 
-        // Generate and send verification code
-        $code = $this->verificationCodeModel->generateCode($user['user_id'],  $email, 10);
-        
-        if (!$code) {
-            return redirect()->back()->with('error', 'Failed to generate verification code. Please try again.');
-        }
+// Store user info in session temporarily (not fully logged in yet)
+session()->set([
+    'temp_user_id'   => $user['user_id'],
+    'temp_email'     => $email,
+    'temp_full_name' => $user['full_name'],
+    'temp_role'      => $user['role'],
+    'awaiting_2fa'   => true,
+]);
 
-        // Send verification code via email
-        $emailSent = $this->emailService->sendVerificationCode($email, $user['full_name'], $code);
-        
-        if (!$emailSent) {
-            log_message('error', 'Failed to send verification code to: ' . $email);
-        }
+$this->activityLogModel->logActivity($user['user_id'], 'password_verified', 'Password verified');
 
-        // Store user info in session temporarily (not fully logged in yet)
-        session()->set([
-            'temp_user_id'   => $user['user_id'],
-            'temp_email'     => $email,
-            'temp_full_name' => $user['full_name'],
-            'temp_role'      => $user['role'],
-            'awaiting_2fa'   => true,
-        ]);
+// MPIN shortcut: if a valid non-expired MPIN exists, skip OTP entirely.
+if ($this->mpinModel->hasMpin((int) $user['user_id'])
+    && !$this->mpinModel->isExpired((int) $user['user_id'])) {
+    session()->set('awaiting_mpin', true);
+    return redirect()->to('/auth/mpin-entry');
+}
 
-        $this->activityLogModel->logActivity($user['user_id'], 'password_verified', 'Password verified');
+// No MPIN set yet, or MPIN expired → generate and send OTP email.
+$code = $this->verificationCodeModel->generateCode($user['user_id'], $email, 10);
+if (!$code) {
+    return redirect()->back()->with('error', 'Failed to generate verification code. Please try again.');
+}
 
-        // MPIN shortcut: if admin has already set a valid non-expired MPIN for this
-        // user, skip OTP entirely and go straight to the MPIN entry page instead.
-        if ($this->mpinModel->hasMpin((int) $user['user_id'])
-            && !$this->mpinModel->isExpired((int) $user['user_id'])) {
-            session()->set('awaiting_mpin', true);
-            return redirect()->to('/auth/mpin-entry');
-        }
+$emailSent = $this->emailService->sendVerificationCode($email, $user['full_name'], $code);
+if (!$emailSent) {
+    log_message('error', 'Failed to send verification code to: ' . $email);
+}
 
-        // No MPIN set yet, or MPIN expired → send OTP email as normal
-        $code = $this->verificationCodeModel->generateCode($user['user_id'], $email, 10);
-        if (!$code) {
-            return redirect()->back()->with('error', 'Failed to generate verification code. Please try again.');
-        }
-        $this->emailService->sendVerificationCode($email, $user['full_name'], $code);
-
-        return redirect()->to('/auth/verify-code');
+return redirect()->to('/auth/verify-code');
     }
 
     /**

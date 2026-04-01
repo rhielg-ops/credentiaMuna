@@ -50,14 +50,13 @@ public function setMpin(int $userId, string $plainMpin, int $setBy): bool
                 'mpin_expires_at' => $expires,
             ]);
         }
-        return (bool) $this->insert([
-            'user_id'         => $userId,
-            'mpin'            => $hashed,
-            'set_by'          => $setBy,
-            'mpin_changed_at' => $now,
-            'mpin_expires_at' => $expires,
-            'created_at'      => $now,
-        ]);
+       return (bool) $this->insert([
+    'user_id'         => $userId,
+    'mpin'            => $hashed,
+    'set_by'          => $setBy,
+    'mpin_changed_at' => $now,
+    'mpin_expires_at' => $expires,
+]);
     }
 
     public function verifyMpin(int $userId, string $plainMpin): bool

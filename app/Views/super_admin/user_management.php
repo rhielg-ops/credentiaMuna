@@ -121,11 +121,22 @@
           <td class="px-6 py-4 text-sm text-gray-600"><?= $user['total_records'] ?? 0; ?></td>
           <td class="px-6 py-4">
             <div class="flex gap-2">
-              <!-- ✅ Edit button now opens modal with MPIN field inside -->
-              <button onclick='openEditModal(<?= json_encode($user); ?>, <?= json_encode($user_privileges_map[$user["user_id"]] ?? []); ?>)' 
-                      class="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                Edit
-              </button>
+             <?php $canEdit = $can_edit_map[$user['user_id']] ?? true; ?>
+              <?php if ($canEdit): ?>
+                <button onclick='openEditModal(<?= json_encode($user); ?>, <?= json_encode($user_privileges_map[$user["user_id"]] ?? []); ?>)'
+                        class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                  Edit
+                </button>
+              <?php else: ?>
+                <button
+                  disabled
+                  title="Privileges locked by another administrator"
+                  onclick="alert('This user\'s privileges were assigned by another administrator and cannot be modified by you.')"
+                  class="text-gray-400 font-medium text-sm cursor-not-allowed">
+                  Edit
+                </button>
+              <?php endif; ?>
+
               <!-- ❌ Set MPIN button removed from here -->
               <?php if ($user['status'] !== 'inactive'): ?>
                 <a href="<?= base_url('super-admin/toggle-suspend/' . $user['user_id']); ?>" 
@@ -690,6 +701,10 @@
 
 <?= $this->section('scripts') ?>
 <script>
+
+  // PHP → JS privilege lock map  { user_id: bool }
+  var _canEditMap = <?= json_encode($can_edit_map ?? []) ?>;
+
 // ────────────────────────────────────────────────
 //   Password / PIN toggle helper
 // ────────────────────────────────────────────────
@@ -905,7 +920,10 @@ function openEditModal(user, userPrivileges) {
   }
 
   document.getElementById('editForm').action = '<?= base_url('super-admin/edit-admin/'); ?>' + user.user_id;
-  document.getElementById('editForm').dataset.userId = user.user_id;
+  document.getElementById('editForm').dataset.userId  = user.user_id;
+  // Stamp the privilege-edit permission from the PHP-generated map.
+  document.getElementById('editForm').dataset.canEdit =
+    (typeof _canEditMap !== 'undefined' && _canEditMap[user.user_id] === false) ? 'false' : 'true';
 
   // Populate privilege checkboxes
   var privMap = userPrivileges || {};
@@ -1038,6 +1056,14 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
   var errorBox  = document.getElementById('editPrivilegeError');
   var submitBtn = form.querySelector('button[type="submit"]');
   var origText  = submitBtn.textContent;
+
+  // Client-side privilege lock guard (mirrors server-side check).
+  if (form.dataset.canEdit === 'false') {
+    errorBox.textContent = 'These privileges are locked by another administrator. You cannot modify them.';
+    errorBox.classList.remove('hidden');
+    return;
+  }
+
 
   // Validate MPIN if filled in
   var mpinVal = document.getElementById('edit_mpin').value.trim();

@@ -134,17 +134,29 @@ class SuperAdmin extends BaseController
             $userPrivilegesMap[$user['user_id']] = $this->privilegeModel->getUserPrivileges($user['user_id']);
         }
 
+         // Build per-user edit permission map for the view.
+        $actingAdminId     = (int) session()->get('user_id');
+        $actingAccessLevel = session()->get('access_level') ?? 'limited';
+        $canEditMap = [];
+        foreach ($users as $u) {
+            $canEditMap[$u['user_id']] = $this->privilegeModel->canEditPrivileges(
+                $actingAdminId, (int) $u['user_id'], $actingAccessLevel
+            );
+        }
+
         $data = [
-            'title' => 'User Management - CredentiaTAU',
-            'email' => session()->get('email'),
-            'role'  => session()->get('role'),
-            'full_name' => session()->get('full_name') ?? 'Admin',
-            'users' => $users,
-            'pending_admins' => $pendingRequests,
-            'user_privileges_map' => $userPrivilegesMap,
-            'privilege_definitions' => $this->privilegeModel->getPrivilegeDefinitions(),
-            'group_privilege_matrix' => $this->groupPrivilegeModel->getFullMatrix()
+            'title'                  => 'User Management - CredentiaTAU',
+            'email'                  => session()->get('email'),
+            'role'                   => session()->get('role'),
+            'full_name'              => session()->get('full_name') ?? 'Admin',
+            'users'                  => $users,
+            'pending_admins'         => $pendingRequests,
+            'user_privileges_map'    => $userPrivilegesMap,
+            'privilege_definitions'  => $this->privilegeModel->getPrivilegeDefinitions(),
+            'group_privilege_matrix' => $this->groupPrivilegeModel->getFullMatrix(),
+            'can_edit_map'           => $canEditMap,
         ];
+
 
         return view('super_admin/user_management', $data);
     }
@@ -302,19 +314,24 @@ class SuperAdmin extends BaseController
         if ($redirect) return $redirect;
 
         // Get existing user
-        $existingUser = $this->userModel->find($id);
-        if (!$existingUser) {
-            return redirect()->back()->with('error', 'User not found.');
-        }
-        // ERD Rule: Admin cannot edit own privileges or another admin's privileges
-        // or their own account. Full admins (super-admins) bypass this check.
-        if (session()->get('access_level') !== 'full') {
-            if (!$this->privilegeModel->canAdminEditPrivilege(
-                    (int) session()->get('user_id'), (int) $id)) {
-                return redirect()->back()
-                    ->with('error', 'You cannot edit privileges for this account.');
-            }
-        }
+$existingUser = $this->userModel->find($id);
+if (!$existingUser) {
+    return redirect()->back()->with('error', 'User not found.');
+}
+
+// Prevent any user from editing their own account through this route.
+if ((int) $id === (int) session()->get('user_id')) {
+    return redirect()->back()->with('error', 'You cannot edit your own account here. Use the Settings page.');
+}
+
+// ERD Rule: Limited admins cannot edit another admin's account or privileges.
+if (session()->get('access_level') !== 'full') {
+    if (!$this->privilegeModel->canAdminEditPrivilege(
+            (int) session()->get('user_id'), (int) $id)) {
+        return redirect()->back()
+            ->with('error', 'You cannot edit privileges for this account.');
+    }
+}
 
 
 
@@ -553,7 +570,7 @@ public function toggleSuspend($id)
         if ($user['role'] === 'admin') {
             $count = $this->userModel->where('role', 'admin')->countAllResults();
             if ($count <= 1) {
-                return redirect()->back()->with('error', 'Cannot delete the only Admin (Super Admin) account.');
+                return redirect()->back()->with('error', 'Cannot delete the only Admin account.');
             }
         }
 
@@ -889,18 +906,26 @@ private function _getUserPrivilegesData($userId)
             $privileges[$key] = isset($userPrivileges[$key]);
         }
         
+       $actingAdminId     = (int) session()->get('user_id');
+        $actingAccessLevel = session()->get('access_level') ?? 'limited';
+        $canEdit = $this->privilegeModel->canEditPrivileges(
+            $actingAdminId, (int) $user->user_id, $actingAccessLevel
+        );
+
         return [
-            'success' => true,
-            'privileges' => $privileges,
+            'success'     => true,
+            'privileges'  => $privileges,
             'definitions' => $definitions,
-            'user' => [
-                'user_id' => $user->user_id,
-                'full_name' => $user->full_name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'access_level' => $user->access_level
-            ]
+            'can_edit'    => $canEdit,
+            'user'        => [
+                'user_id'      => $user->user_id,
+                'full_name'    => $user->full_name,
+                'email'        => $user->email,
+                'role'         => $user->role,
+                'access_level' => $user->access_level,
+            ],
         ];
+
         
     } catch (\Exception $e) {
         log_message('error', 'Error fetching user privileges: ' . $e->getMessage());
@@ -943,20 +968,37 @@ private function _getUserPrivilegesData($userId)
         }
 
         $user = $this->userModel->find($userId);
-        if (!$user) {
-            return $this->response->setJSON(['success' => false, 'message' => 'User not found.']);
+if (!$user) {
+    return $this->response->setJSON(['success' => false, 'message' => 'User not found.']);
+}
+
+// Prevent self-privilege modification
+if ((int) $userId === (int) session()->get('user_id')) {
+    return $this->response->setJSON(['success' => false, 'message' => 'You cannot modify your own privileges.']);
+}
+
+// ── Privilege lock guard ────────────────────────────────────
+        $actingAdminId     = (int) session()->get('user_id');
+        $actingAccessLevel = session()->get('access_level') ?? 'limited';
+
+        if (!$this->privilegeModel->canEditPrivileges($actingAdminId, (int) $userId, $actingAccessLevel)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'You do not have permission to modify privileges for this user. They were locked by another administrator.',
+            ]);
         }
+        // ────────────────────────────────────────────────────────────
 
         // All known privilege keys
         $allKeys = [
             'records_upload', 'files_view', 'records_organize',
-    'folders_add', 'records_delete', 'folders_delete',
-    'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin'
+            'folders_add', 'records_delete', 'folders_delete',
+            'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin'
         ];
 
         // Parse submitted JSON body
-        $body       = $this->request->getJSON(true);
-        $submitted  = $body['privileges'] ?? [];
+        $body      = $this->request->getJSON(true);
+        $submitted = $body['privileges'] ?? [];
 
         // Build a clean true/false map for every key
         $privileges = [];
@@ -964,7 +1006,8 @@ private function _getUserPrivilegesData($userId)
             $privileges[$key] = isset($submitted[$key]) && $submitted[$key] === true;
         }
 
-        if ($this->privilegeModel->setPrivileges($userId, $privileges)) {
+        if ($this->privilegeModel->setPrivileges($userId, $privileges, $actingAdminId)) {
+
             $this->activityLogModel->logActivity(
                 session()->get('user_id'),
                 'privileges_updated',

@@ -79,42 +79,84 @@ class UserPrivilegeModel extends Model
     /**
      * Set privilege for user
      */
-    public function setPrivilege($userId, $privilegeKey, $value = true)
+    public function setPrivilege($userId, $privilegeKey, $value = true, ?int $actingAdminId = null)
     {
         $existing = $this->where('user_id', $userId)
                          ->where('privilege_key', $privilegeKey)
                          ->first();
-        
+
         if ($existing) {
-            return $this->update($existing['privilege_id'], [
+            $data = [
                 'privilege_value' => $value ? 1 : 0,
                 'status'          => 'active',
-            ]);
+            ];
+            if ($actingAdminId !== null) {
+                $data['locked_by'] = $actingAdminId;
+                $data['locked_at'] = date('Y-m-d H:i:s');
+            }
+            return $this->update($existing['privilege_id'], $data);
         } else {
-            return $this->insert([
+            $data = [
                 'user_id'         => $userId,
                 'privilege_key'   => $privilegeKey,
                 'privilege_value' => $value ? 1 : 0,
                 'status'          => 'active',
-            ]);
+            ];
+            if ($actingAdminId !== null) {
+                $data['locked_by'] = $actingAdminId;
+                $data['locked_at'] = date('Y-m-d H:i:s');
+            }
+            return $this->insert($data);
         }
     }
+
 
     /**
      * Set multiple privileges for user
      */
-    public function setPrivileges($userId, array $privileges)
+    public function setPrivileges($userId, array $privileges, ?int $actingAdminId = null)
     {
         $success = true;
-        
+
         foreach ($privileges as $key => $value) {
-            if (!$this->setPrivilege($userId, $key, $value)) {
+            if (!$this->setPrivilege($userId, $key, $value, $actingAdminId)) {
                 $success = false;
             }
         }
-        
+
         return $success;
     }
+
+    public function getPrivilegeLockOwner(int $userId): ?int
+    {
+        $row = $this->where('user_id', $userId)
+                    ->where('locked_by IS NOT NULL', null, false)
+                    ->orderBy('locked_at', 'DESC')
+                    ->first();
+        return $row ? (int) $row['locked_by'] : null;
+    }
+
+
+    public function canEditPrivileges(int $actingAdminId, int $targetUserId, string $actingAccessLevel): bool
+    {
+        if ($actingAccessLevel === 'full') {
+            return true;
+        }
+
+        if ($actingAdminId === $targetUserId) {
+            return false;
+        }
+
+        $lockOwner = $this->getPrivilegeLockOwner($targetUserId);
+
+        if ($lockOwner === null) {
+            return true; // No lock yet, any admin may set
+        }
+
+        return $lockOwner === $actingAdminId;
+    }
+
+
 
     /**
      * Get default privileges for a role
