@@ -120,44 +120,73 @@
           </td>
           <td class="px-6 py-4 text-sm text-gray-600"><?= $user['total_records'] ?? 0; ?></td>
           <td class="px-6 py-4">
-            <div class="flex gap-2">
-             <?php $canEdit = $can_edit_map[$user['user_id']] ?? true; ?>
-              <?php if ($canEdit): ?>
-                <button onclick='openEditModal(<?= json_encode($user); ?>, <?= json_encode($user_privileges_map[$user["user_id"]] ?? []); ?>)'
-                        class="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                  Edit
-                </button>
-              <?php else: ?>
-                <button
-                  disabled
-                  title="Privileges locked by another administrator"
-                  onclick="alert('This user\'s privileges were assigned by another administrator and cannot be modified by you.')"
-                  class="text-gray-400 font-medium text-sm cursor-not-allowed">
-                  Edit
-                </button>
-              <?php endif; ?>
+  <div class="flex gap-2">
+    <?php
+      $uid           = $user['user_id'];
+      $canEdit       = $can_edit_map[$uid]         ?? true;
+      $canToggle     = $can_toggle_status_map[$uid] ?? true;
+      $canDelete     = $can_delete_map[$uid]        ?? true;
+      $lockOwnerName = $lock_owner_map[$uid]        ?? 'another administrator';
+      $lockedMsg     = 'This user was configured by ' . $lockOwnerName . ' and cannot be modified.';
+    ?>
 
-              <!-- ❌ Set MPIN button removed from here -->
-              <?php if ($user['status'] !== 'inactive'): ?>
-                <a href="<?= base_url('super-admin/toggle-suspend/' . $user['user_id']); ?>" 
-                   class="text-orange-600 hover:text-orange-800 font-medium text-sm"
-                   onclick="return confirm('Deactivate this admin?');">
-                  Deactivate
-                </a>
-              <?php else: ?>
-                <a href="<?= base_url('super-admin/toggle-suspend/' . $user['user_id']); ?>" 
-                   class="text-green-600 hover:text-green-800 font-medium text-sm"
-                   onclick="return confirm('Reactivate this admin?');">
-                  Reactivate
-                </a>
-              <?php endif; ?>
-              <a href="<?= base_url('super-admin/delete-admin/' . $user['user_id']); ?>" 
-                 class="text-red-600 hover:text-red-800 font-medium text-sm"
-                 onclick="return confirm('Are you sure you want to delete this admin? This action cannot be undone.');">
-                Delete
-              </a>
-            </div>
-          </td>
+    <?php if ($canEdit): ?>
+      <button onclick='openEditModal(<?= json_encode($user); ?>, <?= json_encode($user_privileges_map[$user["user_id"]] ?? []); ?>)'
+              class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+        Edit
+      </button>
+    <?php else: ?>
+      <button type="button"
+              title="<?= esc($lockedMsg) ?>"
+              onclick="showLockedNotice('<?= esc(addslashes($lockedMsg)) ?>')"
+              class="text-gray-300 font-medium text-sm cursor-not-allowed select-none"
+              style="pointer-events:auto">
+        Edit
+      </button>
+    <?php endif; ?>
+
+    <?php if ($canToggle): ?>
+      <?php if ($user['status'] !== 'inactive'): ?>
+        <a href="<?= base_url('super-admin/toggle-suspend/' . $uid); ?>"
+           class="text-orange-600 hover:text-orange-800 font-medium text-sm"
+           onclick="return confirm('Deactivate this user?');">
+          Deactivate
+        </a>
+      <?php else: ?>
+        <a href="<?= base_url('super-admin/toggle-suspend/' . $uid); ?>"
+           class="text-green-600 hover:text-green-800 font-medium text-sm"
+           onclick="return confirm('Reactivate this user?');">
+          Reactivate
+        </a>
+      <?php endif; ?>
+    <?php else: ?>
+      <button type="button"
+              title="<?= esc($lockedMsg) ?>"
+              onclick="showLockedNotice('<?= esc(addslashes($lockedMsg)) ?>')"
+              class="text-gray-300 font-medium text-sm cursor-not-allowed select-none"
+              style="pointer-events:auto">
+        <?= $user['status'] !== 'inactive' ? 'Deactivate' : 'Reactivate' ?>
+      </button>
+    <?php endif; ?>
+
+    <?php if ($canDelete): ?>
+      <a href="<?= base_url('super-admin/delete-admin/' . $uid); ?>"
+         class="text-red-600 hover:text-red-800 font-medium text-sm"
+         onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.');">
+        Delete
+      </a>
+    <?php else: ?>
+      <button type="button"
+              title="<?= esc($lockedMsg) ?>"
+              onclick="showLockedNotice('<?= esc(addslashes($lockedMsg)) ?>')"
+              class="text-gray-300 font-medium text-sm cursor-not-allowed select-none"
+              style="pointer-events:auto">
+        Delete
+      </button>
+    <?php endif; ?>
+
+  </div>
+</td>
         </tr>
         <?php endforeach; ?>
       <?php else: ?>
@@ -703,7 +732,10 @@
 <script>
 
   // PHP → JS privilege lock map  { user_id: bool }
-  var _canEditMap = <?= json_encode($can_edit_map ?? []) ?>;
+var _canEditMap         = <?= json_encode($can_edit_map          ?? []) ?>;
+var _lockOwnerMap       = <?= json_encode($lock_owner_map        ?? []) ?>;
+var _canToggleStatusMap = <?= json_encode($can_toggle_status_map ?? []) ?>;
+var _canDeleteMap       = <?= json_encode($can_delete_map        ?? []) ?>;
 
 // ────────────────────────────────────────────────
 //   Password / PIN toggle helper
@@ -922,8 +954,12 @@ function openEditModal(user, userPrivileges) {
   document.getElementById('editForm').action = '<?= base_url('super-admin/edit-admin/'); ?>' + user.user_id;
   document.getElementById('editForm').dataset.userId  = user.user_id;
   // Stamp the privilege-edit permission from the PHP-generated map.
-  document.getElementById('editForm').dataset.canEdit =
-    (typeof _canEditMap !== 'undefined' && _canEditMap[user.user_id] === false) ? 'false' : 'true';
+  const _editable = (typeof _canEditMap !== 'undefined' && _canEditMap[user.user_id] === false) ? 'false' : 'true';
+document.getElementById('editForm').dataset.canEdit  = _editable;
+document.getElementById('editForm').dataset.lockMsg  =
+    (_editable === 'false' && typeof _lockOwnerMap !== 'undefined')
+        ? ('This user was already configured by ' + (_lockOwnerMap[user.user_id] || 'another administrator') + ' and cannot be modified.')
+        : '';
 
   // Populate privilege checkboxes
   var privMap = userPrivileges || {};
@@ -1059,10 +1095,11 @@ document.getElementById('editForm').addEventListener('submit', function(e) {
 
   // Client-side privilege lock guard (mirrors server-side check).
   if (form.dataset.canEdit === 'false') {
-    errorBox.textContent = 'These privileges are locked by another administrator. You cannot modify them.';
+    const lockedMsg = form.dataset.lockMsg || 'This user was already configured by another administrator and cannot be modified.';
+    errorBox.textContent = lockedMsg;
     errorBox.classList.remove('hidden');
     return;
-  }
+}
 
 
   // Validate MPIN if filled in
@@ -1170,6 +1207,10 @@ togglePasswordVisibility('edit_mpin',         'toggleEditMpin');
 // ────────────────────────────────────────────────
 //   Global close on backdrop click / Escape key
 // ────────────────────────────────────────────────
+function showLockedNotice(msg) {
+  // Reuses your existing showDialog helper already defined in this file
+  showDialog(msg, 'warning');
+}
 window.onclick = function(event) {
   if (event.target === document.getElementById('addModal'))        closeAddModal();
   if (event.target === document.getElementById('editModal'))       closeEditModal();

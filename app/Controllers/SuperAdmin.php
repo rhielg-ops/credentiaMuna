@@ -137,12 +137,69 @@ class SuperAdmin extends BaseController
          // Build per-user edit permission map for the view.
         $actingAdminId     = (int) session()->get('user_id');
         $actingAccessLevel = session()->get('access_level') ?? 'limited';
-        $canEditMap = [];
-        foreach ($users as $u) {
-            $canEditMap[$u['user_id']] = $this->privilegeModel->canEditPrivileges(
-                $actingAdminId, (int) $u['user_id'], $actingAccessLevel
-            );
+        $canEditMap    = [];
+        $lockOwnerMap  = [];
+
+foreach ($users as $u) {
+    $uid = (int) $u['user_id'];
+
+    $canEdit = $this->privilegeModel->canEditPrivileges(
+        $actingAdminId, $uid, $actingAccessLevel
+    );
+    $canEditMap[$uid] = $canEdit;
+$canEditMap          = [];
+$lockOwnerMap        = [];
+$canToggleStatusMap  = [];
+$canDeleteMap        = [];
+
+foreach ($users as $u) {
+    $uid            = (int) $u['user_id'];
+    $targetIsAdmin  = ($u['role'] === 'admin');
+    $isSelf         = ($uid === $actingAdminId);
+
+    // Full admins can do everything except delete/deactivate themselves
+    if ($actingAccessLevel === 'full') {
+        $canEditMap[$uid]         = !$isSelf;
+        $canToggleStatusMap[$uid] = !$isSelf;
+        $canDeleteMap[$uid]       = !$isSelf;
+        continue;
+    }
+
+    // Limited actors: resolve the lock owner once
+    $lockOwnerId = $this->privilegeModel->getPrivilegeLockOwner($uid);
+    $isLockOwner = ($lockOwnerId === $actingAdminId);
+    $hasNoLock   = ($lockOwnerId === null);
+
+    // Resolve display name for the tooltip
+    if ($targetIsAdmin) {
+        $lockOwnerMap[$uid] = 'system (admin accounts are protected)';
+    } elseif ($lockOwnerId && !$isLockOwner) {
+        $owner = $this->userModel->find($lockOwnerId);
+        $lockOwnerMap[$uid] = $owner['full_name'] ?? 'another administrator';
+    }
+
+    // Edit privileges: same rule as before
+    $canEdit = !$isSelf && !$targetIsAdmin && ($hasNoLock || $isLockOwner);
+    $canEditMap[$uid] = $canEdit;
+
+    // Deactivate/Reactivate: same rules as edit
+    $canToggleStatusMap[$uid] = $canEdit;
+
+    // Delete: same rules as edit (must own the config to delete)
+    $canDeleteMap[$uid] = $canEdit;
+}
+    // Resolve the lock-owner name for the tooltip shown in the view
+    if (!$canEdit) {
+        $lockOwnerId = $this->privilegeModel->getPrivilegeLockOwner($uid);
+        if ($lockOwnerId) {
+            $owner = $this->userModel->find($lockOwnerId);
+            $lockOwnerMap[$uid] = $owner['full_name'] ?? 'another administrator';
+        } else {
+            // Target is an admin account — blanket rule applies
+            $lockOwnerMap[$uid] = 'system (admin accounts are protected)';
         }
+    }
+}
 
         $data = [
             'title'                  => 'User Management - CredentiaTAU',
@@ -155,6 +212,9 @@ class SuperAdmin extends BaseController
             'privilege_definitions'  => $this->privilegeModel->getPrivilegeDefinitions(),
             'group_privilege_matrix' => $this->groupPrivilegeModel->getFullMatrix(),
             'can_edit_map'           => $canEditMap,
+            'lock_owner_map'         => $lockOwnerMap,
+            'can_toggle_status_map'  => $canToggleStatusMap,  // ADD
+            'can_delete_map'         => $canDeleteMap,         // ADD
         ];
 
 
@@ -324,12 +384,23 @@ if ((int) $id === (int) session()->get('user_id')) {
     return redirect()->back()->with('error', 'You cannot edit your own account here. Use the Settings page.');
 }
 
-// ERD Rule: Limited admins cannot edit another admin's account or privileges.
+// Lock guard: full admins always pass; limited actors use canEditPrivileges()
 if (session()->get('access_level') !== 'full') {
-    if (!$this->privilegeModel->canAdminEditPrivilege(
-            (int) session()->get('user_id'), (int) $id)) {
-        return redirect()->back()
-            ->with('error', 'You cannot edit privileges for this account.');
+    $actingAdminId = (int) session()->get('user_id');
+    $canEdit = $this->privilegeModel->canEditPrivileges(
+        $actingAdminId, (int) $id, 'limited'
+    );
+    if (!$canEdit) {
+        $db     = \Config\Database::connect();
+        $target = $db->table('users')->select('role')->where('user_id', $id)->get()->getRow();
+        if ($target && $target->role === 'admin') {
+            $reason = 'Admin accounts can only be modified by a full administrator.';
+        } else {
+            $lockOwnerId = $this->privilegeModel->getPrivilegeLockOwner((int) $id);
+            $owner       = $lockOwnerId ? $this->userModel->find($lockOwnerId) : null;
+            $reason      = 'This user was already configured by ' . ($owner['full_name'] ?? 'another administrator') . ' and cannot be modified.';
+        }
+        return redirect()->back()->with('error', $reason);
     }
 }
 
@@ -504,8 +575,28 @@ public function toggleSuspend($id)
         return redirect()->back()->with('error', 'User not found.');
     }
 
-    if ($id == session()->get('user_id')) {
+    if ((int)$id === (int)session()->get('user_id')) {
         return redirect()->back()->with('error', 'You cannot change your own status.');
+    }
+
+    // Lock guard — same rule as edit
+    $actingAccessLevel = session()->get('access_level') ?? 'limited';
+    if ($actingAccessLevel !== 'full') {
+        $actingAdminId = (int) session()->get('user_id');
+        $canAct = $this->privilegeModel->canEditPrivileges(
+            $actingAdminId, (int) $id, 'limited'
+        );
+        if (!$canAct) {
+            $targetIsAdmin = ($user['role'] === 'admin');
+            if ($targetIsAdmin) {
+                $reason = 'Admin accounts can only be deactivated by a full administrator.';
+            } else {
+                $lockOwnerId = $this->privilegeModel->getPrivilegeLockOwner((int) $id);
+                $owner       = $lockOwnerId ? $this->userModel->find($lockOwnerId) : null;
+                $reason      = 'This user was configured by ' . ($owner['full_name'] ?? 'another administrator') . ' and cannot be modified.';
+            }
+            return redirect()->back()->with('error', $reason);
+        }
     }
 
     $newStatus = $user['status'] === 'inactive' ? 'active' : 'inactive';
@@ -553,21 +644,41 @@ public function toggleSuspend($id)
      * Delete Admin
      */
     public function deleteAdmin($id)
-    {
-        if ($redirect = $this->checkSuperAdmin()) return $redirect;
+{
+    if ($redirect = $this->checkSuperAdmin()) return $redirect;
 
-        $user = $this->userModel->find($id);
-        if (!$user) {
-            return redirect()->back()->with('error', 'User not found.');
+    $user = $this->userModel->find($id);
+    if (!$user) {
+        return redirect()->back()->with('error', 'User not found.');
+    }
+
+    // Prevent deleting self
+    if ((int)$id === (int)session()->get('user_id')) {
+        return redirect()->back()->with('error', 'You cannot delete your own account.');
+    }
+
+    // Lock guard — same rule as edit
+    $actingAccessLevel = session()->get('access_level') ?? 'limited';
+    if ($actingAccessLevel !== 'full') {
+        $actingAdminId = (int) session()->get('user_id');
+        $canAct = $this->privilegeModel->canEditPrivileges(
+            $actingAdminId, (int) $id, 'limited'
+        );
+        if (!$canAct) {
+            $targetIsAdmin = ($user['role'] === 'admin');
+            if ($targetIsAdmin) {
+                $reason = 'Admin accounts can only be deleted by a full administrator.';
+            } else {
+                $lockOwnerId = $this->privilegeModel->getPrivilegeLockOwner((int) $id);
+                $owner       = $lockOwnerId ? $this->userModel->find($lockOwnerId) : null;
+                $reason      = 'This user was configured by ' . ($owner['full_name'] ?? 'another administrator') . ' and cannot be deleted.';
+            }
+            return redirect()->back()->with('error', $reason);
         }
+    }
 
-        // Prevent deleting self
-        if ($id == session()->get('user_id')) {
-            return redirect()->back()->with('error', 'You cannot delete your own account.');
-        }
-
-        // Prevent deleting the only super admin
-        if ($user['role'] === 'admin') {
+    // Prevent deleting the only super admin
+    if ($user['role'] === 'admin') {
             $count = $this->userModel->where('role', 'admin')->countAllResults();
             if ($count <= 1) {
                 return redirect()->back()->with('error', 'Cannot delete the only Admin account.');
@@ -978,15 +1089,27 @@ if ((int) $userId === (int) session()->get('user_id')) {
 }
 
 // ── Privilege lock guard ────────────────────────────────────
-        $actingAdminId     = (int) session()->get('user_id');
-        $actingAccessLevel = session()->get('access_level') ?? 'limited';
+$actingAdminId     = (int) session()->get('user_id');
+$actingAccessLevel = session()->get('access_level') ?? 'limited';
 
-        if (!$this->privilegeModel->canEditPrivileges($actingAdminId, (int) $userId, $actingAccessLevel)) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'You do not have permission to modify privileges for this user. They were locked by another administrator.',
-            ]);
-        }
+if (!$this->privilegeModel->canEditPrivileges($actingAdminId, (int) $userId, $actingAccessLevel)) {
+    // Determine a user-friendly reason
+    $db     = \Config\Database::connect();
+    $target = $db->table('users')->select('role')->where('user_id', $userId)->get()->getRow();
+    if ($target && $target->role === 'admin') {
+        $reason = 'Admin accounts can only be configured by a full administrator.';
+    } else {
+        $lockOwnerId = $this->privilegeModel->getPrivilegeLockOwner((int) $userId);
+        $owner       = $lockOwnerId ? $this->userModel->find($lockOwnerId) : null;
+        $ownerName   = $owner['full_name'] ?? 'another administrator';
+        $reason      = 'This user was already configured by ' . $ownerName . ' and cannot be modified.';
+    }
+
+    return $this->response->setJSON([
+        'success' => false,
+        'message' => $reason,
+    ]);
+}
         // ────────────────────────────────────────────────────────────
 
         // All known privilege keys

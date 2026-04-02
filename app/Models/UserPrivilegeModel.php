@@ -138,23 +138,42 @@ class UserPrivilegeModel extends Model
 
 
     public function canEditPrivileges(int $actingAdminId, int $targetUserId, string $actingAccessLevel): bool
-    {
-        if ($actingAccessLevel === 'full') {
-            return true;
-        }
-
-        if ($actingAdminId === $targetUserId) {
-            return false;
-        }
-
-        $lockOwner = $this->getPrivilegeLockOwner($targetUserId);
-
-        if ($lockOwner === null) {
-            return true; // No lock yet, any admin may set
-        }
-
-        return $lockOwner === $actingAdminId;
+{
+    // Full admins (role=admin, access_level=full) always have full edit rights
+    if ($actingAccessLevel === 'full') {
+        return true;
     }
+
+    // Nobody can edit their own privileges
+    if ($actingAdminId === $targetUserId) {
+        return false;
+    }
+
+    // Limited actors cannot edit other admins at all
+    $db     = \Config\Database::connect();
+    $target = $db->table('users')
+                 ->select('role, access_level')
+                 ->where('user_id', $targetUserId)
+                 ->get()->getRow();
+
+    if (!$target) {
+        return false;
+    }
+
+    // A user with only "user_management" privilege cannot edit another admin
+    if ($target->role === 'admin') {
+        return false;
+    }
+
+    // For regular users: only the original lock owner may edit
+    $lockOwner = $this->getPrivilegeLockOwner($targetUserId);
+
+    if ($lockOwner === null) {
+        return true; // No one has configured this user yet — first come, first served
+    }
+
+    return $lockOwner === $actingAdminId;
+}
 
 
 
