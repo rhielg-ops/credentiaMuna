@@ -74,6 +74,13 @@ $routes->group('super-admin', function ($routes) {
     $routes->get( 'get-user-folders/(:num)',    'SuperAdmin::getUserFolders/$1');
     $routes->post('update-user-folders/(:num)', 'SuperAdmin::updateUserFolders/$1');
     $routes->get('users-by-role/(:alpha)',      'SuperAdmin::getUsersByRole/$1');
+    // Document Types (OCR keyword management)
+$routes->get( 'record-types',                        'RecordTypes::index');
+$routes->post('record-types/save-type',              'RecordTypes::saveType');
+$routes->get( 'record-types/delete-type/(:num)',     'RecordTypes::deleteType/$1');
+$routes->get( 'record-types/keywords/(:num)',        'RecordTypes::getKeywords/$1');
+$routes->post('record-types/save-keyword',           'RecordTypes::saveKeyword');
+$routes->post('record-types/delete-keyword/(:num)',  'RecordTypes::deleteKeyword/$1');
 
 
     // Requires audit_logs privilege (or admin role)

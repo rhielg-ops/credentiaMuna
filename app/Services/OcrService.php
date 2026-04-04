@@ -259,50 +259,28 @@ private function pdfToImageOcr(string $pdfPath): string
 }
 
     private function detectDocumentType(string $text): string
-    {
-        $keywords = [
-            'transcript'          => ['transcript of records', 'tor', 'official transcript'],
-            'enrollment'          => ['certificate of enrollment', 'enrollment form', 'certificate of registration', 'enrolled'],
-            'clearance'           => ['clearance', 'cleared'],
-            'good_moral'          => [
-                'good moral',
-                'certificate of good moral',
-                'good moral character',
-                'has not committed any misbehavior',   // ← your PDF has this exact phrase
-                'has not violated any school rules',   // ← your PDF has this too
-                'rules and regulations',               // ← common in Philippine good moral certs
-                'conduct and behavior',
-                'moral character', 'certify'
-            ],
-            'form_137'            => ['form 137', 'permanent record'],
-            'form_138'            => ['form 138', 'report card'],
-            'diploma'             => ['diploma', 'graduate', 'graduation'],
-            'birth_certificate'   => ['birth certificate', 'certificate of live birth'],
-            'honorable_dismissal' => ['honorable dismissal', 'transfer credential'],
-        ];
-        $t = strtolower($text);
-        foreach ($keywords as $type => $phrases)
-            foreach ($phrases as $phrase)
-                if (str_contains($t, $phrase)) return $type;
-        return '';
+{
+    $typeModel  = new \App\Models\RecordTypeModel();
+    $keywordMap = $typeModel->getKeywordMap();
+    $t          = strtolower($text);
+
+    foreach ($keywordMap as $keyName => $phrases) {
+        foreach ($phrases as $phrase) {
+            if (str_contains($t, strtolower($phrase))) {
+                return $keyName;
+            }
+        }
     }
+    return '';
+}
 
     // Maps a detected doc type key to its standardized filename label suffix
     private function getDocTypeLabel(string $docType): string
-    {
-        return self::DOC_TYPE_LABELS[$docType] ?? '';
-    }
-
+{
+    if ($docType === '') return '';
+    $typeModel = new \App\Models\RecordTypeModel();
+    $suffixes  = $typeModel->getSuffixMap();
+    return $suffixes[$docType] ?? '';
+}
     // Standard document type labels used in filename construction
-    public const DOC_TYPE_LABELS = [
-        'transcript'          => 'Transcript_Record',
-        'enrollment'          => 'Enrollment_Certificate',
-        'clearance'           => 'Clearance_Record',
-        'good_moral'          => 'Good_Moral_Certificate',
-        'form_137'            => 'Form137_Permanent_Record',
-        'form_138'            => 'Form138_Report_Card',
-        'diploma'             => 'Diploma_Record',
-        'birth_certificate'   => 'Birth_Certificate',
-        'honorable_dismissal' => 'Honorable_Dismissal',
-    ];
 }

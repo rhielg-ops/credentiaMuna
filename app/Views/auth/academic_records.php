@@ -739,20 +739,18 @@
     </div>
     <div class="px-6 py-5">
       <label class="block text-xs font-semibold text-gray-600 mb-1">Document Type Label</label>
-      <select id="editFilenameDocType"
-              class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-700 mb-4 focus:outline-none focus:ring-2 focus:ring-teal-400"
-              onchange="onDocTypeLabelChange()">
-        <option value="">-- Select document type --</option>
-        <option value="Transcript_Record">Transcript Record</option>
-        <option value="Enrollment_Certificate">Enrollment Certificate</option>
-        <option value="Clearance_Record">Clearance Record</option>
-        <option value="Good_Moral_Certificate">Good Moral Certificate</option>
-        <option value="Form137_Permanent_Record">Form 137 – Permanent Record</option>
-        <option value="Form138_Report_Card">Form 138 – Report Card</option>
-        <option value="Diploma_Record">Diploma Record</option>
-        <option value="Birth_Certificate">Birth Certificate</option>
-        <option value="Honorable_Dismissal">Honorable Dismissal</option>
-      </select>
+      <?php
+$recordTypeModel  = new \App\Models\RecordTypeModel();
+$dynamicDocTypes  = $recordTypeModel->getAllActive();
+?>
+<select id="editFilenameDocType"
+        class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-700 mb-4 focus:outline-none focus:ring-2 focus:ring-teal-400"
+        onchange="onDocTypeLabelChange()">
+  <option value="">-- Select document type --</option>
+  <?php foreach ($dynamicDocTypes as $keyName => $type): ?>
+    <option value="<?= esc($type['suffix']) ?>"><?= esc($type['label']) ?></option>
+  <?php endforeach; ?>
+</select>
       <label class="block text-xs font-semibold text-gray-600 mb-1">Full Filename <span class="text-gray-400 font-normal">(without extension)</span></label>
       <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-teal-400">
         <input id="editFilenameInput" type="text"
