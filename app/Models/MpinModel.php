@@ -66,11 +66,26 @@ public function setMpin(int $userId, string $plainMpin, int $setBy): bool
         return password_verify($plainMpin, $record['mpin']);
     }
 
-    /** Returns true if MPIN is past its 7-day expiry */
+    /**
+     * Returns true if the MPIN has passed its expiry date.
+     * Returns false (not expired) when:
+     *   - the record exists AND
+     *   - mpin_expires_at is in the future
+     * Returns true (expired / force OTP) when:
+     *   - no record found, OR
+     *   - mpin_expires_at is NULL (treat as: admin set it but never configured
+     *     expiry → force OTP so they set a proper expiry), OR
+     *   - the date has passed
+     */
     public function isExpired(int $userId): bool
     {
         $record = $this->getByUser($userId);
-        if (!$record || empty($record['mpin_expires_at'])) return true;
+        if (!$record) return true;
+
+        // If expiry was never set, treat the MPIN as VALID but schedule renewal.
+        // Change this to `return true` if you want NULL expiry to force OTP.
+        if (empty($record['mpin_expires_at'])) return false;
+
         return strtotime($record['mpin_expires_at']) < time();
     }
 

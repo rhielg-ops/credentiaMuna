@@ -215,10 +215,10 @@ return redirect()->to('/auth/verify-code');
             $this->activityLogModel->logActivity($userId, 'mpin_failed', 'Incorrect MPIN entered');
             return redirect()->back()->with('error', 'Incorrect MPIN. Please try again.');
         }
-
-        // MPIN correct — complete login
+// MPIN correct — complete login and refresh the 7-day rolling expiry.
         $user = $this->userModel->find($userId);
         $this->userModel->updateLastLogin($userId);
+        $this->mpinModel->refreshExpiry($userId);  // ← slide the 7-day window
 
         session()->set([
             'user_id'      => $user['user_id'],
@@ -342,8 +342,15 @@ return redirect()->to('/auth/verify-code');
         // Log activity
         $this->activityLogModel->logActivity($userId, 'login_success', 'Successfully logged in with 2FA');
 
+        // If user has an MPIN, refresh it so they can use it again next login
+        // (expiry slides another 7 days after a successful OTP verification)
+        if ($this->mpinModel->hasMpin((int) $userId)) {
+            $this->mpinModel->refreshExpiry((int) $userId);
+        }
+
         // Redirect to appropriate dashboard
         return $this->redirectToDashboard();
+
     }
 
     /**

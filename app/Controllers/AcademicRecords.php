@@ -329,7 +329,10 @@ class AcademicRecords extends BaseController
         if (is_dir($newPath))        return $this->jsonError('A folder with that name already exists.');
         if (!mkdir($newPath, 0755, true)) return $this->jsonError('Failed to create folder.');
 
-        return $this->jsonOk(['folder_name' => $folderName, 'folder_path' => trim($parentPath . '/' . $folderName, '/')]);
+        $newFolderRelPath = trim($parentPath . '/' . $folderName, '/');
+        $this->fileAccessLogModel->log($newFolderRelPath, 'folder_create');
+
+        return $this->jsonOk(['folder_name' => $folderName, 'folder_path' => $newFolderRelPath]);
     }
 
     // ── UPLOAD SINGLE FILE ────────────────────────────────────────────────────
@@ -456,6 +459,7 @@ class AcademicRecords extends BaseController
          if (!is_file($absPath)) return $this->jsonError('File not found.', 404);
         if (!$this->canAccessPath($relative)) return $this->jsonError('Access denied.', 403);
         if (!unlink($absPath))  return $this->jsonError('Delete failed.');
+        $this->fileAccessLogModel->log($relative, 'delete');
         return $this->jsonOk(['message' => 'File deleted.']);
     }
 
@@ -473,6 +477,7 @@ class AcademicRecords extends BaseController
         if (rtrim($absPath, DIRECTORY_SEPARATOR) === rtrim(realpath($this->uploadRoot), DIRECTORY_SEPARATOR)) return $this->jsonError('Cannot delete the root folder.');
         if (!$this->canAccessPath($relative)) return $this->jsonError('Access denied.', 403);
         $this->rmdirRecursive($absPath);
+        $this->fileAccessLogModel->log($relative, 'folder_delete');
         return $this->jsonOk(['message' => 'Folder deleted.']);
     }
 
@@ -506,6 +511,12 @@ class AcademicRecords extends BaseController
         if (file_exists($absNew))    return $this->jsonError('An item with that name already exists.');
         if (!rename($absOld, $absNew)) return $this->jsonError('Rename failed.');
 
+        $this->fileAccessLogModel->log(
+            $relative,
+            'rename',
+            basename($relative) . ' → ' . $newName
+        );
+
         return $this->jsonOk(['new_path' => trim(dirname($relative) . '/' . $newName, '/'), 'new_name' => $newName]);
     }
 
@@ -531,6 +542,12 @@ class AcademicRecords extends BaseController
         $destFull = $absDest . DIRECTORY_SEPARATOR . basename($absSrc);
         if (file_exists($destFull))       return $this->jsonError('An item with that name already exists in the destination.');
         if (!rename($absSrc, $destFull))  return $this->jsonError('Move failed.');
+
+        $this->fileAccessLogModel->log(
+            $srcRelative,
+            'move',
+            $srcRelative . ' → ' . trim($destRelative . '/' . basename($absSrc), '/')
+        );
 
         return $this->jsonOk(['new_path' => trim($destRelative . '/' . basename($absSrc), '/')]);
     }
@@ -602,29 +619,32 @@ if (in_array($ext, ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'])) {
 // Store metadata in session (includes OCR result)
 $tempFilePath = $tempDir . DIRECTORY_SEPARATOR . $safeName;
 
-session()->set('temp_upload_' . $token, [
-    'filename'      => $safeName,
-    'original_name' => $file->getClientName(),
-    'folder_path'   => $folderPath,
-    'size'          => $file->getSize(),
-    'ext'           => $ext,
-    'uploaded_at'   => time(),
-    'ocr'           => $ocrResult,
-    'file_hash'     => $ocrResult['file_hash'] ?? hash_file('sha256', $tempFilePath),
-]);
+$tempFileHash = $ocrResult['file_hash'] ?? hash_file('sha256', $tempFilePath);
+    session()->set('temp_upload_' . $token, [
+        'filename'      => $safeName,
+        'original_name' => $file->getClientName(),
+        'folder_path'   => $folderPath,
+        'size'          => $file->getSize(),
+        'ext'           => $ext,
+        'uploaded_at'   => time(),
+        'ocr'           => $ocrResult,
+        'file_hash'     => $tempFileHash,   // stored at top level so finalizeUpload
+                                             // can find it without going into 'ocr'
+    ]);
 
 
 return $this->jsonOk([
-    'token'           => $token,
-    'preview_url'     => base_url('academic-records/preview-pending/' . $token),
-    'original_name'   => $file->getClientName(),
-    'size'            => $this->formatBytes($file->getSize()),
-    'ocr_success'     => $ocrResult['success']        ?? false,
-    'ocr_text'        => $ocrResult['text']           ?? '',
-    'ocr_suggestions' => $ocrResult['suggestions']    ?? ['folder' => '', 'filename' => ''],
-    'file_hash'       => $ocrResult['file_hash']      ?? null,
-    'ocr_confidence'  => $ocrResult['ocr_confidence'] ?? null,
-]);
+        'token'           => $token,
+        'preview_url'     => base_url('academic-records/preview-pending/' . $token),
+        'original_name'   => $file->getClientName(),
+        'file_ext'        => $ext,   // ← always send the real extension
+        'size'            => $this->formatBytes($file->getSize()),
+        'ocr_success'     => $ocrResult['success']        ?? false,
+        'ocr_text'        => $ocrResult['text']           ?? '',
+        'ocr_suggestions' => $ocrResult['suggestions']    ?? ['folder' => '', 'filename' => ''],
+        'file_hash'       => $ocrResult['file_hash']      ?? null,
+        'ocr_confidence'  => $ocrResult['ocr_confidence'] ?? null,
+    ]);
 }
 
 public function getOcrResult(string $token): \CodeIgniter\HTTP\ResponseInterface
@@ -853,7 +873,11 @@ $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
 
     // ── Save metadata to file_metadata table ─────────────────────────
     $ocrData  = $metadata['ocr'] ?? [];
-    $fileHash = $ocrData['file_hash'] ?? hash_file('sha256', $finalPath);
+    // Reuse hash computed at temp-upload time to avoid reading the file twice.
+    // Only recompute if the session value is missing (should not happen normally).
+    $fileHash = $metadata['file_hash']
+             ?? $ocrData['file_hash']
+             ?? hash_file('sha256', $finalPath);
 
     // Duplicate detection: warn but still save (let admin decide)
     $duplicate = $this->fileMetadataModel->findByHash($fileHash);
@@ -878,20 +902,36 @@ $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
     // Build file info for response
     $relativePath = trim($folderPath . '/' . $finalName, '/');
 
+    // Truncate extracted_text to 64 KB max to avoid hitting MariaDB's
+    // max_allowed_packet limit on very large OCR outputs.
+    $extractedText = $ocrData['text'] ?? null;
+    if ($extractedText !== null && strlen($extractedText) > 65535) {
+        $extractedText = mb_substr($extractedText, 0, 65535);
+    }
+
     $this->fileMetadataModel->insert([
         'filename'         => $finalName,
         'original_name'    => $metadata['original_name'],
-        'file_path'        => $relativePath,  // e.g. 2021/file.pdf
+        'file_path'        => $relativePath,
         'folder_path'      => $folderPath,
-        'student_name'     => $ocrData['suggestions']['name'] ?? null,
-        'student_id'       => null,  // not yet extracted by OCR — extend later
+        'student_name'     => $ocrData['suggestions']['name']     ?? null,
+        'student_id'       => $ocrData['suggestions']['student_id'] ?? null,
         'document_type_id' => $docTypeId,
-        'extracted_text'   => $ocrData['text'] ?? null,
+        'extracted_text'   => $extractedText,
         'file_hash'        => $fileHash,
         'file_size'        => filesize($finalPath),
         'mime_type'        => mime_content_type($finalPath),
         'uploaded_by'      => (int) session()->get('user_id'),
     ]);
+
+    // ── Activity log: file upload ─────────────────────────────────────────
+    $this->fileAccessLogModel->log(
+        $relativePath,
+        'upload',
+        'Uploaded: ' . $metadata['original_name']
+    );
+    // ─────────────────────────────────────────────────────────────────────
+
 
     // Clean up session
     session()->remove('temp_upload_' . $token);
@@ -946,14 +986,22 @@ public function metadataSearch(): \CodeIgniter\HTTP\ResponseInterface
         $builder->groupEnd();
     }
 
-    // Search: student name OR fulltext on extracted text
+    // Build boolean mode search terms safely:
+    // wrap each word with + prefix so all words must appear
+    $words      = preg_split('/\s+/', trim($q));
+    $boolTerms  = implode(' ', array_map(fn($w) => '+' . $w . '*', array_filter($words)));
+
+    // Search: student name OR filename OR fulltext OCR
     $builder->groupStart()
-        ->like('fm.student_name', $q)
+        ->like('fm.student_name',   $q)
         ->orLike('fm.original_name', $q)
-        ->orWhere("MATCH(fm.extracted_text) AGAINST (? IN BOOLEAN MODE)", '+' . $q)
+        ->orWhere(
+            "MATCH(fm.extracted_text) AGAINST (? IN BOOLEAN MODE)",
+            $boolTerms
+        )
         ->groupEnd();
 
-    $results = $builder->limit(50)->get()->getResultArray();
+    $results = $builder->orderBy('fm.created_at', 'DESC')->limit(50)->get()->getResultArray();
 
     // Add download URL for each result
     foreach ($results as &$row) {

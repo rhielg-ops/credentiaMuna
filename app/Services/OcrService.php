@@ -6,14 +6,29 @@ class OcrService
 {
     public function extractFromFile(string $absolutePath, string $originalName = ''): array
     {
+        // Always use the physical file's extension — never guess from originalName.
         $ext = strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION));
+
+        // Guard: if ext is still empty fall back to originalName
+        if ($ext === '') {
+            $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        }
+
         try {
             $text = match (true) {
-            in_array($ext, ['jpg','jpeg','png']) => $this->ocrImage($absolutePath),
-            $ext === 'pdf'                       => $this->extractPdfText($absolutePath),
-             in_array($ext, ['doc','docx'])       => $this->extractDocxText($absolutePath),
-    default                              => '',
-};
+                // ── Images: direct Tesseract OCR, NO conversion ──────────────
+                in_array($ext, ['jpg', 'jpeg', 'png']) => $this->ocrImage($absolutePath),
+
+                // ── PDF: detect text vs scanned inside extractPdfText() ──────
+                $ext === 'pdf'                         => $this->extractPdfText($absolutePath),
+
+                // ── Word documents: XML extraction ───────────────────────────
+                in_array($ext, ['doc', 'docx'])        => $this->extractDocxText($absolutePath),
+
+                // ── Anything else: skip silently ─────────────────────────────
+                default                                => '',
+            };
+
             $suggestions = $this->buildSuggestions($text, $originalName);
 
 // Compute SHA-256 hash for duplicate detection
@@ -44,52 +59,91 @@ return [
 }
 
    // Extracts embedded text from a PDF using pdftotext (Poppler utility)
-  private function extractPdfText(string $pdfPath): string
-{
-    // Step 1: Try pdftotext first (fast, works on text-based PDFs)
-    $text = $this->pdfToText($pdfPath);
+ private function extractPdfText(string $pdfPath): string
+    {
+        // Step 1: Try pdftotext (fast path for text-based / born-digital PDFs)
+        $text = $this->pdfToText($pdfPath);
 
-    // Step 2: If no meaningful text found, fall through to image OCR
-    // Use strlen < 10 instead of empty check — pdftotext returns \f (form feed)
-    // character for image-only PDFs which passes trim() but has no real content
-    if (strlen(trim($text)) < 10) {
-        log_message('debug', '[OcrService] pdfToText returned no useful text, trying image OCR');
-        $text = $this->pdfToImageOcr($pdfPath);
-        log_message('debug', '[OcrService] pdfToImageOcr returned ' . strlen($text) . ' chars');
+        // Step 2: Determine whether the PDF is image-only.
+        //
+        // Strategy: count printable non-whitespace characters.
+        //   • pdftotext on a scanned PDF returns only \f (form-feed) chars.
+        //   • pdftotext on a text PDF returns actual words.
+        //   • Threshold = 5 printable chars is safe even for very short docs
+        //     (e.g. a single-page certificate with "Grade 12 Diploma" in the header).
+        //
+        // We do NOT strip all whitespace before counting — that inflates the
+        // count for documents that are mostly blank/whitespace.
+        $printableCount = preg_match_all('/[^\s\f\r\n]/', $text);
+
+        if ($printableCount < 5) {
+            // Very few real characters → treat as scanned/image PDF, run OCR
+            log_message('debug', '[OcrService] PDF has only ' . $printableCount
+                . ' printable chars → treating as image-only, running Tesseract OCR');
+            $ocrText = $this->pdfToImageOcr($pdfPath);
+            log_message('debug', '[OcrService] pdfToImageOcr returned ' . strlen($ocrText) . ' chars');
+            return $ocrText;
+        }
+
+        // We have real text — use it directly, no OCR needed
+        log_message('debug', '[OcrService] PDF has ' . $printableCount
+            . ' printable chars → using pdftotext result directly');
+        return $text;
     }
 
-    return $text;
-}
 
 // Extracts embedded text from a text-based PDF using pdftotext (Poppler)
-private function pdfToText(string $pdfPath): string
-{
-    $pdftotext = 'C:\poppler-25.12.0\Library\bin\pdftotext.exe';
+    private function pdfToText(string $pdfPath): string
+    {
+        $pdftotext = 'C:\poppler-25.12.0\Library\bin\pdftotext.exe';
 
-    if (!file_exists($pdftotext)) {
-        log_message('error', '[OcrService] pdftotext not found at: ' . $pdftotext);
-        return '';
+        if (!file_exists($pdftotext)) {
+            log_message('error', '[OcrService] pdftotext not found at: ' . $pdftotext);
+            return '';
+        }
+
+        // FIX: Use WRITEPATH (no spaces, forward-slash safe) instead of sys_get_temp_dir().
+        // sys_get_temp_dir() on Windows often returns a path with spaces
+        // (e.g. C:\Users\John Doe\AppData\Local\Temp) which breaks cmd.exe even
+        // when double-quoted, causing pdftotext to silently produce no output.
+        $tmpDir = rtrim(WRITEPATH, '/\\') . DIRECTORY_SEPARATOR . 'temp_uploads';
+        if (!is_dir($tmpDir)) {
+            mkdir($tmpDir, 0755, true);
+        }
+        $tmpTxt = $tmpDir . DIRECTORY_SEPARATOR . 'ocr_' . uniqid() . '.txt';
+
+        // Build the shell command. All three paths are wrapped in double-quotes
+        // individually so spaces in any segment are handled correctly on cmd.exe.
+        $cmd = '"' . $pdftotext . '" -layout '
+             . '"' . str_replace('/', DIRECTORY_SEPARATOR, $pdfPath)  . '" '
+             . '"' . $tmpTxt . '"'
+             . ' 2>&1';
+
+        log_message('debug', '[OcrService] pdfToText cmd: ' . $cmd);
+
+        // Try shell_exec first; fall back to exec() if shell_exec is disabled.
+        $output = null;
+        if (function_exists('shell_exec')) {
+            $output = @shell_exec($cmd);
+        } else {
+            @exec($cmd, $lines, $rc);
+            $output = implode("\n", $lines);
+        }
+        log_message('debug', '[OcrService] pdfToText output: ' . ($output ?? '(null)'));
+
+        if (!file_exists($tmpTxt)) {
+            log_message('warning', '[OcrService] pdfToText: output file not created. cmd: ' . $cmd);
+            return '';
+        }
+
+        $text = file_get_contents($tmpTxt);
+        @unlink($tmpTxt);
+
+        $charCount = strlen(trim($text));
+        log_message('debug', '[OcrService] pdfToText extracted ' . $charCount . ' chars');
+
+        return trim($text) ?: '';
     }
-
-    $tmpTxt = sys_get_temp_dir() . '/ocr_' . uniqid() . '.txt';
-    $cmd    = sprintf('"%s" %s %s 2>&1', $pdftotext, escapeshellarg($pdfPath), escapeshellarg($tmpTxt));
-
-    log_message('debug', '[OcrService] pdfToText cmd: ' . $cmd);
-    $output = @shell_exec($cmd);
-    log_message('debug', '[OcrService] pdfToText output: ' . ($output ?? '(null)'));
-
-    if (!file_exists($tmpTxt)) {
-        log_message('warning', '[OcrService] pdfToText: no output file created');
-        return '';
-    }
-
-    $text = file_get_contents($tmpTxt);
-    @unlink($tmpTxt);
-
-   log_message('debug', '[OcrService] pdfToText extracted ' . strlen(trim($text)) . ' chars');
-
-    return trim($text) ?: '';
-}
 
 // Converts each PDF page to a PNG image, then runs Tesseract OCR on each page
 private function pdfToImageOcr(string $pdfPath): string
@@ -105,11 +159,13 @@ private function pdfToImageOcr(string $pdfPath): string
     $tmpPrefix = str_replace('\\', '/', sys_get_temp_dir()) . '/ocr_pdf_' . uniqid();
 
     // -png = output as PNG, -r 300 = 300 DPI for good OCR accuracy, -l 1 = first page only (fast test)
-    $cmd = sprintf('"%s" -png -r 300 %s "%s" 2>&1',
-        $pdftoppm,
-        escapeshellarg($pdfPath),
-        $tmpPrefix
-    );
+     // Build command with correct quoting for Windows cmd.exe.
+        // Executable and output prefix are wrapped in double-quotes.
+        // pdfPath uses escapeshellarg() which on Windows also uses double-quotes.
+        $cmd = '"' . $pdftoppm . '" -png -r 300 '
+             . escapeshellarg($pdfPath) . ' '
+             . '"' . $tmpPrefix . '"'
+             . ' 2>&1';
 
     log_message('debug', '[OcrService] pdftoppm cmd: ' . $cmd);
     $output = @shell_exec($cmd);

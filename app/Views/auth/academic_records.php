@@ -134,6 +134,45 @@
   #hierarchyTreeScroll::-webkit-scrollbar { width: 3px; }
   #hierarchyTreeScroll::-webkit-scrollbar-track { background: transparent; }
   #hierarchyTreeScroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+/* Global drag-drop overlay */
+  #globalDropOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    background: rgba(22, 163, 74, 0.15);
+    border: 4px dashed #16a34a;
+    pointer-events: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    transition: opacity .15s;
+  }
+  #globalDropOverlay.active {
+    display: flex;
+    pointer-events: all;
+  }
+  /* Folder card drop target highlight */
+  .folder-card.drag-over {
+    border-color: #16a34a !important;
+    background: #f0fdf4 !important;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.25);
+  }
+  /* File card being dragged */
+  .record-card.dragging {
+    opacity: 0.4;
+    transform: scale(0.97);
+  }
+
+  /* Tree node drop-target highlight */
+  .ht-row.ht-drop-target {
+    background: rgba(22, 163, 74, 0.12) !important;
+    outline: 2px solid #16a34a;
+    border-radius: 6px;
+    transition: background .1s, outline .1s;
+  }
+
 </style>
 
 <!-- Page Title -->
@@ -312,6 +351,18 @@
 </div>
 
   </div>
+
+  <!-- Global drag-drop overlay (shown when dragging files from desktop) -->
+  <div id="globalDropOverlay">
+    <svg class="w-16 h-16 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+    </svg>
+    <p class="text-green-800 font-bold text-xl">Drop files to upload here</p>
+    <p class="text-green-700 text-sm">Files will be uploaded to the current folder</p>
+  </div>
+
+
 </div>
 
 <!-- ── Preview Modal ── -->
@@ -536,9 +587,10 @@
       <div class="mb-4">
         <label id="recordDropZone" for="recordFileInput"
           class="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-600 hover:bg-green-50 transition-colors"
-          ondragover="event.preventDefault(); this.classList.add('border-green-600','bg-green-50')"
-          ondragleave="this.classList.remove('border-green-600','bg-green-50')"
-          ondrop="handleRecordDrop(event)">
+          ondragenter="event.stopPropagation(); event.preventDefault();"
+          ondragover="event.stopPropagation(); event.preventDefault(); this.classList.add('border-green-600','bg-green-50')"
+          ondragleave="event.stopPropagation(); this.classList.remove('border-green-600','bg-green-50')"
+          ondrop="event.stopPropagation(); handleRecordDrop(event)">
           <svg class="w-10 h-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
           </svg>
@@ -617,9 +669,10 @@
       <div class="mb-4">
         <label id="folderDropZone" for="folderFilesInput"
           class="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-600 hover:bg-green-50 transition-colors"
-          ondragover="event.preventDefault(); this.classList.add('border-green-600','bg-green-50')"
-          ondragleave="this.classList.remove('border-green-600','bg-green-50')"
-          ondrop="handleFolderDrop(event)">
+          ondragenter="event.stopPropagation(); event.preventDefault();"
+          ondragover="event.stopPropagation(); event.preventDefault(); this.classList.add('border-green-600','bg-green-50')"
+          ondragleave="event.stopPropagation(); this.classList.remove('border-green-600','bg-green-50')"
+          ondrop="event.stopPropagation(); handleFolderDrop(event)">
           <svg class="w-10 h-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 11v5m-2.5-2.5L12 11l2.5 2.5"/>
@@ -1629,11 +1682,14 @@ async function buildUnifiedIndex() {
         </svg>Searching…
       </div>`;
 
-    // Run both searches in parallel: filesystem names + DB metadata/OCR
+    // Run filesystem index + DB metadata search in PARALLEL for speed.
+    // The unified index is pre-warmed on first folder load so getAllEntries()
+    // returns from memory on subsequent searches — no extra API round-trip.
     const [index, dbResults] = await Promise.all([
-      getAllEntries(),
+      getAllEntries(),                  // in-memory, instant after first load
       fetch('<?= base_url('academic-records/metadata-search') ?>?q=' + encodeURIComponent(q))
-        .then(r => r.json()).catch(() => ({ results: [] }))
+        .then(r => r.ok ? r.json() : { results: [] })
+        .catch(() => ({ results: [] })) // never crash search on DB error
     ]);
 
     const currentQ = document.getElementById('searchInput').value.trim();
@@ -1911,16 +1967,16 @@ async function buildUnifiedIndex() {
         try { data = JSON.parse(xhr.responseText); }
         catch(err) { showDialog('Unexpected server response.', 'error'); return; }
         if (!data.success) { showDialog('Upload failed: ' + data.message, 'error'); return; }
+
         currentTempToken    = data.token;
-        // REPLACE WITH — add ext from the server response:
-currentTempMetadata = {
-    original_name: data.original_name,
-    size:          data.size,
-    preview_url:   data.preview_url,
-    ext:           data.ocr_suggestions?.ext
-                   || data.original_name.split('.').pop().toLowerCase()
-                   || 'pdf',
-};
+        currentTempMetadata = {
+            original_name: data.original_name,
+            size:          data.size,
+            preview_url:   data.preview_url,
+            // Always use the extension the server determined (from actual file bytes)
+            ext: data.file_ext || data.original_name.split('.').pop().toLowerCase() || 'pdf',
+        };
+
         closeUploadModal();
         openTempPreviewModal(data.token, data.preview_url, data.original_name);
         applyOcrSuggestions(data);
@@ -1955,7 +2011,7 @@ currentTempMetadata = {
       </div>
       <button onclick="applyOcrToFolderBrowser()"
               class="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg transition-colors">
-        ✦ Apply Suggestions
+        ✦ Apply Suggestions or edit
       </button>`;
     const footer = document.querySelector('#previewModal .flex.items-center.justify-end.gap-3');
     if (footer) footer.parentNode.insertBefore(panel, footer);
@@ -2691,12 +2747,21 @@ currentTempMetadata = {
 
   function handleRecordDrop(event) {
     event.preventDefault();
+    event.stopPropagation(); // prevent global drop handler from also firing
     const input = document.getElementById('recordFileInput');
     const zone  = document.getElementById('recordDropZone');
     zone.classList.remove('border-green-600', 'bg-green-50');
-    if (event.dataTransfer.files.length) {
+    const files = event.dataTransfer.files;
+    if (files.length) {
+      // Only accept first file; validate extension before assigning
+      const file = files[0];
+      const ext  = file.name.split('.').pop().toLowerCase();
+      if (!['pdf','doc','docx','jpg','jpeg','png'].includes(ext)) {
+        showDialog('File type not allowed. Accepted: PDF, DOC, DOCX, JPG, PNG', 'warning');
+        return;
+      }
       const dt = new DataTransfer();
-      dt.items.add(event.dataTransfer.files[0]);
+      dt.items.add(file);
       input.files = dt.files;
       updateRecordFileLabel(input);
     }
@@ -2824,6 +2889,19 @@ currentTempMetadata = {
     const contentEl = document.getElementById('previewContent');
     titleEl.textContent = filePath.split('/').pop();
     modal.classList.remove('hidden');
+
+    // FIX Issue 3: Reset footer to "Close only" — prevents "Save As" button
+    // from a previous upload session bleeding into plain file preview.
+    const previewFooter = modal.querySelector('.flex.items-center.justify-end.gap-3');
+    if (previewFooter) {
+      previewFooter.innerHTML = `
+        <button onclick="closePreviewModal()"
+                class="px-6 py-2.5 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors font-medium text-gray-700">
+          Close
+        </button>`;
+    }
+    // Also remove any leftover OCR suggestion panel from a prior upload session
+    document.getElementById('ocrSuggestionPanel')?.remove();
     const ext        = filePath.split('.').pop().toLowerCase();
     const previewUrl = API.preview   + '?path=' + encodeURIComponent(filePath);
     currentPreviewUrl = API.download + '?path=' + encodeURIComponent(filePath);
@@ -2850,15 +2928,47 @@ currentTempMetadata = {
     currentPreviewUrl = null;
   }
   function downloadPreviewFile() { if (currentPreviewUrl) window.location.href = currentPreviewUrl; }
-  function printPreview() {
-    const iframe = document.getElementById('previewContent')?.querySelector('iframe');
+ function printPreview() {
+    const content = document.getElementById('previewContent');
+    if (!content) return;
+
+    // Case 1 — PDF inside an iframe
+    const iframe = content.querySelector('iframe');
     if (iframe) {
-      try { iframe.contentWindow.print(); } catch(e) { window.open(currentPreviewUrl, '_blank'); }
-    } else if (currentPreviewUrl) {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (e) {
+        // cross-origin fallback: open the preview URL in a new tab and print
+        const w = window.open(iframe.src, '_blank');
+        if (w) w.onload = () => { w.focus(); w.print(); };
+      }
+      return;
+    }
+
+    // Case 2 — Image (jpg/jpeg/png) shown directly
+    const img = content.querySelector('img');
+    if (img) {
+      // Build a minimal printable page with just the image
+      const printWin = window.open('', '_blank', 'width=800,height=600');
+      if (!printWin) return;
+      printWin.document.write(
+        '<!DOCTYPE html><html><head><title>Print</title>' +
+        '<style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;}' +
+        'img{max-width:100%;max-height:100vh;object-fit:contain;}</style>' +
+        '</head><body><img src="' + img.src + '" onload="window.print();window.close();"></body></html>'
+      );
+      printWin.document.close();
+      return;
+    }
+
+    // Case 3 — Fallback: use the preview URL (not download URL)
+    if (currentPreviewUrl) {
       const w = window.open(currentPreviewUrl, '_blank');
-      if (w) w.onload = () => w.print();
+      if (w) w.onload = () => { w.focus(); w.print(); };
     }
   }
+
   document.addEventListener('click', e => { if (e.target === document.getElementById('previewModal')) closePreviewModal(); });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !document.getElementById('previewModal').classList.contains('hidden')) closePreviewModal();
@@ -3094,6 +3204,8 @@ currentTempMetadata = {
       </div>
       <ul class="ht-children closed" style="max-height:0;list-style:none;margin:0;padding:0;"
           data-children-of="${folder.path}" role="group"></ul>`;
+
+    // ── Click: select + expand ────────────────────────────────────────────────
     li.querySelector('.ht-row').addEventListener('click', e => {
       if (e.target.closest('.ht-toggle')) return;
       hierarchySelectFolder(folder.path, folder.name);
@@ -3106,6 +3218,128 @@ currentTempMetadata = {
     li.querySelector('.ht-row').addEventListener('mouseenter', () => {
       if (!_htCache[folder.path]?.loaded) _htLoadChildren(folder.path);
     });
+
+    // ── Drag-and-Drop: make this folder node a valid DROP TARGET ─────────────
+    // Files and folder-cards dragged from #masterList can be dropped here.
+    // The folder node itself is also draggable so you can move whole folders
+    // by dragging a tree node onto another tree node.
+    const row = li.querySelector('.ht-row');
+
+    // Make the row draggable (to move this folder)
+    row.setAttribute('draggable', 'true');
+
+    row.addEventListener('dragstart', e => {
+      e.stopPropagation(); // don't let global handlers interfere
+      _dragSrcPath = folder.path;
+      _dragSrcType = 'folder';
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', folder.path);
+      // Dim the node being dragged
+      row.style.opacity = '0.4';
+    });
+
+    row.addEventListener('dragend', () => {
+      row.style.opacity = '';
+      // Clear any leftover drop-highlight on tree nodes
+      document.querySelectorAll('.ht-row.ht-drop-target').forEach(el => {
+        el.classList.remove('ht-drop-target');
+        el.style.background = '';
+        el.style.outline    = '';
+      });
+      _dragSrcPath = null;
+      _dragSrcType = null;
+    });
+
+    // Accept drops from #masterList card drags OR other tree-node drags
+    row.addEventListener('dragenter', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Do not highlight if this IS the source node
+      if (folder.path === _dragSrcPath) return;
+      row.classList.add('ht-drop-target');
+      row.style.background = 'rgba(22,163,74,0.12)';
+      row.style.outline    = '2px solid #16a34a';
+      row.style.borderRadius = '6px';
+
+      // ── AUTO-EXPAND on hover (Windows Explorer behavior) ──────────────────
+      // Start a 700 ms timer; if the drag stays over this folder, expand it.
+      if (!row._htExpandTimer) {
+        row._htExpandTimer = setTimeout(() => {
+          row._htExpandTimer = null;
+          // Only expand if the folder is currently collapsed (has a toggle btn)
+          const li = row.closest('li');
+          if (!li) return;
+          const childrenUl = li.querySelector(`ul[data-children-of]`);
+          const isCollapsed = !childrenUl || childrenUl.classList.contains('hidden');
+          if (isCollapsed) {
+            const toggleBtn = li.querySelector('.ht-toggle');
+            if (toggleBtn) toggleBtn.click();
+          }
+        }, 700);
+      }
+      // ─────────────────────────────────────────────────────────────────────
+    });
+
+    row.addEventListener('dragover', e => {
+      if (folder.path === _dragSrcPath) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    row.addEventListener('dragleave', e => {
+      e.stopPropagation();
+      // Only clear highlight if leaving to outside this row (not into a child)
+      if (!row.contains(e.relatedTarget)) {
+        row.classList.remove('ht-drop-target');
+        row.style.background = '';
+        row.style.outline    = '';
+
+        // ── Cancel pending auto-expand if drag left before timer fires ───
+        if (row._htExpandTimer) {
+          clearTimeout(row._htExpandTimer);
+          row._htExpandTimer = null;
+        }
+        // ─────────────────────────────────────────────────────────────────
+      }
+    });
+
+    row.addEventListener('drop', async e => {
+      e.preventDefault();
+      e.stopPropagation();
+      row.classList.remove('ht-drop-target');
+      row.style.background = '';
+      row.style.outline    = '';
+
+      const src  = _dragSrcPath || e.dataTransfer.getData('text/plain');
+      const dest = folder.path;
+
+      if (!src || src === dest) return;
+
+      // Prevent dropping a folder INTO itself or one of its own children
+      if (dest.startsWith(src + '/')) {
+        showDialog('Cannot move a folder into one of its own subfolders.', 'warning');
+        return;
+      }
+
+      if (!PRIV_ORGANIZE) { showPermissionDenied(); return; }
+
+      const data = await apiFetch(API.move, 'POST', { src_path: src, dest_path: dest });
+
+      if (data.success) {
+        // Refresh both the parent folder view and the tree
+        const srcParent = src.includes('/') ? src.slice(0, src.lastIndexOf('/')) : '';
+        invalidateFolderCache(currentFolderPath);
+        invalidateUnifiedIndex();
+        loadFolder(currentFolderPath);
+        _htRefreshPath(srcParent || '');
+        _htRefreshPath(dest);
+        showDialog('Moved successfully.', 'success');
+      } else {
+        showDialog('Move failed: ' + (data.message || 'Unknown error'), 'error');
+      }
+    });
+
     parentUl.appendChild(li);
   }
 
@@ -3491,6 +3725,266 @@ document.addEventListener('click', function(e) {
     showPermissionDenied();
   }
 }, true);
+
+// ── Part A: Global drag-from-desktop upload ───────────────────────────────
+  (function initGlobalDrop() {
+    let _dragEnterCount = 0;
+    const overlay = document.getElementById('globalDropOverlay');
+
+    // ── Helper: show/hide a lightweight upload-progress toast ────────────────
+    function _showUploadToast(msg, type = 'progress') {
+      let toast = document.getElementById('_globalDropToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = '_globalDropToast';
+        // Positioned above the FAB button so it's always visible
+        toast.style.cssText =
+          'position:fixed;bottom:100px;right:32px;z-index:9999;' +
+          'min-width:260px;max-width:360px;padding:14px 18px;' +
+          'border-radius:14px;font-size:13px;font-weight:600;' +
+          'display:flex;align-items:center;gap:12px;' +
+          'box-shadow:0 8px 32px rgba(0,0,0,0.18);transition:opacity .2s;';
+        document.body.appendChild(toast);
+      }
+
+      const styles = {
+        progress: { bg: '#1e293b', text: '#f8fafc', border: '#334155' },
+        success:  { bg: '#14532d', text: '#f0fdf4', border: '#166534' },
+        error:    { bg: '#7f1d1d', text: '#fef2f2', border: '#991b1b' },
+      };
+      const s = styles[type] || styles.progress;
+
+      const spinner = type === 'progress'
+        ? '<svg style="width:18px;height:18px;flex-shrink:0;animation:spin 1s linear infinite" ' +
+          'fill="none" viewBox="0 0 24 24"><style>@keyframes spin{to{transform:rotate(360deg)}}</style>' +
+          '<circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,.25)" stroke-width="3"/>' +
+          '<path fill="rgba(255,255,255,.9)" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>'
+        : (type === 'success'
+            ? '<span style="font-size:18px">✅</span>'
+            : '<span style="font-size:18px">❌</span>');
+
+      toast.style.background   = s.bg;
+      toast.style.color        = s.text;
+      toast.style.border       = '1.5px solid ' + s.border;
+      toast.style.opacity      = '1';
+      toast.innerHTML          = spinner + '<span>' + msg + '</span>';
+
+      // Auto-hide after 4 s for success/error
+      clearTimeout(toast._timer);
+      if (type !== 'progress') {
+        toast._timer = setTimeout(() => {
+          toast.style.opacity = '0';
+          setTimeout(() => toast.remove(), 300);
+        }, 4000);
+      }
+    }
+
+    function _hideUploadToast() {
+      const toast = document.getElementById('_globalDropToast');
+      if (toast) { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 200); }
+    }
+
+    // ── Drag-enter / leave guard (skip if dragging INSIDE a modal) ───────────
+    document.addEventListener('dragenter', e => {
+      // Do not activate the overlay when dragging inside an open modal
+      if (e.target.closest('.modal.active, #folderBrowserModal:not(.hidden),' +
+                            '#uploadModal:not(.hidden), #uploadFolderModal:not(.hidden)')) return;
+      if (!e.dataTransfer.types.includes('Files')) return;
+      if (!PRIV_UPLOAD) return;
+      _dragEnterCount++;
+      overlay.classList.add('active');
+    }, false);
+
+    document.addEventListener('dragleave', e => {
+      if (!e.dataTransfer.types.includes('Files')) return;
+      _dragEnterCount = Math.max(0, _dragEnterCount - 1);
+      if (_dragEnterCount === 0) overlay.classList.remove('active');
+    }, false);
+
+    document.addEventListener('dragover', e => {
+      // Allow drop everywhere EXCEPT inside open modals (they handle themselves)
+      if (e.target.closest('.modal.active, #folderBrowserModal:not(.hidden),' +
+                            '#uploadModal:not(.hidden), #uploadFolderModal:not(.hidden)')) return;
+      if (!e.dataTransfer.types.includes('Files')) return;
+      e.preventDefault();
+    }, false);
+
+    document.addEventListener('drop', async e => {
+      // Skip if the drop landed inside an open modal — let the modal handle it
+      if (e.target.closest('.modal.active, #folderBrowserModal:not(.hidden),' +
+                            '#uploadModal:not(.hidden), #uploadFolderModal:not(.hidden)')) return;
+
+      e.preventDefault();
+      _dragEnterCount = 0;
+      overlay.classList.remove('active');
+
+      if (!PRIV_UPLOAD) { showPermissionDenied(); return; }
+
+      const ALLOWED_EXT = ['pdf','doc','docx','jpg','jpeg','png'];
+      const files = Array.from(e.dataTransfer.files).filter(f => {
+        const ext = f.name.split('.').pop().toLowerCase();
+        return ALLOWED_EXT.includes(ext);
+      });
+
+      if (files.length === 0) {
+        showDialog('No supported files dropped. Accepted: PDF, DOC, DOCX, JPG, PNG', 'warning');
+        return;
+      }
+
+      // ── Show initial progress toast ─────────────────────────────────────────
+      _showUploadToast(`Uploading 0 / ${files.length} file(s)…`, 'progress');
+
+      let successCount = 0;
+      let failCount    = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        // Update progress counter in toast
+        _showUploadToast(`Uploading ${i + 1} / ${files.length}: ${file.name}`, 'progress');
+
+        try {
+          // Phase 1: temp upload (OCR runs here)
+          const fd1 = new FormData();
+          fd1.append(CSRF_NAME, CSRF_TOKEN);
+          fd1.append('record_file', file);
+          fd1.append('folder_path', currentFolderPath);
+
+          const res1  = await fetch(
+            API.listFolder.replace('/list-folder', '/temp-upload'),
+            { method: 'POST', body: fd1 }
+          );
+          if (!res1.ok) { failCount++; continue; }
+          const data1 = await res1.json();
+          if (!data1.success) { failCount++; continue; }
+
+          // Phase 2: finalize (move temp → permanent)
+          const fd2 = new FormData();
+          fd2.append(CSRF_NAME, CSRF_TOKEN);
+          fd2.append('token', data1.token);
+          fd2.append('folder_path', currentFolderPath);
+
+          const res2  = await fetch(
+            API.listFolder.replace('/list-folder', '/finalize-upload'),
+            { method: 'POST', body: fd2 }
+          );
+          if (!res2.ok) { failCount++; continue; }
+          const data2 = await res2.json();
+          if (data2.success) { successCount++; } else { failCount++; }
+
+        } catch (_) {
+          failCount++;
+        }
+      }
+
+      // ── Final feedback ──────────────────────────────────────────────────────
+      if (successCount > 0) {
+        invalidateFolderCache(currentFolderPath);
+        invalidateUnifiedIndex();
+        loadFolder(currentFolderPath);
+        _htRefreshPath(currentFolderPath);
+
+        const msg = failCount > 0
+          ? `${successCount} uploaded, ${failCount} failed.`
+          : `${successCount} file(s) uploaded successfully.`;
+        _showUploadToast(msg, failCount > 0 ? 'error' : 'success');
+      } else {
+        _showUploadToast('Upload failed. Check file types and permissions.', 'error');
+      }
+    }, false);
+  })();
+
+  // ── Part B: Drag-to-move file cards onto folder cards ────────────────────
+  // We use event delegation on #masterList to handle dynamically rendered cards.
+
+  let _dragSrcPath = null;
+  let _dragSrcType = null;
+
+  document.getElementById('masterList').addEventListener('dragstart', e => {
+    const card = e.target.closest('[data-action="preview-file"]');
+    if (card) {
+      _dragSrcPath = card.dataset.path;
+      _dragSrcType = 'file';
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', _dragSrcPath);
+      return;
+    }
+    // Folder cards — allow moving folders too
+    const folderCard = e.target.closest('[data-action="open-folder"]');
+    if (folderCard) {
+      _dragSrcPath = folderCard.dataset.path;
+      _dragSrcType = 'folder';
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', _dragSrcPath);
+    }
+  });
+
+  document.getElementById('masterList').addEventListener('dragend', e => {
+    document.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    _dragSrcPath = null;
+    _dragSrcType = null;
+  });
+
+  document.getElementById('masterList').addEventListener('dragover', e => {
+    const folderCard = e.target.closest('[data-action="open-folder"]');
+    if (folderCard && _dragSrcPath) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      folderCard.closest('.folder-card, .folder-card-compact')?.classList.add('drag-over');
+    }
+  });
+
+  document.getElementById('masterList').addEventListener('dragleave', e => {
+    const folderCard = e.target.closest('[data-action="open-folder"]');
+    if (!folderCard) return;
+    folderCard.closest('.folder-card, .folder-card-compact')?.classList.remove('drag-over');
+  });
+
+  document.getElementById('masterList').addEventListener('drop', async e => {
+    e.preventDefault();
+    const folderCard = e.target.closest('[data-action="open-folder"]');
+    if (!folderCard || !_dragSrcPath) return;
+
+    folderCard.closest('.folder-card, .folder-card-compact')?.classList.remove('drag-over');
+
+    const destPath = folderCard.dataset.path;
+    if (!destPath || destPath === _dragSrcPath) return;
+
+    if (!PRIV_ORGANIZE) { showPermissionDenied(); return; }
+
+    const data = await apiFetch(API.move, 'POST', {
+      src_path:  _dragSrcPath,
+      dest_path: destPath,
+    });
+
+    if (data.success) {
+      invalidateFolderCache(currentFolderPath);
+      invalidateUnifiedIndex();
+      loadFolder(currentFolderPath);
+      _htRefreshPath(currentFolderPath);
+    } else {
+      showDialog('Move failed: ' + (data.message || 'Unknown error'), 'error');
+    }
+  });
+
+  // Make file/folder cards draggable (set HTML attribute at render time is
+  // difficult with event delegation, so we set it via a MutationObserver)
+  (function makeDraggable() {
+    const ml = document.getElementById('masterList');
+    const observer = new MutationObserver(() => {
+      ml.querySelectorAll('[data-action="preview-file"]:not([draggable])').forEach(el => {
+        el.setAttribute('draggable', 'true');
+      });
+      ml.querySelectorAll('[data-action="open-folder"]:not([draggable])').forEach(el => {
+        el.setAttribute('draggable', 'true');
+      });
+    });
+    observer.observe(ml, { childList: true, subtree: true });
+  })();
+
 </script>
 
 <?= $this->endSection() ?>
