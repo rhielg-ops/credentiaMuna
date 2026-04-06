@@ -735,7 +735,7 @@
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
     <div class="px-6 pt-6 pb-4 border-b border-gray-100">
       <h3 class="text-lg font-bold text-gray-800">Edit Filename</h3>
-      <p class="text-sm text-gray-500 mt-1">Review the suggested filename or type your own. Format: <span class="font-mono text-teal-700 text-xs">StudentId_StudentName_DocType_Label.pdf</span></p>
+      <p class="text-sm text-gray-500 mt-1">Review the suggested filename or type your own. Format: <span id="editFilenameFormatHint" class="font-mono text-teal-700 text-xs">StudentId_StudentName_DocType_Label.pdf</span></p>
     </div>
     <div class="px-6 py-5">
       <label class="block text-xs font-semibold text-gray-600 mb-1">Document Type Label</label>
@@ -756,7 +756,7 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
         <input id="editFilenameInput" type="text"
                class="flex-1 px-3 py-2.5 text-sm text-gray-800 outline-none"
                placeholder="e.g. 2023-001_Juan_dela_Cruz_Transcript_Record" />
-        <span class="px-3 py-2.5 text-sm text-gray-400 bg-gray-50 border-l border-gray-300">.pdf</span>
+        <span id="editFilenameExt" class="px-3 py-2.5 text-sm text-gray-400 bg-gray-50 border-l border-gray-300">.pdf</span>
       </div>
       <p class="text-xs text-gray-400 mt-1.5">Spaces will be replaced with underscores automatically.</p>
     </div>
@@ -950,10 +950,52 @@ async function buildUnifiedIndex() {
 
     _unifiedIndexPromise = (async () => {
         try {
+            // Step 1: get all folders fast via the single-request endpoint
             const data = await apiFetch(API.listAllFolders);
-            _unifiedIndex    = data.success ? (data.folders || []) : [];
+            const folders = data.success ? (data.folders || []) : [];
+
+            // Step 2: for each folder, fetch its files too
+            const fileResults = await Promise.all(
+                folders.map(f =>
+                    apiFetch(API.listFolder + '?path=' + encodeURIComponent(f.path))
+                        .then(d => (d.files || []).map(file => ({
+                            kind: 'file',
+                            name: file.name,
+                            path: file.path,
+                            ext:  file.ext,
+                            size: file.size,
+                            modified: file.modified,
+                            download_url: file.download_url,
+                            preview_url:  file.preview_url,
+                            parentPath:   f.path,
+                            locationLabel: 'Academic Records › ' + f.name,
+                        })))
+                        .catch(() => [])
+                )
+            );
+
+            // Also get files in root folder
+            const rootData = await apiFetch(API.listFolder + '?path=').catch(() => ({}));
+            const rootFiles = (rootData.files || []).map(file => ({
+                kind: 'file',
+                name: file.name,
+                path: file.path,
+                ext:  file.ext,
+                size: file.size,
+                modified: file.modified,
+                download_url: file.download_url,
+                preview_url:  file.preview_url,
+                parentPath:   '',
+                locationLabel: 'Academic Records',
+            }));
+
+            _unifiedIndex = [
+                ...folders,
+                ...rootFiles,
+                ...fileResults.flat(),
+            ];
         } catch (_) {
-            _unifiedIndex    = [];
+            _unifiedIndex = [];
         }
         _unifiedIndexTs      = Date.now();
         _unifiedIndexPromise = null;
@@ -1587,17 +1629,41 @@ async function buildUnifiedIndex() {
         </svg>Searching…
       </div>`;
 
-    // FIX #1: uses the single unified index — no separate search crawler
-    const index = await getAllEntries();
+    // Run both searches in parallel: filesystem names + DB metadata/OCR
+    const [index, dbResults] = await Promise.all([
+      getAllEntries(),
+      fetch('<?= base_url('academic-records/metadata-search') ?>?q=' + encodeURIComponent(q))
+        .then(r => r.json()).catch(() => ({ results: [] }))
+    ]);
 
     const currentQ = document.getElementById('searchInput').value.trim();
     if (currentQ !== q) return; // stale — user typed more
 
-    const lower         = q.toLowerCase();
+    const lower = q.toLowerCase();
+
+    // Filesystem name matches (folders + files)
     const matchedFolders = index.filter(e => e.kind === 'folder' && e.name.toLowerCase().includes(lower));
     const matchedFiles   = index.filter(e => e.kind === 'file'   && e.name.toLowerCase().includes(lower));
 
-    renderSearchResults(q, matchedFolders, matchedFiles);
+    // DB/OCR matches — convert to same shape as filesystem files, avoid duplicates
+    const fsFilePaths = new Set(matchedFiles.map(f => f.path));
+    const dbFiles = (dbResults.results ?? [])
+      .filter(r => !fsFilePaths.has(r.file_path))  // skip if already found by name
+      .map(r => ({
+        kind:         'file',
+        name:         r.original_name ?? r.filename,
+        path:         r.file_path,
+        download_url: r.download_url,
+        preview_url:  r.preview_url,
+        _fromDb:      true,  // flag so we can show an "OCR match" badge
+        _docType:     r.document_type_label ?? '',
+        _studentName: r.student_name ?? '',
+      }));
+
+    // Merge: filesystem matches first, then DB-only OCR matches
+    const allFiles = [...matchedFiles, ...dbFiles];
+
+    renderSearchResults(q, matchedFolders, allFiles);
   }
 
   function highlightMatch(text, q) {
@@ -1846,7 +1912,15 @@ async function buildUnifiedIndex() {
         catch(err) { showDialog('Unexpected server response.', 'error'); return; }
         if (!data.success) { showDialog('Upload failed: ' + data.message, 'error'); return; }
         currentTempToken    = data.token;
-        currentTempMetadata = { original_name: data.original_name, size: data.size, preview_url: data.preview_url };
+        // REPLACE WITH — add ext from the server response:
+currentTempMetadata = {
+    original_name: data.original_name,
+    size:          data.size,
+    preview_url:   data.preview_url,
+    ext:           data.ocr_suggestions?.ext
+                   || data.original_name.split('.').pop().toLowerCase()
+                   || 'pdf',
+};
         closeUploadModal();
         openTempPreviewModal(data.token, data.preview_url, data.original_name);
         applyOcrSuggestions(data);
@@ -1891,14 +1965,25 @@ async function buildUnifiedIndex() {
 
   function openEditFilenameModal() {
     const filename = window._ocrSuggestedFilename || '';
-    const nameWithoutExt = filename.replace(/\.(pdf|jpg|jpeg|png)$/i, '');
+
+    // Detect the real extension from the original uploaded file
+    const originalExt = (currentTempMetadata?.ext || 'pdf').toLowerCase();
+
+    const nameWithoutExt = filename.replace(/\.[a-z0-9]+$/i, '');
     document.getElementById('editFilenameInput').value = nameWithoutExt;
+
+    // Update the extension badge and format hint to show the real extension
+    const extBadge = document.getElementById('editFilenameExt');
+    const fmtHint  = document.getElementById('editFilenameFormatHint');
+    if (extBadge) extBadge.textContent = '.' + originalExt;
+    if (fmtHint)  fmtHint.textContent  = 'StudentId_StudentName_DocType_Label.' + originalExt;
+
     const select = document.getElementById('editFilenameDocType');
     const knownLabels = Array.from(select.options).map(o => o.value).filter(Boolean);
     const matched = knownLabels.find(label => nameWithoutExt.includes(label));
     select.value = matched || '';
     document.getElementById('editFilenameModal').classList.remove('hidden');
-  }
+}
   function closeEditFilenameModal() {
     document.getElementById('editFilenameModal').classList.add('hidden');
   }
@@ -1919,8 +2004,9 @@ async function buildUnifiedIndex() {
     let finalName = document.getElementById('editFilenameInput').value.trim();
     if (!finalName) { showDialog('Please enter a filename before continuing.', 'warning'); return; }
     finalName = finalName.replace(/\s+/g, '_').replace(/[^\w\-]/g, '');
-    window._ocrSuggestedFilename = finalName + '.pdf';
-    if (currentTempMetadata) currentTempMetadata.suggested_filename = finalName + '.pdf';
+    const originalExt = (currentTempMetadata?.ext || 'pdf').toLowerCase();
+    window._ocrSuggestedFilename = finalName + '.' + originalExt;
+    if (currentTempMetadata) currentTempMetadata.suggested_filename = finalName + '.' + originalExt;
     closeEditFilenameModal();
     const suggestedFolder = (window._ocrSuggestedFolder || '').trim();
     invalidateFolderBrowserIndex(); // FIX #1: now calls invalidateUnifiedIndex internally

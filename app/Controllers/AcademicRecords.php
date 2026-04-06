@@ -13,12 +13,18 @@ class AcademicRecords extends BaseController
 
     protected UserPrivilegeModel $privilegeModel;
     protected \App\Models\UserFolderAccessModel $folderAccessModel;
+    protected \App\Models\FileMetadataModel     $fileMetadataModel;
+    protected \App\Models\FileAccessLogModel    $fileAccessLogModel;
+
 
     public function __construct()
     {
         $this->uploadRoot        = FCPATH . 'uploads/academic_records/';
         $this->privilegeModel    = new UserPrivilegeModel();
         $this->folderAccessModel = new \App\Models\UserFolderAccessModel();
+        $this->fileMetadataModel = new \App\Models\FileMetadataModel();
+        $this->fileAccessLogModel= new \App\Models\FileAccessLogModel();
+
 
         if (!is_dir($this->uploadRoot)) {
             mkdir($this->uploadRoot, 0755, true);
@@ -404,7 +410,10 @@ class AcademicRecords extends BaseController
 
         if (!$this->canAccessPath($relative)) return $this->response->setStatusCode(403)->setBody('Access denied.');
 
+        $this->fileAccessLogModel->log($relative, 'preview');
+
         return $this->response
+        
             ->setHeader('Content-Type', mime_content_type($absPath))
             ->setHeader('Content-Disposition', 'inline; filename="' . basename($absPath) . '"')
             ->setHeader('Content-Length', (string) filesize($absPath))
@@ -424,6 +433,8 @@ class AcademicRecords extends BaseController
         if (!is_file($absPath)) return redirect()->back()->with('error', 'File not found.');
 
         if (!$this->canAccessPath($relative)) return redirect()->back()->with('error', 'Access denied.');
+
+        $this->fileAccessLogModel->log($relative, 'download');
 
         return $this->response
             ->setHeader('Content-Type', mime_content_type($absPath))
@@ -589,6 +600,8 @@ if (in_array($ext, ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'])) {
 }
 
 // Store metadata in session (includes OCR result)
+$tempFilePath = $tempDir . DIRECTORY_SEPARATOR . $safeName;
+
 session()->set('temp_upload_' . $token, [
     'filename'      => $safeName,
     'original_name' => $file->getClientName(),
@@ -597,16 +610,20 @@ session()->set('temp_upload_' . $token, [
     'ext'           => $ext,
     'uploaded_at'   => time(),
     'ocr'           => $ocrResult,
+    'file_hash'     => $ocrResult['file_hash'] ?? hash_file('sha256', $tempFilePath),
 ]);
+
 
 return $this->jsonOk([
     'token'           => $token,
     'preview_url'     => base_url('academic-records/preview-pending/' . $token),
     'original_name'   => $file->getClientName(),
     'size'            => $this->formatBytes($file->getSize()),
-    'ocr_success'     => $ocrResult['success']     ?? false,
-    'ocr_text'        => $ocrResult['text']        ?? '',
-    'ocr_suggestions' => $ocrResult['suggestions'] ?? ['folder' => '', 'filename' => ''],
+    'ocr_success'     => $ocrResult['success']        ?? false,
+    'ocr_text'        => $ocrResult['text']           ?? '',
+    'ocr_suggestions' => $ocrResult['suggestions']    ?? ['folder' => '', 'filename' => ''],
+    'file_hash'       => $ocrResult['file_hash']      ?? null,
+    'ocr_confidence'  => $ocrResult['ocr_confidence'] ?? null,
 ]);
 }
 
@@ -820,7 +837,7 @@ if ($suggestedFilename) {
     $nameOnly = pathinfo($suggestedFilename, PATHINFO_FILENAME);
     $extOnly  = pathinfo($suggestedFilename, PATHINFO_EXTENSION);
     $safeName = preg_replace('/[^\w\-]/', '_', $nameOnly);
-    $finalName = $safeName . ($extOnly ? '.' . $extOnly : '.pdf');
+    $finalName = $safeName . ($extOnly ? '.' . $extOnly : '.' . $metadata['ext']);
 } else {
     $finalName = time() . '_' . $this->sanitiseName($metadata['original_name']);
 }
@@ -834,11 +851,50 @@ $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
         unlink($tempPath); // delete temp only after successful copy
     }
 
-    // Clean up session
-    session()->remove('temp_upload_' . $token);
+    // ── Save metadata to file_metadata table ─────────────────────────
+    $ocrData  = $metadata['ocr'] ?? [];
+    $fileHash = $ocrData['file_hash'] ?? hash_file('sha256', $finalPath);
+
+    // Duplicate detection: warn but still save (let admin decide)
+    $duplicate = $this->fileMetadataModel->findByHash($fileHash);
+    if ($duplicate) {
+        log_message('notice', 'Duplicate file uploaded: ' . $finalName
+            . ' matches existing ' . $duplicate['filename']);
+        // You can add a session flash or JSON key here if you want to
+        // surface this in the UI — for now it just logs.
+    }
+
+    $docTypeId = null;
+    $docTypeKey = $ocrData['suggestions']['doc_type'] ?? '';
+    if ($docTypeKey) {
+        $typeModel = new \App\Models\RecordTypeModel();
+        $types     = $typeModel->getAllActive();
+        $docTypeId = $types[$docTypeKey]['type_id'] ?? null;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+
 
     // Build file info for response
     $relativePath = trim($folderPath . '/' . $finalName, '/');
+
+    $this->fileMetadataModel->insert([
+        'filename'         => $finalName,
+        'original_name'    => $metadata['original_name'],
+        'file_path'        => $relativePath,  // e.g. 2021/file.pdf
+        'folder_path'      => $folderPath,
+        'student_name'     => $ocrData['suggestions']['name'] ?? null,
+        'student_id'       => null,  // not yet extracted by OCR — extend later
+        'document_type_id' => $docTypeId,
+        'extracted_text'   => $ocrData['text'] ?? null,
+        'file_hash'        => $fileHash,
+        'file_size'        => filesize($finalPath),
+        'mime_type'        => mime_content_type($finalPath),
+        'uploaded_by'      => (int) session()->get('user_id'),
+    ]);
+
+    // Clean up session
+    session()->remove('temp_upload_' . $token);
     
     return $this->jsonOk([
         'message' => 'Record saved successfully',
@@ -848,7 +904,67 @@ $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
         'download_url' => base_url('academic-records/download?path=' . urlencode($relativePath)),
         'preview_url' => base_url('academic-records/preview?path=' . urlencode($relativePath))
     ]);
+}   
+    /**
+ * AJAX: metadata + fulltext search across file_metadata table.
+ * Route: GET academic-records/metadata-search?q=juan+tor
+ *
+ * Returns JSON list of matching files with path, type, student name.
+ * The existing JS search uses filesystem crawl; this supplements it with
+ * DB-indexed content (OCR text) search.
+ */
+public function metadataSearch(): \CodeIgniter\HTTP\ResponseInterface
+{
+    if (!session()->get('logged_in')) {
+        return $this->jsonError('Unauthenticated.', 401);
+    }
+
+    $q = trim($this->request->getGet('q') ?? '');
+    if (strlen($q) < 2) {
+        return $this->jsonError('Query too short.', 400);
+    }
+
+    $db     = \Config\Database::connect();
+    $userId = (int) session()->get('user_id');
+    $isAdmin= session()->get('role') === 'admin';
+
+    // Build base query
+    $builder = $db->table('file_metadata fm')
+        ->select('fm.*, rt.label AS document_type_label')
+        ->join('record_types rt', 'rt.type_id = fm.document_type_id', 'left');
+
+    // Non-admins: restrict to their assigned folder paths
+    if (!$isAdmin) {
+        $allowed = $this->folderAccessModel->getAllowedFolders($userId);
+        if (empty($allowed)) {
+            return $this->jsonOk(['results' => []]);
+        }
+        $builder->groupStart();
+        foreach ($allowed as $folder) {
+            $builder->orLike('fm.folder_path', $folder, 'after');
+        }
+        $builder->groupEnd();
+    }
+
+    // Search: student name OR fulltext on extracted text
+    $builder->groupStart()
+        ->like('fm.student_name', $q)
+        ->orLike('fm.original_name', $q)
+        ->orWhere("MATCH(fm.extracted_text) AGAINST (? IN BOOLEAN MODE)", '+' . $q)
+        ->groupEnd();
+
+    $results = $builder->limit(50)->get()->getResultArray();
+
+    // Add download URL for each result
+    foreach ($results as &$row) {
+        $row['download_url'] = base_url('academic-records/download?path=' . urlencode($row['file_path']));
+        $row['preview_url']  = base_url('academic-records/preview?path='  . urlencode($row['file_path']));
+        unset($row['extracted_text']); // don't send full OCR text to browser
+    }
+
+    return $this->jsonOk(['results' => $results, 'total' => count($results)]);
 }
+
 
 /**
  * Clean up old temporary files (maintenance)
@@ -873,4 +989,6 @@ public function cleanupTempFiles()
         }
     }
 }
+
+    
 }

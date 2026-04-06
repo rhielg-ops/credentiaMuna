@@ -14,8 +14,20 @@ class OcrService
              in_array($ext, ['doc','docx'])       => $this->extractDocxText($absolutePath),
     default                              => '',
 };
-            return ['text' => $text, 'success' => true,
-                    'suggestions' => $this->buildSuggestions($text, $originalName)];
+            $suggestions = $this->buildSuggestions($text, $originalName);
+
+// Compute SHA-256 hash for duplicate detection
+$fileHash = file_exists($absolutePath) ? hash_file('sha256', $absolutePath) : null;
+
+return [
+    'text'        => $text,
+    'success'     => true,
+    'suggestions' => $suggestions,
+    'file_hash'   => $fileHash,
+    // confidence: rough measure based on text length vs file size
+    'ocr_confidence' => $this->estimateConfidence($text, $absolutePath),
+];
+
         } catch (\Throwable $e) {
             log_message('error', '[OcrService] ' . $e->getMessage());
             return ['text' => '', 'success' => false, 'error' => $e->getMessage(),
@@ -255,7 +267,13 @@ private function pdfToImageOcr(string $pdfPath): string
 
     log_message('debug', '[OcrService] final name=' . $formattedName . ' folder=' . $folder . ' filename=' . $filename);
 
-    return ['folder' => $folder, 'filename' => $filename, 'doc_type' => $docType];
+    return [
+    'folder'    => $folder,
+    'filename'  => $filename,
+    'doc_type'  => $docType,
+    'name'      => $formattedName,   // ← add this so FileMetadataModel can use it
+    ];
+
 }
 
     private function detectDocumentType(string $text): string
@@ -282,5 +300,23 @@ private function pdfToImageOcr(string $pdfPath): string
     $suffixes  = $typeModel->getSuffixMap();
     return $suffixes[$docType] ?? '';
 }
+
+/**
+ * Rough OCR confidence 0-100 based on printable character ratio.
+ * Not ML-based — just a practical sanity check.
+ */
+private function estimateConfidence(string $text, string $filePath): int
+{
+    $trimmed = trim($text);
+    if (strlen($trimmed) < 10) return 0;
+
+    $printable = preg_match_all('/[a-zA-Z0-9\s\.,\-:\/]/', $trimmed);
+    $total     = strlen($trimmed);
+    if ($total === 0) return 0;
+
+    $ratio = ($printable / $total) * 100;
+    return (int) min(100, max(0, $ratio));
+}
+
     // Standard document type labels used in filename construction
 }

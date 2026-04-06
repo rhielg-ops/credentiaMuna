@@ -138,7 +138,7 @@ class UserModel extends Model
      */
     public function getUserWithRecordCount($userId)
     {
-        return $this->select('users.*, COUNT(academic_records.id) as total_records')
+        return $this->select('users.*, COUNT(academic_records.acad_record_id) as total_records')
                     ->join('academic_records', 'users.user_id = academic_records.uploaded_by', 'left')
                     ->where('users.user_id', $userId)
                     ->groupBy('users.user_id')
@@ -150,7 +150,7 @@ class UserModel extends Model
      */
     public function getAllUsersWithRecordCounts()
     {
-        return $this->select('users.*, COUNT(academic_records.id) as total_records')
+        return $this->select('users.*, COUNT(academic_records.acad_record_id) as total_records')
                     ->join('academic_records', 'users.user_id = academic_records.uploaded_by', 'left')
                     ->groupBy('users.user_id')
                     ->orderBy('users.created_at', 'DESC')

@@ -39,6 +39,7 @@ $routes->post('academic-records/cancel-pending',    'AcademicRecords::cancelPend
 $routes->post('academic-records/finalize-upload',   'AcademicRecords::finalizeUpload');
 $routes->get('academic-records/ocr-result/(:any)', 'AcademicRecords::getOcrResult/$1');
 $routes->get('academic-records/test-ocr', 'AcademicRecords::testOcr');
+$routes->get('academic-records/metadata-search', 'AcademicRecords::metadataSearch');
 
 // ── Settings (all roles) ──────────────────────────────────────────────────────
 $routes->get('settings',                  'Settings::index');
