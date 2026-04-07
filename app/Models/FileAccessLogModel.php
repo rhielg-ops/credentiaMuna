@@ -64,19 +64,26 @@ class FileAccessLogModel extends Model
 
         try {
             $db = \Config\Database::connect();
+            // Map file_access_logs action enum values to the prefixed strings
+            // stored in activity_logs so filters work consistently.
+            $activityAction = 'file_' . $action;
+
+            // Sanitize: activity_logs.action is VARCHAR(100); truncate safely.
+            if (strlen($activityAction) > 100) {
+                $activityAction = substr($activityAction, 0, 100);
+            }
+
             $db->table('activity_logs')->insert([
-                'user_id'     => $userId,
-                'action'      => 'file_' . $action,   // prefix so it's distinct in filters
+                'user_id'     => $userId ?: null,   // keep null-safe
+                'action'      => $activityAction,
                 'description' => $description,
                 'ip_address'  => $request->getIPAddress(),
-                'user_agent'  => $request->getUserAgent()->getAgentString(),
-                // created_at uses DEFAULT current_timestamp() — no need to pass it
+                'user_agent'  => substr($request->getUserAgent()->getAgentString(), 0, 500),
             ]);
         } catch (\Throwable $e) {
-            // Log but do not fail — the primary file_access_logs insert already
-            // succeeded. A broken activity_log mirror should not block file ops.
             log_message('error', '[FileAccessLogModel] Failed to mirror to activity_logs: ' . $e->getMessage());
         }
+
 
         return $result;
     }

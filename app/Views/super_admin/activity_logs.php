@@ -20,6 +20,7 @@
         <option value="user" <?= $actionFilter === 'user' ? 'selected' : '' ?>>User Management</option>
         <option value="record" <?= $actionFilter === 'record' ? 'selected' : '' ?>>Record Management</option>
         <option value="password" <?= $actionFilter === 'password' ? 'selected' : '' ?>>Password Changes</option>
+        <option value="file_" <?= $actionFilter === 'file_' ? 'selected' : '' ?>>File Actions</option>
       </select>
     </div>
 
@@ -95,21 +96,37 @@
             <td class="px-6 py-4">
               <?php
                 $actionBadges = [
-                  'login_success' => 'bg-green-100 text-green-800',
-                  'logout' => 'bg-gray-100 text-gray-800',
-                  'user_created' => 'bg-blue-100 text-blue-800',
-                  'user_updated' => 'bg-yellow-100 text-yellow-800',
-                  'user_deleted' => 'bg-red-100 text-red-800',
-                  'user_suspended' => 'bg-orange-100 text-orange-800',
-                  'user_unsuspended' => 'bg-green-100 text-green-800',
-                  'record_uploaded' => 'bg-blue-100 text-blue-800',
-                  'record_updated' => 'bg-yellow-100 text-yellow-800',
-                  'record_deleted' => 'bg-red-100 text-red-800',
-                  'password_changed' => 'bg-purple-100 text-purple-800',
-                  'profile_updated' => 'bg-blue-100 text-blue-800'
-                ];
-                
-                $badgeClass = $actionBadges[$log['action']] ?? 'bg-gray-100 text-gray-800';
+                  'login_success'      => 'bg-green-100 text-green-800',
+                  'logout'             => 'bg-gray-100 text-gray-800',
+                  'user_created'       => 'bg-blue-100 text-blue-800',
+                  'user_updated'       => 'bg-yellow-100 text-yellow-800',
+                  'user_deleted'       => 'bg-red-100 text-red-800',
+                  'user_suspended'     => 'bg-orange-100 text-orange-800',
+                  'user_unsuspended'   => 'bg-green-100 text-green-800',
+                  'record_uploaded'    => 'bg-blue-100 text-blue-800',
+                  'record_updated'     => 'bg-yellow-100 text-yellow-800',
+                  'record_deleted'     => 'bg-red-100 text-red-800',
+                  'password_changed'   => 'bg-purple-100 text-purple-800',
+                  'profile_updated'    => 'bg-blue-100 text-blue-800',
+                  // File action variants (mirrored from file_access_logs)
+                  'file_preview'       => 'bg-indigo-100 text-indigo-800',
+                  'file_download'      => 'bg-cyan-100 text-cyan-800',
+                  'file_upload'        => 'bg-teal-100 text-teal-800',
+                  'file_delete'        => 'bg-red-100 text-red-800',
+                  'file_rename'        => 'bg-amber-100 text-amber-800',
+                  'file_move'          => 'bg-orange-100 text-orange-800',
+                  'file_view'          => 'bg-indigo-100 text-indigo-800',
+                  'file_folder_create' => 'bg-lime-100 text-lime-800',
+                  'file_folder_delete' => 'bg-red-100 text-red-800',
+              ];
+
+              // For unknown file_ actions, fall back to a generic file badge
+              if (!isset($actionBadges[$log['action']])
+                  && str_starts_with($log['action'], 'file_')) {
+                  $badgeClass = 'bg-indigo-100 text-indigo-800';
+              } else {
+                  $badgeClass = $actionBadges[$log['action']] ?? 'bg-gray-100 text-gray-800';
+              }
               ?>
               <span class="px-3 py-1 text-xs font-semibold rounded-full <?= $badgeClass; ?>">
                 <?= esc(ucwords(str_replace('_', ' ', $log['action']))); ?>
@@ -186,6 +203,10 @@
     <div class="flex items-center gap-2">
       <span class="px-3 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Password</span>
       <span class="text-sm text-gray-600">Password changes</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">File Actions</span>
+      <span class="text-sm text-gray-600">Upload, preview, download, rename, move, delete</span>
     </div>
   </div>
 </div>

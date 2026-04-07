@@ -29,19 +29,24 @@ class OcrService
                 default                                => '',
             };
 
+            log_message('debug', '[OcrService] RAW TEXT DUMP: ' . $text);
             $suggestions = $this->buildSuggestions($text, $originalName);
 
 // Compute SHA-256 hash for duplicate detection
 $fileHash = file_exists($absolutePath) ? hash_file('sha256', $absolutePath) : null;
 
-return [
-    'text'        => $text,
-    'success'     => true,
-    'suggestions' => $suggestions,
-    'file_hash'   => $fileHash,
-    // confidence: rough measure based on text length vs file size
-    'ocr_confidence' => $this->estimateConfidence($text, $absolutePath),
-];
+// Strip any invalid UTF-8 bytes — prevents CI4 setJSON() from
+        // crashing on font-encoded PDFs that slip past garble detection.
+        $safeText = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+
+        return [
+            'text'        => $safeText,
+            'success'     => true,
+            'suggestions' => $suggestions,
+            'file_hash'   => $fileHash,
+            // confidence: rough measure based on text length vs file size
+            'ocr_confidence' => $this->estimateConfidence($safeText, $absolutePath),
+        ];
 
         } catch (\Throwable $e) {
             log_message('error', '[OcrService] ' . $e->getMessage());
@@ -58,8 +63,9 @@ return [
     return $ocr->run();
 }
 
-   // Extracts embedded text from a PDF using pdftotext (Poppler utility)
- private function extractPdfText(string $pdfPath): string
+   // Extracts embedded text from a PDF — tries smalot/pdfparser first,
+    // falls back to Tesseract OCR if the PDF is scanned or garbled.
+    private function extractPdfText(string $pdfPath): string
     {
         // Step 1: Try pdftotext (fast path for text-based / born-digital PDFs)
         $text = $this->pdfToText($pdfPath);
@@ -74,77 +80,75 @@ return [
         //
         // We do NOT strip all whitespace before counting — that inflates the
         // count for documents that are mostly blank/whitespace.
+        // Count printable non-whitespace characters.
+        // Threshold lowered to 3 so that very short single-field documents
+        // (e.g. a stamp or one-line cert) are still treated as text PDFs.
         $printableCount = preg_match_all('/[^\s\f\r\n]/', $text);
 
-        if ($printableCount < 5) {
+        // Garble detection: measure ratio of real ASCII letters/digits
+        // vs total printable chars. Legitimate pdftotext output is mostly
+        // alphanumeric + punctuation. Garbled font-encoded text contains
+        // a high ratio of symbols like * + , - . # @ < > { } etc.
+         $realChars    = preg_match_all('/[a-zA-Z0-9]/', $text);
+        $totalPrint   = max(1, $printableCount);
+        $realRatio    = $realChars / $totalPrint;
+
+        // Count how many printable chars are symbols (not letters/digits/space)
+        // Font-encoded PDFs produce a LOT of symbols like !"#$%&'()*+,-./:;<=>?@
+        $symbolChars  = preg_match_all('/[^a-zA-Z0-9\s\r\n\f]/', $text);
+        $symbolRatio  = $symbolChars / $totalPrint;
+
+        // Garbled if: fewer than 55% real alphanumeric chars OR more than 35%
+        // are symbols. The old 40% threshold was too low — garbled font-encoded
+        // PDFs contain mostly ASCII symbols that still pass as "printable".
+        $isGarbled = $realRatio < 0.55 || $symbolRatio > 0.35;
+
+        if ($printableCount < 3 || $isGarbled) {
             // Very few real characters → treat as scanned/image PDF, run OCR
             log_message('debug', '[OcrService] PDF has only ' . $printableCount
-                . ' printable chars → treating as image-only, running Tesseract OCR');
+                . ' printable chars, real ratio=' . round($realRatio * 100) . '%'
+                . ($isGarbled ? ' (GARBLED font encoding)' : '')
+                . ' → running Tesseract OCR');
             $ocrText = $this->pdfToImageOcr($pdfPath);
             log_message('debug', '[OcrService] pdfToImageOcr returned ' . strlen($ocrText) . ' chars');
+            log_message('debug', '[OcrService] Final text going to buildSuggestions: ' . substr($text, 0, 500));
             return $ocrText;
         }
 
         // We have real text — use it directly, no OCR needed
         log_message('debug', '[OcrService] PDF has ' . $printableCount
             . ' printable chars → using pdftotext result directly');
+        log_message('debug', '[OcrService] Final text going to buildSuggestions: ' . substr($text, 0, 500));
         return $text;
     }
 
 
 // Extracts embedded text from a text-based PDF using pdftotext (Poppler)
+     /**
+     * Extracts embedded text from a text-based PDF using smalot/pdfparser.
+     * No shell_exec, no Poppler binary — pure PHP, Windows-safe.
+     * Returns empty string on failure so the Tesseract fallback still triggers.
+     */
     private function pdfToText(string $pdfPath): string
     {
-        $pdftotext = 'C:\poppler-25.12.0\Library\bin\pdftotext.exe';
+        try {
+            $parser = new \Smalot\PdfParser\Parser();
+            $pdf    = $parser->parseFile($pdfPath);
+            $text   = $pdf->getText();
 
-        if (!file_exists($pdftotext)) {
-            log_message('error', '[OcrService] pdftotext not found at: ' . $pdftotext);
+            // Normalize form-feeds to newlines (same as old pdftotext behaviour)
+            $text = str_replace("\f", "\n", $text);
+
+            log_message('debug', '[OcrService] smalot/pdfparser extracted '
+                . strlen(trim($text)) . ' chars');
+
+            return trim($text) ?: '';
+
+        } catch (\Throwable $e) {
+            log_message('error', '[OcrService] pdfparser failed: ' . $e->getMessage());
             return '';
         }
-
-        // FIX: Use WRITEPATH (no spaces, forward-slash safe) instead of sys_get_temp_dir().
-        // sys_get_temp_dir() on Windows often returns a path with spaces
-        // (e.g. C:\Users\John Doe\AppData\Local\Temp) which breaks cmd.exe even
-        // when double-quoted, causing pdftotext to silently produce no output.
-        $tmpDir = rtrim(WRITEPATH, '/\\') . DIRECTORY_SEPARATOR . 'temp_uploads';
-        if (!is_dir($tmpDir)) {
-            mkdir($tmpDir, 0755, true);
-        }
-        $tmpTxt = $tmpDir . DIRECTORY_SEPARATOR . 'ocr_' . uniqid() . '.txt';
-
-        // Build the shell command. All three paths are wrapped in double-quotes
-        // individually so spaces in any segment are handled correctly on cmd.exe.
-        $cmd = '"' . $pdftotext . '" -layout '
-             . '"' . str_replace('/', DIRECTORY_SEPARATOR, $pdfPath)  . '" '
-             . '"' . $tmpTxt . '"'
-             . ' 2>&1';
-
-        log_message('debug', '[OcrService] pdfToText cmd: ' . $cmd);
-
-        // Try shell_exec first; fall back to exec() if shell_exec is disabled.
-        $output = null;
-        if (function_exists('shell_exec')) {
-            $output = @shell_exec($cmd);
-        } else {
-            @exec($cmd, $lines, $rc);
-            $output = implode("\n", $lines);
-        }
-        log_message('debug', '[OcrService] pdfToText output: ' . ($output ?? '(null)'));
-
-        if (!file_exists($tmpTxt)) {
-            log_message('warning', '[OcrService] pdfToText: output file not created. cmd: ' . $cmd);
-            return '';
-        }
-
-        $text = file_get_contents($tmpTxt);
-        @unlink($tmpTxt);
-
-        $charCount = strlen(trim($text));
-        log_message('debug', '[OcrService] pdfToText extracted ' . $charCount . ' chars');
-
-        return trim($text) ?: '';
     }
-
 // Converts each PDF page to a PNG image, then runs Tesseract OCR on each page
 private function pdfToImageOcr(string $pdfPath): string
 {
@@ -226,6 +230,11 @@ private function pdfToImageOcr(string $pdfPath): string
 
    private function buildSuggestions(string $text, string $originalName): array
 {
+    // Collapse repeated whitespace before working with the text so that
+    // PDFs that use multiple spaces / tabs still yield usable content.
+    $text = preg_replace('/[ \t]+/', ' ', $text);
+    $text = preg_replace('/(\r\n|\r|\n){3,}/', "\n\n", $text);
+
     if (trim($text) === '') {
         log_message('debug', '[OcrService] buildSuggestions: empty text, no suggestions');
         return ['folder' => '', 'filename' => ''];
@@ -246,7 +255,8 @@ private function pdfToImageOcr(string $pdfPath): string
     // NOTE: "pupil" and "learner" are intentionally NOT here — they appear as
     // body words ("a bonafide Grade Five pupil of...") and caused false matches.
     if (preg_match(
-        '/(?:student\s*name|full\s*name|name\s*of\s*student)\s*[:\-]\s*([A-Z][a-zA-Z ,.]{2,50})/i',
+        // ✅ \s already covers newlines, but add \n explicitly to be safe
+       '/(?:student\s*name|full\s*name|fullname|name\s*of\s*student)\s*[:\-]\s*\n?\s*([A-Z][a-zA-Z ,\.]{2,50})/i',
         $text, $m
     )) {
         $studentName = trim($m[1]);
@@ -261,6 +271,16 @@ private function pdfToImageOcr(string $pdfPath): string
     )) {
         $studentName = trim($m[1]);
         log_message('debug', '[OcrService] Strategy 1b (pupil label) matched: ' . $studentName);
+    }
+
+    // ── Strategy 1c: "Fullname : AQUINO, Wency" university report format ──────
+    // Handles Last, First Middle names separated by a comma after the label.
+    elseif (preg_match(
+        '/full\s*name\s*[:\-]\s*([A-Z][A-Za-z\s,\.]{2,50})/i',
+        $text, $m
+    )) {
+        $studentName = trim($m[1]);
+        log_message('debug', '[OcrService] Strategy 1c (fullname colon) matched: ' . $studentName);
     }
 
     // ── Strategy 2: Philippine cert — "certify that NAME is/was/a bonafide" ───
@@ -283,17 +303,34 @@ private function pdfToImageOcr(string $pdfPath): string
         log_message('debug', '[OcrService] Strategy 3 (awarded/issued to) matched: ' . $studentName);
     }
 
-    // ── Strategy 4: ALL-CAPS name on its own line (diplomas, DepEd certs) ─────
-    elseif (preg_match('/\n([A-Z][A-Z]+(?:\s+[A-Z][A-Z]*\.?){1,4})\n/m', $text, $m)) {
-        $studentName = trim($m[1]);
-        log_message('debug', '[OcrService] Strategy 4 (all-caps line) matched: ' . $studentName);
+    // ── Strategy 4: ALL-CAPS name on its own line — skip known headers ─────────
+    elseif (preg_match_all('/\n([A-Z][A-Z]+(?:\s+[A-Z][A-Z]*\.?){1,4})\n/m', $text, $allMatches)) {
+        $skipWords = [
+            'REPUBLIC', 'DEPARTMENT', 'UNIVERSITY', 'COLLEGE', 'SCHOOL',
+            'REPORT', 'GRADES', 'PHILIPPINES', 'EDUCATION', 'CERTIFICATE',
+            'DIVISION', 'DISTRICT', 'OFFICE', 'DEPED', 'STATE', 'CITY',
+        ];
+        foreach ($allMatches[1] as $candidate) {
+            $isHeader = false;
+            foreach ($skipWords as $skip) {
+                if (stripos($candidate, $skip) !== false) {
+                    $isHeader = true;
+                    break;
+                }
+            }
+            if (!$isHeader) {
+                $studentName = trim($candidate);
+                log_message('debug', '[OcrService] Strategy 4 (all-caps line) matched: ' . $studentName);
+                break;
+            }
+        }
     }
 
     // ── Clean trailing noise words (articles, prepositions) ──────────────────
     $studentName = trim(preg_replace('/\s+(is|was|has|be|a|an|the|of|in|at|to)$/i', '', $studentName));
 
     // ── Student ID / LRN ──────────────────────────────────────────────────────
-    if (preg_match('/(?:student\s*id|id\s*no?\.?|lrn)\s*[:\-]?\s*([A-Z0-9\-]{3,20})/i', $text, $m)) {
+    if (preg_match('/(?:student\s*(?:id|no\.?|number)|id\s*no?\.?|lrn)\s*[:\-]?\s*([A-Z0-9\-]{3,20})/i', $text, $m)) {
         $studentId = trim($m[1]);
     }
 

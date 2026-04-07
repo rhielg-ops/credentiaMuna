@@ -1165,7 +1165,12 @@ if (!$this->privilegeModel->canEditPrivileges($actingAdminId, (int) $userId, $ac
 
         // Apply filters
         if ($action) {
-            $builder->like('activity_logs.action', $action);
+            // file_ prefix: match any action starting with "file_"
+            if ($action === 'file_') {
+                $builder->like('activity_logs.action', 'file_', 'after');
+            } else {
+                $builder->like('activity_logs.action', $action);
+            }
         }
 
         if ($timeRange !== 'all') {

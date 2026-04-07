@@ -239,7 +239,12 @@ if (!$isFullAdmin && !($userPrivs['profile_edit'] ?? false)) {
 
         // Apply filters
         if ($actionFilter !== 'all') {
-            $builder->like('activity_logs.action', $actionFilter);
+            // file_ prefix: match any action starting with "file_"
+            if ($actionFilter === 'file_') {
+                $builder->like('activity_logs.action', 'file_', 'after');
+            } else {
+                $builder->like('activity_logs.action', $actionFilter);
+            }
         }
 
         if ($dateFilter !== 'all') {

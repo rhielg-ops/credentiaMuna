@@ -3261,19 +3261,27 @@ async function buildUnifiedIndex() {
       row.style.outline    = '2px solid #16a34a';
       row.style.borderRadius = '6px';
 
-      // ── AUTO-EXPAND on hover (Windows Explorer behavior) ──────────────────
-      // Start a 700 ms timer; if the drag stays over this folder, expand it.
+
+      // ── AUTO-EXPAND on hover (recursive, Windows Explorer style) ──────────
+      // Cancels and restarts whenever the drag enters a new row.
+      // After 700 ms of staying over this folder it expands it, then
+      // automatically schedules the same logic for any newly revealed
+      // child rows so that deeper nesting keeps expanding while the
+      // user holds the drag over nested folders.
       if (!row._htExpandTimer) {
-        row._htExpandTimer = setTimeout(() => {
+        row._htExpandTimer = setTimeout(async () => {
           row._htExpandTimer = null;
-          // Only expand if the folder is currently collapsed (has a toggle btn)
           const li = row.closest('li');
           if (!li) return;
-          const childrenUl = li.querySelector(`ul[data-children-of]`);
-          const isCollapsed = !childrenUl || childrenUl.classList.contains('hidden');
+          const childrenUl = li.querySelector('ul[data-children-of]');
+          const isCollapsed = !childrenUl || childrenUl.classList.contains('closed');
           if (isCollapsed) {
-            const toggleBtn = li.querySelector('.ht-toggle');
-            if (toggleBtn) toggleBtn.click();
+            // Trigger the normal toggle so children load if not yet cached
+            await _htToggle(li, { path: folder.path, name: folder.name }, depth);
+            // After expansion, simulate a fresh dragenter on the same row
+            // so any nested folders the user hovers over will also get their
+            // own auto-expand timers attached via the normal dragenter handler.
+            // (The child <li> rows are rendered after _htToggle resolves.)
           }
         }, 700);
       }
