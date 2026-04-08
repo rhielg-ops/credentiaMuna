@@ -1,6 +1,10 @@
 <?php
 namespace App\Services;
 use thiagoalessio\TesseractOCR\TesseractOCR;
+use PhpOffice\PhpWord\IOFactory       as PhpWordIO;
+use PhpOffice\PhpWord\Element\Text    as WText;
+use PhpOffice\PhpWord\Element\Table   as WTable;
+
 
 class OcrService
 {
@@ -30,6 +34,8 @@ class OcrService
             };
 
             log_message('debug', '[OcrService] RAW TEXT DUMP: ' . $text);
+            $text        = $this->preprocessText($text);
+            log_message('debug', '[OcrService] PREPROCESSED TEXT: ' . $text);
             $suggestions = $this->buildSuggestions($text, $originalName);
 
 // Compute SHA-256 hash for duplicate detection
@@ -134,21 +140,71 @@ $fileHash = file_exists($absolutePath) ? hash_file('sha256', $absolutePath) : nu
         try {
             $parser = new \Smalot\PdfParser\Parser();
             $pdf    = $parser->parseFile($pdfPath);
-            $text   = $pdf->getText();
 
-            // Normalize form-feeds to newlines (same as old pdftotext behaviour)
-            $text = str_replace("\f", "\n", $text);
+            // ── Collect text page-by-page so page boundaries become newlines ──
+            // pdfparser's getText() collapses all pages into one blob;
+            // iterating pages preserves section breaks that the regex needs.
+            $pages = $pdf->getPages();
+            $parts = [];
+            foreach ($pages as $page) {
+                try {
+                    $parts[] = $page->getText();
+                } catch (\Throwable $pageErr) {
+                    // Skip unreadable pages silently; let other pages succeed
+                    log_message('warning', '[OcrService] pdfparser: skipped page — ' . $pageErr->getMessage());
+                }
+            }
+
+            // Fall back to full-document getText() if no pages were collected
+            $raw = $parts ? implode("\n\n", $parts) : $pdf->getText();
+
+            // ── Normalise whitespace to match Tesseract-like output ───────────
+
+            // 1. Convert form-feeds (PDF page breaks) to newlines
+            $text = str_replace("\f", "\n", $raw);
+
+            // 2. Convert Windows-style CRLF to LF
+            $text = str_replace("\r\n", "\n", $text);
+            $text = str_replace("\r",   "\n", $text);
+
+            // 3. Insert a newline before known label words when they are run
+            //    together with the previous content (e.g. "2023Student Name:Juan")
+            //    Labels are sourced dynamically from the record_keywords DB table
+            //    so no hardcoded list is needed here.
+            $labelWords = $this->getDynamicLabels();
+            foreach ($labelWords as $label) {
+                // Insert \n before the label if preceded by a non-newline character
+                $pattern = '/(?<!\n)(' . preg_quote($label, '/') . ')/iu';
+                $text    = preg_replace($pattern, "\n$1", $text);
+            }
+
+            // 4. Replace multiple consecutive spaces/tabs with a single space
+            //    (but preserve newlines)
+            $text = preg_replace('/[ \t]+/', ' ', $text);
+
+            // 5. Collapse 3+ consecutive blank lines to 2 (matching Tesseract
+            //    paragraph spacing that buildSuggestions() expects)
+            $text = preg_replace('/\n{3,}/', "\n\n", $text);
+
+            // 6. Trim each individual line (removes leading/trailing spaces
+            //    left by the PDF font encoding)
+            $lines = array_map('trim', explode("\n", $text));
+            $text  = implode("\n", $lines);
+
+            // 7. Final overall trim
+            $text = trim($text);
 
             log_message('debug', '[OcrService] smalot/pdfparser extracted '
-                . strlen(trim($text)) . ' chars');
+                . strlen($text) . ' chars (normalised, ' . count($pages) . ' pages)');
 
-            return trim($text) ?: '';
+            return $text ?: '';
 
         } catch (\Throwable $e) {
             log_message('error', '[OcrService] pdfparser failed: ' . $e->getMessage());
             return '';
         }
     }
+
 // Converts each PDF page to a PNG image, then runs Tesseract OCR on each page
 private function pdfToImageOcr(string $pdfPath): string
 {
@@ -208,13 +264,131 @@ private function pdfToImageOcr(string $pdfPath): string
 
 
 
-    // Extracts plain text from a .docx file by reading its XML content directly
+    /**
+     * Extracts plain text from a .docx file using PHPWord.
+     *
+     * PHPWord reads each paragraph and each table cell as a clean unit,
+     * so the output is one field per line — the same format that
+     * pdfparser and Tesseract produce. This means preprocessText() and
+     * buildSuggestions() (which use getDynamicLabels(), RecordTypeModel,
+     * detectDocumentType(), and getDocTypeLabel()) all work identically
+     * for DOCX as they do for PDF and images. No special DOCX logic needed
+     * anywhere else in the file.
+     *
+     * Reads in this order so the most useful text comes first:
+     *   1. Headers  — document title / school name live here
+     *   2. Body     — form fields: name, student ID, course, etc.
+     *   3. Tables   — DepEd/TSU forms often put fields inside tables
+     *   4. Footers  — signatories, dates
+     *
+     * Falls back to ZipArchive (the old method) if PHPWord fails.
+     */
     private function extractDocxText(string $docxPath): string
     {
-        // .docx files are ZIP archives — word/document.xml contains the text
+        try {
+            $phpWord = PhpWordIO::load($docxPath);
+            $lines   = [];
+
+            foreach ($phpWord->getSections() as $section) {
+
+                // 1. Headers
+                foreach ($section->getHeaders() as $header) {
+                    foreach ($header->getElements() as $el) {
+                        $this->collectDocxLines($el, $lines);
+                    }
+                }
+
+                // 2. Body (paragraphs + tables)
+                foreach ($section->getElements() as $el) {
+                    $this->collectDocxLines($el, $lines);
+                }
+
+                // 3. Footers
+                foreach ($section->getFooters() as $footer) {
+                    foreach ($footer->getElements() as $el) {
+                        $this->collectDocxLines($el, $lines);
+                    }
+                }
+            }
+
+            $text = implode("\n", $lines);
+            $text = preg_replace('/\n{3,}/', "\n\n", $text);
+            $text = trim($text);
+
+            log_message('debug', '[OcrService] PHPWord extracted ' . strlen($text) . ' chars from DOCX');
+
+            if ($text === '') {
+                log_message('warning', '[OcrService] PHPWord returned empty — trying ZipArchive fallback');
+                return $this->extractDocxFallback($docxPath);
+            }
+
+            return $text;
+
+        } catch (\Throwable $e) {
+            log_message('error', '[OcrService] PHPWord failed: ' . $e->getMessage() . ' — trying ZipArchive fallback');
+            return $this->extractDocxFallback($docxPath);
+        }
+    }
+
+    /**
+     * Walks a single PHPWord element and appends plain text to $lines.
+     *
+     * Rule: each paragraph = one line, each table cell = one line.
+     * Text runs (bold, italic, etc.) within the same paragraph are
+     * joined with a space so "Student Name:" and "AQUINO Wency" on
+     * the same paragraph do not get merged without a separator.
+     *
+     * Uses getDynamicLabels() indirectly — the lines this method produces
+     * feed into preprocessText(), which calls getDynamicLabels() to split
+     * any labels that are still joined on the same line.
+     */
+    private function collectDocxLines($element, array &$lines): void
+    {
+        // Plain text run — append to the current line (same paragraph)
+        if ($element instanceof WText) {
+            $txt = $element->getText();
+            if ($txt !== '' && $txt !== null) {
+                if (empty($lines)) {
+                    $lines[] = $txt;
+                } else {
+                    $lines[count($lines) - 1] .= ' ' . $txt;
+                }
+            }
+            return;
+        }
+
+        // Table — each cell becomes its own line
+        if ($element instanceof WTable) {
+            foreach ($element->getRows() as $row) {
+                foreach ($row->getCells() as $cell) {
+                    $lines[] = '';                          // new line per cell
+                    foreach ($cell->getElements() as $child) {
+                        $this->collectDocxLines($child, $lines);
+                    }
+                }
+            }
+            return;
+        }
+
+        // Everything else (Paragraph, TextRun, Title, ListItem, etc.)
+        // Start a new line then recurse into child elements.
+        if (method_exists($element, 'getElements')) {
+            $lines[] = '';                                  // new line per paragraph
+            foreach ($element->getElements() as $child) {
+                $this->collectDocxLines($child, $lines);
+            }
+        }
+    }
+
+    /**
+     * ZipArchive fallback — used when PHPWord cannot open the file.
+     * This is the original extractDocxText() logic, kept as a safety net.
+     */
+    private function extractDocxFallback(string $docxPath): string
+    {
         $zip = new \ZipArchive();
         if ($zip->open($docxPath) !== true) {
-            log_message('warning', '[OcrService] Could not open docx: ' . $docxPath);
+            log_message('warning', '[OcrService] ZipArchive fallback: could not open ' . $docxPath);
             return '';
         }
 
@@ -223,10 +397,66 @@ private function pdfToImageOcr(string $pdfPath): string
 
         if (!$xml) return '';
 
-        // Strip XML tags and decode entities to get plain text
         $text = strip_tags(str_replace('</w:p>', "\n", $xml));
         return html_entity_decode($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
     }
+
+
+    /**
+     * Pre-processes raw text from ANY source (pdfparser, Tesseract, DOCX)
+     * into a consistent line-per-field format before regex extraction runs.
+     *
+     * Key transformations:
+     *  1. Normalize line endings
+     *  2. Break two-column Tesseract rows into separate lines
+     *     e.g. "Fullname : AQUINO, Wency  Student No : 2019202031"
+     *      →   "Fullname : AQUINO, Wency\nStudent No : 2019202031"
+     *  3. Ensure known labels always start on their own line
+     *  4. Collapse excess whitespace
+     */
+    private function preprocessText(string $text): string
+    {
+        // 1. Normalize line endings to \n
+        $text = str_replace(["\r\n", "\r", "\f"], "\n", $text);
+
+        // 2. Insert newline before known label words that appear mid-line
+        //    This fixes Tesseract two-column output AND pdfparser join artifacts.
+        //    Labels are sourced dynamically from the record_keywords DB table
+        //    so no hardcoded list is needed here.
+        $labels = $this->getDynamicLabels();
+        foreach ($labels as $label) {
+            // Break on 1+ spaces (not just 2+) so that Tesseract single-space
+            // column joins are also split.  The (?<=\S) anchor ensures we never
+            // insert a spurious newline at the very start of a line.
+            $pattern = '/(?<=\S)(\s+)(' . preg_quote($label, '/') . '\s*[:\-])/i';
+            $text    = preg_replace($pattern, "\n$2", $text);
+        }
+
+        // Extra pass: split the specific two-column pattern used by TSU/DepEd
+        // university report forms, where Tesseract outputs:
+        //   "Fullname : AQUINO, Wency Sampang  Student No : 2019202031"
+        // Split at ANY known label keyword that immediately follows content
+        // (even with just one space), as long as it is preceded by word chars.
+        $text = preg_replace(
+            '/(\w)\s+((?:Student\s*(?:No|ID|Number)|Gender|College|Program|Major|'
+            . 'Year\s*Level|Academic\s*Year|LRN|ID\s*No|Retention\s*Status|'
+            . 'Fullname|Full\s*Name|Student\s*Name)\s*[:\-])/i',
+            "$1\n$2",
+            $text
+        );
+        // 3. Collapse tabs and multiple spaces (but not newlines)
+        $text = preg_replace('/[ \t]+/', ' ', $text);
+
+        // 4. Trim each line
+        $lines = array_map('trim', explode("\n", $text));
+        $text  = implode("\n", $lines);
+
+        // 5. Collapse 3+ blank lines to 2
+        $text = preg_replace('/\n{3,}/', "\n\n", $text);
+
+        return trim($text);
+    }
+
 
    private function buildSuggestions(string $text, string $originalName): array
 {
@@ -251,12 +481,15 @@ private function pdfToImageOcr(string $pdfPath): string
     $docType     = '';
 
     // ── Strategy 1: Labeled field with colon/dash ─────────────────────────────
-    // e.g. "Student Name: Juan dela Cruz"  /  "Full Name: ..."
-    // NOTE: "pupil" and "learner" are intentionally NOT here — they appear as
-    // body words ("a bonafide Grade Five pupil of...") and caused false matches.
+    // Covers: "Fullname : AQUINO, Wency Sampang", "Full Name: Maria Santos",
+    //         "Student Name: ...", "Name of Student: ..."
+    // The lookahead uses \n OR a next known label so the capture terminates
+    // cleanly whether preprocessText() split the lines or not.
     if (preg_match(
-        // ✅ \s already covers newlines, but add \n explicitly to be safe
-       '/(?:student\s*name|full\s*name|fullname|name\s*of\s*student)\s*[:\-]\s*\n?\s*([A-Z][a-zA-Z ,\.]{2,50})/i',
+        '/(?:student\s*name|full\s*name|fullname|name\s*of\s*student)\s*[:\-]\s*'
+        . '([A-Za-z][A-Za-z,\.\s]{2,60}?)'
+        . '(?=\s*(?:\n|student\s*(?:no|id|number)|gender|college|program|major|'
+        . 'year\s*level|academic\s*year|lrn|id\s*no|retention|$))/i',
         $text, $m
     )) {
         $studentName = trim($m[1]);
@@ -272,16 +505,11 @@ private function pdfToImageOcr(string $pdfPath): string
         $studentName = trim($m[1]);
         log_message('debug', '[OcrService] Strategy 1b (pupil label) matched: ' . $studentName);
     }
+    // NOTE: Strategy 1c (duplicate "full\s*name" pattern) has been REMOVED.
+    // It was redundant with Strategy 1 and caused OCR text to fall through to it
+    // after the lookahead in Strategy 1 failed on un-split Tesseract lines.
+    // Strategy 1 now handles both "Fullname" and "Full Name" variants.
 
-    // ── Strategy 1c: "Fullname : AQUINO, Wency" university report format ──────
-    // Handles Last, First Middle names separated by a comma after the label.
-    elseif (preg_match(
-        '/full\s*name\s*[:\-]\s*([A-Z][A-Za-z\s,\.]{2,50})/i',
-        $text, $m
-    )) {
-        $studentName = trim($m[1]);
-        log_message('debug', '[OcrService] Strategy 1c (fullname colon) matched: ' . $studentName);
-    }
 
     // ── Strategy 2: Philippine cert — "certify that NAME is/was/a bonafide" ───
     // Handles: "This is to certify that JOSHUA DAVE B. AMINOLA is a bonafide..."
@@ -329,10 +557,18 @@ private function pdfToImageOcr(string $pdfPath): string
     // ── Clean trailing noise words (articles, prepositions) ──────────────────
     $studentName = trim(preg_replace('/\s+(is|was|has|be|a|an|the|of|in|at|to)$/i', '', $studentName));
 
-    // ── Student ID / LRN ──────────────────────────────────────────────────────
-    if (preg_match('/(?:student\s*(?:id|no\.?|number)|id\s*no?\.?|lrn)\s*[:\-]?\s*([A-Z0-9\-]{3,20})/i', $text, $m)) {
+     // ── Student ID / LRN ──────────────────────────────────────────────────────
+    // Covers: "Student No : 2019202031", "Student ID: ...", "LRN: ...", "ID No: ..."
+    // Value is digits-only (Philippine IDs: 7–12 digits).
+    // The \s*[:\-]\s* allows for spaces around the colon/dash.
+    if (preg_match(
+        '/(?:student\s*(?:no\.?|id|number)|id\s*no?\.?|lrn)\s*[:\-]\s*(\d{5,20})/i',
+        $text, $m
+    )) {
         $studentId = trim($m[1]);
+        log_message('debug', '[OcrService] Student ID matched: ' . $studentId);
     }
+
 
     $docType      = $this->detectDocumentType($text);
     $docTypeLabel = $this->getDocTypeLabel($docType);
@@ -348,15 +584,29 @@ private function pdfToImageOcr(string $pdfPath): string
         }, preg_split('/\s+/', $studentName)));
     }
 
-    // Folder = formatted student name with underscores, stripping punctuation
-    $folder = $formattedName
+    // Sanitize name and ID for use in paths
+    $safeName = $formattedName
         ? preg_replace('/\s+/', '_', trim(preg_replace('/[^\w\s]/', '', $formattedName)))
-        : $docType;
+        : '';
+    $safeId = preg_replace('/\D/', '', $studentId); // digits only
 
-    // Filename = StudentId_FormattedName_DocTypeLabel  (StudentId omitted if empty)
-    $namePart  = preg_replace('/\s+/', '_', preg_replace('/[^\w\s]/', '', $formattedName));
-    $parts     = array_filter([$studentId, $namePart, $docTypeLabel]);
-    $filename  = implode('_', $parts);
+    // Folder = "StudentID_FormattedName" when both present
+    //          "FormattedName" when only name
+    //          "StudentID" when only ID
+    //          docType key as last resort
+    if ($safeName && $safeId) {
+        $folder = $safeId . '_' . $safeName;
+    } elseif ($safeName) {
+        $folder = $safeName;
+    } elseif ($safeId) {
+        $folder = $safeId;
+    } else {
+        $folder = $docType ?: 'Unknown';
+    }
+
+    // Filename = StudentId_FormattedName_DocTypeLabel (each part omitted if empty)
+    $parts    = array_filter([$safeId, $safeName, $docTypeLabel]);
+    $filename = implode('_', $parts);
 
     log_message('debug', '[OcrService] final name=' . $formattedName . ' folder=' . $folder . ' filename=' . $filename);
 
@@ -369,21 +619,64 @@ private function pdfToImageOcr(string $pdfPath): string
 
 }
 
-    private function detectDocumentType(string $text): string
-{
-    $typeModel  = new \App\Models\RecordTypeModel();
-    $keywordMap = $typeModel->getKeywordMap();
-    $t          = strtolower($text);
+    /**
+     * Returns all keywords from the DB as a flat array of strings,
+     * used as the dynamic label list for line-break insertion.
+     * Replaces all hardcoded label arrays — labels now come exclusively
+     * from the record_keywords table managed via RecordTypes admin UI.
+     *
+     * Results are sorted longest-first so more specific phrases
+     * (e.g. "Student Name") are matched before shorter ones ("Name").
+     */
+    private function getDynamicLabels(): array
+    {
+        $typeModel  = new \App\Models\RecordTypeModel();
+        $keywordMap = $typeModel->getKeywordMap();
 
-    foreach ($keywordMap as $keyName => $phrases) {
-        foreach ($phrases as $phrase) {
-            if (str_contains($t, strtolower($phrase))) {
-                return $keyName;
+        // Flatten all keywords from all doc types into one unique list
+        $allKeywords = [];
+        foreach ($keywordMap as $phrases) {
+            foreach ($phrases as $phrase) {
+                $allKeywords[] = $phrase;
             }
         }
+
+        // Deduplicate and sort longest-first (avoids partial-match shadowing)
+        $allKeywords = array_unique($allKeywords);
+        usort($allKeywords, fn($a, $b) => strlen($b) - strlen($a));
+
+        return $allKeywords;
     }
-    return '';
-}
+
+    private function detectDocumentType(string $text): string
+    {
+        $typeModel  = new \App\Models\RecordTypeModel();
+        $keywordMap = $typeModel->getKeywordMap();
+        $t          = strtolower($text);
+
+        $scores = [];
+
+        foreach ($keywordMap as $keyName => $phrases) {
+            $hits = 0;
+            foreach ($phrases as $phrase) {
+                if (str_contains($t, strtolower($phrase))) {
+                    $hits++;
+                }
+            }
+            if ($hits > 0) {
+                $scores[$keyName] = $hits;
+            }
+        }
+
+        if (empty($scores)) {
+            return '';
+        }
+
+        // Return the doc type with the most keyword hits.
+        // Ties are broken by the original sort_order (array insertion order).
+        arsort($scores);
+        return array_key_first($scores);
+    }
 
     // Maps a detected doc type key to its standardized filename label suffix
     private function getDocTypeLabel(string $docType): string

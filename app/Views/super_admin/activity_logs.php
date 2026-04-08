@@ -18,7 +18,7 @@
         <option value="all" <?= $actionFilter === 'all' ? 'selected' : '' ?>>All Actions</option>
         <option value="login" <?= $actionFilter === 'login' ? 'selected' : '' ?>>Login/Logout</option>
         <option value="user" <?= $actionFilter === 'user' ? 'selected' : '' ?>>User Management</option>
-        <option value="record" <?= $actionFilter === 'record' ? 'selected' : '' ?>>Record Management</option>
+        <option value="file_" <?= $actionFilter === 'file_' ? 'selected' : '' ?>>File & Folder Actions</option>
         <option value="password" <?= $actionFilter === 'password' ? 'selected' : '' ?>>Password Changes</option>
         <option value="file_" <?= $actionFilter === 'file_' ? 'selected' : '' ?>>File Actions</option>
       </select>
@@ -205,8 +205,8 @@
       <span class="text-sm text-gray-600">Password changes</span>
     </div>
     <div class="flex items-center gap-2">
-      <span class="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">File Actions</span>
-      <span class="text-sm text-gray-600">Upload, preview, download, rename, move, delete</span>
+      <span class="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">File &amp; Folder Actions</span>
+      <span class="text-sm text-gray-600">Upload, preview, download, rename, move, delete, create/delete folders</span>
     </div>
   </div>
 </div>

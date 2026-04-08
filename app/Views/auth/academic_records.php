@@ -2860,15 +2860,75 @@ async function buildUnifiedIndex() {
   }
 
   // ─── Delete ───────────────────────────────────────────────────────────────
-  async function fileAction_delete(filePath, menuId) {
+ async function fileAction_delete(filePath, menuId) {
     if (!PRIV_DELETE_RECORD) { denyAction(); return; }
-    if (!confirm('Permanently delete this file? This cannot be undone.')) return;
+    // Show styled confirmation modal instead of browser confirm()
+    showDeleteConfirmModal(filePath);
+  }
+
+  async function _doDeleteFile(filePath) {
     const data = await apiFetch(API.deleteFile, 'POST', { path: filePath });
     if (!data.success) { showDialog('Delete failed: ' + data.message, 'error'); return; }
-    invalidateFolderCache(currentFolderPath); // FIX #2
+    invalidateFolderCache(currentFolderPath);
     loadFolder(currentFolderPath);
-    _htRefreshPath(currentFolderPath);        // FIX #8
+    _htRefreshPath(currentFolderPath);
   }
+
+  function showDeleteConfirmModal(filePath) {
+    // Remove any previous instance
+    document.getElementById('_deleteConfirmModal')?.remove();
+
+    const fileName = filePath.split('/').pop();
+    const overlay  = document.createElement('div');
+    overlay.id     = '_deleteConfirmModal';
+    overlay.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4';
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+
+    overlay.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex flex-col items-center px-8 py-7 bg-red-50 border-b border-red-200">
+          <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <svg class="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5
+                   4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </div>
+          <p class="text-lg font-bold text-gray-900 text-center mb-1">
+            Are you sure you want to delete this file?
+          </p>
+          <p class="text-sm text-gray-500 text-center break-all px-2">"${fileName}"</p>
+          <p class="text-xs text-red-600 mt-2 text-center">This action cannot be undone.</p>
+        </div>
+        <div class="flex gap-3 px-6 py-4 bg-white">
+          <button id="_deleteConfirmCancelBtn"
+                  class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl
+                         hover:bg-gray-50 font-medium text-gray-700 transition-colors text-sm">
+            Cancel
+          </button>
+          <button id="_deleteConfirmYesBtn"
+                  class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white
+                         font-semibold rounded-xl transition-colors text-sm">
+            Yes, Delete
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+
+    document.getElementById('_deleteConfirmYesBtn').addEventListener('click', () => {
+      close();
+      _doDeleteFile(filePath);
+    });
+    document.getElementById('_deleteConfirmCancelBtn').addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function escHandler(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); }
+    });
+  }
+
 
   async function fileAction_deleteFolder(folderPath, menuId) {
     if (!PRIV_DELETE_FOLDER) { denyAction(); return; }
