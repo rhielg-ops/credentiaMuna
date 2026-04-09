@@ -112,6 +112,13 @@
             </div>
           </div>
           <button type="submit" class="submit-btn">Sign In</button>
+          <div style="text-align:center;margin-top:16px;">
+            <a href="<?= base_url('auth/forgot'); ?>"
+               style="color:#1a8f4a;font-size:14px;text-decoration:none;font-weight:500;">
+              Forgot Username or Password?
+            </a>
+          </div>
+
         </form>
 
         <?php

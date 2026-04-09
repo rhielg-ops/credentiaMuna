@@ -204,6 +204,16 @@ return redirect()->to('/auth/verify-code');
             return redirect()->to('/login')->with('error', 'Please login first.');
         }
 
+        // Check if MPIN is locked
+        $email     = session()->get('temp_email');
+        $lockModel = new \App\Models\AccountLockModel();
+        if ($lockModel->isAccountLocked($email, 'mpin_attempts')) {
+            $mins = ceil($lockModel->getRemainingLockTime($email, 'mpin_attempts') / 60);
+            session()->remove(['awaiting_mpin','temp_user_id','temp_email','temp_full_name','temp_role']);
+            return redirect()->to('/login')
+                ->with('error', "Account locked due to failed MPIN attempts. Try again in {$mins} minute(s).");
+        }
+        
         $userId = (int) session()->get('temp_user_id');
         $mpin   = $this->request->getPost('mpin');
 
@@ -213,8 +223,41 @@ return redirect()->to('/auth/verify-code');
 
         if (!$this->mpinModel->verifyMpin($userId, $mpin)) {
             $this->activityLogModel->logActivity($userId, 'mpin_failed', 'Incorrect MPIN entered');
-            return redirect()->back()->with('error', 'Incorrect MPIN. Please try again.');
+
+            // Track failed MPIN attempts (max 3, lock 15 min)
+            $email = session()->get('temp_email');
+            $db    = \Config\Database::connect();
+            $since = date('Y-m-d H:i:s', strtotime('-15 minutes'));
+            $attempts = $db->table('account_locks')
+                ->where('email', $email)
+                ->where('lock_type', 'mpin_attempts')
+                ->where('locked_at >=', $since)
+                ->where('is_unlocked', 0)
+                ->countAllResults();
+
+            if ($attempts >= 2) {
+                // 3rd failed attempt — lock for 15 minutes
+                $lockModel = new \App\Models\AccountLockModel();
+                $lockModel->lockAccount($email, 'mpin_attempts', 15);
+                $this->activityLogModel->logActivity($userId, 'account_locked', 'Account locked: too many MPIN failures');
+                session()->remove(['awaiting_mpin','temp_user_id','temp_email','temp_full_name','temp_role']);
+                return redirect()->to('/login')
+                    ->with('error', 'Too many incorrect MPIN attempts. Account locked for 15 minutes.');
+            } else {
+                // Record this attempt
+                $db->table('account_locks')->insert([
+                    'email'       => $email,
+                    'lock_type'   => 'mpin_attempts',
+                    'locked_at'   => date('Y-m-d H:i:s'),
+                    'unlock_at'   => date('Y-m-d H:i:s', strtotime('+1 second')),
+                    'is_unlocked' => 0,
+                ]);
+                $remaining = 3 - ($attempts + 1);
+                return redirect()->back()
+                    ->with('error', "Incorrect MPIN. {$remaining} attempt(s) remaining.");
+            }
         }
+
 // MPIN correct — complete login and refresh the 7-day rolling expiry.
         $user = $this->userModel->find($userId);
         $this->userModel->updateLastLogin($userId);

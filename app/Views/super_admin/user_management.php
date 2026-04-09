@@ -278,11 +278,12 @@
 
         <!-- ✅ NEW: MPIN field in Add modal -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">MPIN <span class="text-gray-400 font-normal">(Optional)</span></label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">MPIN <span class="text-red-500">*</span> <span class="text-gray-400 font-normal">(Required — exactly 4 digits)</span></label>
           <div class="relative">
             <input type="password" name="mpin" id="add_mpin" maxlength="4"
                    class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                   placeholder="4-digit PIN (e.g. 1234)"
+                   placeholder="Required: e.g. 1234"
+                   required
                    oninput="this.value=this.value.replace(/[^0-9]/g,'')">
             <button type="button" id="toggleAddMpin"
                     class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none">
@@ -292,7 +293,7 @@
               </svg>
             </button>
           </div>
-          <p class="text-xs text-gray-500 mt-1">Digits only, exactly 4 digits. Leave blank to skip. The user can change this in their profile.</p>
+          <p class="text-xs text-gray-500 mt-1">Exactly 4 digits. This MPIN will be included in the welcome email. Valid for 30 days.</p>
         </div>
 
         <!-- User Privileges -->

@@ -354,4 +354,105 @@ HTML;
         }
     }
 
+    /**
+     * Send recovery OTP email (password reset OR MPIN reset)
+     */
+    public function sendRecoveryOtp(string $to, string $name, string $otp, string $purposeLabel): bool
+    {
+        try {
+            $this->mailer->clearAddresses();
+            $this->mailer->addAddress($to, $name);
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'CredentiaTAU — ' . $purposeLabel . ' Code';
+            $this->mailer->Body = $this->getRecoveryOtpTemplate($name, $otp, $purposeLabel);
+            $this->mailer->AltBody = "Your {$purposeLabel} code is: {$otp}\n\nThis code expires in 5 minutes.";
+            $this->mailer->send();
+            return true;
+        } catch (\Exception $e) {
+            log_message('error', 'Recovery OTP email failed: ' . $this->mailer->ErrorInfo);
+            return false;
+        }
+    }
+
+    /**
+     * Send welcome email WITH MPIN included (required when user_management privilege creates account)
+     */
+    public function sendWelcomeEmailWithMpin(
+        string $to, string $name, string $password, string $mpin, string $createdBy
+    ): bool {
+        try {
+            $this->mailer->clearAddresses();
+            $this->mailer->addAddress($to, $name);
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = 'Welcome to CredentiaTAU — Your Account Details';
+            $loginUrl = base_url('login');
+            $this->mailer->Body = <<<HTML
+<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;color:#333;">
+<div style="max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#16a34a,#15803d);color:white;padding:30px;border-radius:8px 8px 0 0;text-align:center;">
+    <h1 style="margin:0;">Welcome to CredentiaTAU</h1>
+  </div>
+  <div style="background:#f9f9f9;padding:30px;border-radius:0 0 8px 8px;">
+    <p>Hello <strong>{$name}</strong>,</p>
+    <p>Your account has been created by <strong>{$createdBy}</strong>.</p>
+    <div style="background:white;border:2px solid #16a34a;padding:20px;border-radius:8px;margin:20px 0;">
+      <h3 style="color:#16a34a;margin-top:0;">Your Login Credentials</h3>
+      <p><strong>Email:</strong> {$to}</p>
+      <p><strong>Password:</strong> <code>{$password}</code></p>
+      <p><strong>MPIN:</strong> <code>{$mpin}</code></p>
+    </div>
+    <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:12px;border-radius:4px;">
+      <strong>⚠️ Security Notice:</strong> Please change your password after first login.
+      Your MPIN is valid for 30 days.
+    </div>
+    <div style="text-align:center;margin:25px 0;">
+      <a href="{$loginUrl}" style="background:#16a34a;color:white;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:bold;">
+        Login to CredentiaTAU
+      </a>
+    </div>
+  </div>
+  <p style="text-align:center;color:#666;font-size:12px;">&copy; 2025 Tarlac Agricultural University</p>
+</div>
+</body></html>
+HTML;
+            $this->mailer->AltBody = "Welcome!\nEmail: {$to}\nPassword: {$password}\nMPIN: {$mpin}";
+            $this->mailer->send();
+            return true;
+        } catch (\Exception $e) {
+            log_message('error', 'Welcome+MPIN email failed: ' . $this->mailer->ErrorInfo);
+            return false;
+        }
+    }
+
+    protected function getRecoveryOtpTemplate(string $name, string $otp, string $purposeLabel): string
+    {
+        return <<<HTML
+<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:linear-gradient(135deg,#16a34a,#15803d);color:white;padding:30px;
+              border-radius:8px 8px 0 0;text-align:center;">
+    <h1 style="margin:0;">CredentiaTAU</h1>
+    <p style="margin:8px 0 0;">{$purposeLabel}</p>
+  </div>
+  <div style="background:#f9f9f9;padding:30px;border-radius:0 0 8px 8px;">
+    <p>Hello <strong>{$name}</strong>,</p>
+    <p>Use the code below to complete your {$purposeLabel}:</p>
+    <div style="background:white;border:2px dashed #16a34a;padding:20px;text-align:center;
+                border-radius:8px;margin:20px 0;">
+      <div style="font-size:32px;font-weight:bold;color:#16a34a;letter-spacing:8px;
+                  font-family:'Courier New',monospace;">{$otp}</div>
+    </div>
+    <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:12px;border-radius:4px;">
+      <strong>⏱️ This code expires in 5 minutes.</strong>
+    </div>
+    <p>If you did not request this, please ignore this email.</p>
+  </div>
+</div>
+</body></html>
+HTML;
+    }
+
+
 }

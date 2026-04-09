@@ -39,7 +39,7 @@ class MpinModel extends Model
 public function setMpin(int $userId, string $plainMpin, int $setBy): bool
     {
         $hashed   = password_hash($plainMpin, PASSWORD_BCRYPT);
-        $expires  = date('Y-m-d H:i:s', strtotime('+7 days'));
+        $expires  = date('Y-m-d H:i:s', strtotime('+30 days'));
         $now      = date('Y-m-d H:i:s');
         $existing = $this->getByUser($userId);
         if ($existing) {
@@ -95,7 +95,7 @@ public function setMpin(int $userId, string $plainMpin, int $setBy): bool
         $record = $this->getByUser($userId);
         if (!$record) return false;
         return (bool) $this->update($record['mpin_id'], [
-            'mpin_expires_at'  => date('Y-m-d H:i:s', strtotime('+7 days')),
+            'mpin_expires_at'  => date('Y-m-d H:i:s', strtotime('+30 days')),
             'mpin_verified_at' => date('Y-m-d H:i:s'),
         ]);
     }

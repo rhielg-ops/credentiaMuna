@@ -15,6 +15,25 @@ $routes->get( 'auth/mpin-entry',     'Auth::mpinEntryPage');
 $routes->post('auth/mpin-entry',     'Auth::verifyMpin');
 $routes->post('auth/send-approval-request', 'Auth::sendApprovalRequest');
 $routes->get('auth/logout',          'Auth::logout');
+$routes->get('auth/logout',          'Auth::logout');
+
+    // ── Password / Username Recovery ─────────────────────────────────────────
+    $routes->get( 'auth/forgot',                 'Recovery::forgotPage');
+    $routes->post('auth/forgot',                 'Recovery::sendRecoveryOtp');
+    $routes->get( 'auth/forgot-verify',          'Recovery::verifyOtpPage');
+    $routes->post('auth/forgot-verify',          'Recovery::verifyOtp');
+    $routes->get( 'auth/recovery-dashboard',     'Recovery::recoveryDashboard');
+    $routes->post('auth/reset-password',         'Recovery::resetPassword');
+
+    // ── Forgot MPIN ──────────────────────────────────────────────────────────
+    $routes->get( 'auth/forgot-mpin',            'Recovery::forgotMpinPage');
+    $routes->post('auth/forgot-mpin',            'Recovery::sendMpinOtp');
+    $routes->get( 'auth/forgot-mpin-verify',     'Recovery::verifyMpinOtpPage');
+    $routes->post('auth/forgot-mpin-verify',     'Recovery::verifyMpinOtp');
+    $routes->get( 'auth/reset-mpin',             'Recovery::resetMpinPage');
+    $routes->post('auth/reset-mpin',             'Recovery::resetMpin');
+
+
 
 // ── Regular user dashboard ────────────────────────────────────────────────────
 $routes->get('dashboard', 'Dashboard::index');

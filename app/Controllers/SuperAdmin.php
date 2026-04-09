@@ -292,45 +292,44 @@ foreach ($users as $u) {
         // Validate input
         $validation = \Config\Services::validation();
         $validation->setRules([
-            'full_name' => 'required|min_length[3]|max_length[255]',
-            'email' => 'required|valid_email|is_unique[users.email]',
-            'username' => 'required|min_length[3]|max_length[100]|is_unique[users.username]|alpha_numeric_punct',
-            'role' => 'required|in_list[admin,user]',
-            'access_level' => 'required|in_list[full,limited]',
-            'initial_password' => 'required|min_length[8]'
+            'full_name'        => 'required|min_length[3]|max_length[255]',
+            'email'            => 'required|valid_email|is_unique[users.email]',
+            'username'         => 'required|min_length[3]|max_length[100]|is_unique[users.username]|alpha_numeric_punct',
+            'role'             => 'required|in_list[admin,user]',
+            'access_level'     => 'required|in_list[full,limited]',
+            'initial_password' => 'required|min_length[8]',
+            'mpin'             => 'required|exact_length[4]|numeric',
         ]);
 
         if (!$validation->withRequest($this->request)->run()) {
             return redirect()->back()->with('error', implode('<br>', $validation->getErrors()));
         }
 
-        // Generate initial password
         $initialPassword = $this->request->getPost('initial_password');
-        
-        // Create user
+        $mpinValue       = $this->request->getPost('mpin');
+
         $userData = [
-            'full_name' => $this->request->getPost('full_name'),
-            'email' => $this->request->getPost('email'),
-            'username' => $this->request->getPost('username'),
-            'password' => $initialPassword, // Will be hashed by model
-            'role' => $this->request->getPost('role'),
-            'access_level' => $this->request->getPost('access_level'),
-            'status' => 'active', // Activate immediately
+            'full_name'                => $this->request->getPost('full_name'),
+            'email'                    => $this->request->getPost('email'),
+            'username'                 => $this->request->getPost('username'),
+            'password'                 => $initialPassword,
+            'role'                     => $this->request->getPost('role'),
+            'access_level'             => $this->request->getPost('access_level'),
+            'status'                   => 'active',
             'initial_password_changed' => false,
-            'created_by' => session()->get('user_id')
+            'created_by'               => session()->get('user_id'),
         ];
 
         if ($this->userModel->insert($userData)) {
             $newUserId = $this->userModel->getInsertID();
-            
-            // Build privileges from submitted checkboxes, falling back to role defaults
-            $submittedPrivs = $this->request->getPost('privileges') ?? null;
 
+            // Save privileges
+            $submittedPrivs = $this->request->getPost('privileges') ?? null;
             if (is_array($submittedPrivs) && count($submittedPrivs) > 0) {
                 $allKeys = [
-                     'records_upload', 'files_view', 'records_organize',
-    'folders_add', 'records_delete', 'folders_delete',
-    'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin'
+                    'records_upload', 'files_view', 'records_organize',
+                    'folders_add', 'records_delete', 'folders_delete',
+                    'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin',
                 ];
                 $privileges = [];
                 foreach ($allKeys as $key) {
@@ -338,11 +337,13 @@ foreach ($users as $u) {
                 }
                 $this->privilegeModel->setPrivileges($newUserId, $privileges);
             } else {
-                // Fallback: initialize default privileges for the user's role
                 $this->privilegeModel->initializeUserPrivileges($newUserId, $userData['role']);
             }
-            
-            // Log activity
+
+            // Save MPIN (required)
+            $this->mpinModel->setMpin($newUserId, $mpinValue, (int) session()->get('user_id'));
+
+            // Audit log
             $roleDisplay = $this->userModel->getRoleDisplayName($userData['role']);
             $this->activityLogModel->logActivity(
                 session()->get('user_id'),
@@ -350,20 +351,22 @@ foreach ($users as $u) {
                 "Created new {$roleDisplay}: {$userData['email']} (username: {$userData['username']})"
             );
 
-            // Send welcome email
-            $this->emailService->sendWelcomeEmail(
+            // Send welcome email WITH MPIN
+            $this->emailService->sendWelcomeEmailWithMpin(
                 $userData['email'],
                 $userData['full_name'],
                 $initialPassword,
+                $mpinValue,
                 session()->get('full_name')
             );
 
             return redirect()->to('/super-admin/user-management')
-                ->with('success', 'User account created successfully! Welcome email sent.');
+                ->with('success', 'User account created successfully! Welcome email with MPIN sent.');
         } else {
             return redirect()->back()->with('error', 'Failed to create user account.');
         }
     }
+
 
     /**
      * Edit Admin

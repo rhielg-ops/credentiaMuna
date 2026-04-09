@@ -108,12 +108,15 @@ if (!$isFullAdmin && !($userPrivs['profile_edit'] ?? false)) {
 
         $userId = session()->get('user_id');
 
-        // Validate input
+       // Validate input
+        $userId     = session()->get('user_id');
         $validation = \Config\Services::validation();
         $validation->setRules([
             'full_name' => 'required|min_length[3]|max_length[255]',
-            'email' => 'required|valid_email'
+            'email'     => 'required|valid_email',
+            'username'  => "required|min_length[3]|max_length[100]|alpha_numeric_punct|is_unique[users.username,user_id,{$userId}]",
         ]);
+
 
         if (!$validation->withRequest($this->request)->run()) {
             return redirect()->back()->with('error', implode('<br>', $validation->getErrors()));
@@ -128,9 +131,14 @@ if (!$isFullAdmin && !($userPrivs['profile_edit'] ?? false)) {
         }
 
         // Update user data
+        $newUsername = $this->request->getPost('username');
+        $oldUser     = $this->userModel->find($userId);
+
+        // Update user data
         $updateData = [
             'full_name' => $fullName,
-            'email' => $email
+            'email'     => $email,
+            'username'  => $newUsername,
         ];
 
         if ($this->userModel->update($userId, $updateData)) {
@@ -141,11 +149,28 @@ if (!$isFullAdmin && !($userPrivs['profile_edit'] ?? false)) {
             ]);
 
             // Log activity
-            $this->activityLogModel->logActivity(
-                $userId,
-                'profile_updated',
-                "Profile updated: {$email}"
-            );
+            // Build change description for audit log
+            $changes = [];
+            if ($oldUser['full_name'] !== $fullName) {
+                $changes[] = "name: {$oldUser['full_name']} → {$fullName}";
+            }
+            if ($oldUser['email'] !== $email) {
+                $changes[] = "email: {$oldUser['email']} → {$email}";
+            }
+            if (($oldUser['username'] ?? '') !== $newUsername) {
+                $changes[] = "username: {$oldUser['username']} → {$newUsername}";
+            }
+            $changeDesc = empty($changes) ? 'Profile updated (no changes)' : 'Profile updated: ' . implode(', ', $changes);
+
+            $this->activityLogModel->logActivity($userId, 'profile_updated', $changeDesc);
+
+            // Update session data
+            session()->set([
+                'full_name' => $fullName,
+                'email'     => $email,
+                'username'  => $newUsername,
+            ]);
+
 
             return redirect()->back()->with('success', 'Profile updated successfully!');
         }

@@ -57,15 +57,17 @@
         Verify MPIN
       </button>
 
-      <div class="mt-5 text-center">
-        <p class="text-xs text-gray-500">
-          Forgot your MPIN or need to use email OTP?<br>
-          <a href="<?= base_url('auth/logout') ?>"
-             class="text-green-700 hover:underline font-medium">
-            Start over
+      <div class="mt-5 text-center space-y-3">
+        <div>
+          <a href="<?= base_url('auth/forgot-mpin'); ?>"
+             class="text-green-700 text-sm font-semibold hover:underline">
+            Forgot MPIN?
           </a>
-          and contact your administrator to reset your MPIN.
-        </p>
+        </div>
+        <p class="text-xs text-gray-500">
+          Need to use email OTP instead?
+          <a href="<?= base_url('auth/logout'); ?>"
+             
       </div>
 
     </form>

@@ -60,15 +60,25 @@
     
     <div class="space-y-4">
       <!-- Full Name -->
+      
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-        <input
-          type="text"
-          name="full_name"
-          value="<?= esc($user['full_name']); ?>"
+        <input type="text" name="full_name" value="<?= esc($user['full_name']); ?>"
           <?= $is_super_admin ? '' : 'disabled' ?>
-          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 <?= $is_super_admin ? '' : 'bg-gray-50 text-gray-600 cursor-not-allowed' ?>"
-        />
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500
+            <?= $is_super_admin ? '' : 'bg-gray-50 text-gray-600 cursor-not-allowed' ?>"/>
+      </div>
+
+      <!-- Username -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Username</label>
+        <input type="text" name="username" value="<?= esc($user['username'] ?? ''); ?>"
+          <?= $is_super_admin ? '' : 'disabled' ?>
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500
+            <?= $is_super_admin ? '' : 'bg-gray-50 text-gray-600 cursor-not-allowed' ?>"/>
+        <?php if ($is_super_admin): ?>
+          <p class="text-xs text-gray-400 mt-1">Only letters, numbers, and underscores. Changing username will affect login.</p>
+        <?php endif; ?>
       </div>
 
       <!-- Email Address -->
@@ -77,16 +87,14 @@
         <div class="relative">
           <span class="absolute left-3 top-1/2 transform -translate-y-1/2">
             <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
             </svg>
           </span>
-          <input
-            type="email"
-            name="email"
-            value="<?= esc($user['email']); ?>"
+          <input type="email" name="email" value="<?= esc($user['email']); ?>"
             <?= $is_super_admin ? '' : 'disabled' ?>
-            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 <?= $is_super_admin ? '' : 'bg-gray-50 text-gray-600 cursor-not-allowed' ?>"
-          />
+            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500
+              <?= $is_super_admin ? '' : 'bg-gray-50 text-gray-600 cursor-not-allowed' ?>"/>
         </div>
       </div>
 
@@ -106,26 +114,22 @@
       <!-- User ID -->
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">User ID</label>
-        <input
-          type="text"
-          value="<?= esc($user['user_id']); ?>"
-          disabled
-          class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
-        />
+        <input type="text" value="<?= esc($user['user_id']); ?>" disabled
+          class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"/>
       </div>
     </div>
 
     <?php if ($is_super_admin): ?>
     <div class="mt-6">
-      <button
-        type="submit"
-        class="w-full px-6 py-3 bg-green-700 text-white rounded-lg hover:bg-green-800 font-semibold"
-      >
+      <button type="submit"
+        class="w-full px-6 py-3 bg-green-700 text-white rounded-lg hover:bg-green-800 font-semibold">
         Update Profile
       </button>
     </div>
     <?php endif; ?>
   </form>
+
+
 </div>
 
 <!-- Account Status Card -->
