@@ -400,11 +400,12 @@ HTML;
       <h3 style="color:#16a34a;margin-top:0;">Your Login Credentials</h3>
       <p><strong>Email:</strong> {$to}</p>
       <p><strong>Password:</strong> <code>{$password}</code></p>
-      <p><strong>MPIN:</strong> <code>{$mpin}</code></p>
+      <p><strong>PIN:</strong> <code>{$mpin}</code>
+</p>
     </div>
     <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:12px;border-radius:4px;">
       <strong>⚠️ Security Notice:</strong> Please change your password after first login.
-      Your MPIN is valid for 30 days.
+      Your PIN is valid for 30 days.
     </div>
     <div style="text-align:center;margin:25px 0;">
       <a href="{$loginUrl}" style="background:#16a34a;color:white;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:bold;">
@@ -416,7 +417,8 @@ HTML;
 </div>
 </body></html>
 HTML;
-            $this->mailer->AltBody = "Welcome!\nEmail: {$to}\nPassword: {$password}\nMPIN: {$mpin}";
+           $this->mailer->AltBody = "Welcome!\nEmail: {$to}\nPassword: {$password}\nPIN: {$mpin}";
+
             $this->mailer->send();
             return true;
         } catch (\Exception $e) {

@@ -207,11 +207,12 @@ return redirect()->to('/auth/verify-code');
         // Check if MPIN is locked
         $email     = session()->get('temp_email');
         $lockModel = new \App\Models\AccountLockModel();
-        if ($lockModel->isAccountLocked($email, 'mpin_attempts')) {
-            $mins = ceil($lockModel->getRemainingLockTime($email, 'mpin_attempts') / 60);
+        if ($lockModel->isAccountLocked($email, 'pin_attempts')) {
+            $mins = ceil($lockModel->getRemainingLockTime($email, 'pin_attempts') / 60);
             session()->remove(['awaiting_mpin','temp_user_id','temp_email','temp_full_name','temp_role']);
             return redirect()->to('/login')
-                ->with('error', "Account locked due to failed MPIN attempts. Try again in {$mins} minute(s).");
+                ->with('error', "Account locked due to failed PIN attempts. Try again in {$mins} minute(s).");
+
         }
         
         $userId = (int) session()->get('temp_user_id');
@@ -222,8 +223,7 @@ return redirect()->to('/auth/verify-code');
         }
 
         if (!$this->mpinModel->verifyMpin($userId, $mpin)) {
-            $this->activityLogModel->logActivity($userId, 'mpin_failed', 'Incorrect MPIN entered');
-
+            $this->activityLogModel->logActivity($userId, 'mpin_failed', 'Incorrect PIN entered');
             // Track failed MPIN attempts (max 3, lock 15 min)
             $email = session()->get('temp_email');
             $db    = \Config\Database::connect();
@@ -238,23 +238,24 @@ return redirect()->to('/auth/verify-code');
             if ($attempts >= 2) {
                 // 3rd failed attempt — lock for 15 minutes
                 $lockModel = new \App\Models\AccountLockModel();
-                $lockModel->lockAccount($email, 'mpin_attempts', 15);
+                $lockModel->lockAccount($email, 'pin_attempts', 15);
                 $this->activityLogModel->logActivity($userId, 'account_locked', 'Account locked: too many MPIN failures');
                 session()->remove(['awaiting_mpin','temp_user_id','temp_email','temp_full_name','temp_role']);
-                return redirect()->to('/login')
-                    ->with('error', 'Too many incorrect MPIN attempts. Account locked for 15 minutes.');
+                 return redirect()->to('/login')
+                    ->with('error', 'Too many incorrect PIN attempts. Account locked for 15 minutes.');
+
             } else {
                 // Record this attempt
                 $db->table('account_locks')->insert([
                     'email'       => $email,
-                    'lock_type'   => 'mpin_attempts',
+                    'lock_type'   => 'pin_attempts',
                     'locked_at'   => date('Y-m-d H:i:s'),
                     'unlock_at'   => date('Y-m-d H:i:s', strtotime('+1 second')),
                     'is_unlocked' => 0,
                 ]);
                 $remaining = 3 - ($attempts + 1);
                 return redirect()->back()
-                    ->with('error', "Incorrect MPIN. {$remaining} attempt(s) remaining.");
+                    ->with('error', "Incorrect PIN. {$remaining} attempt(s) remaining.");
             }
         }
 
@@ -275,7 +276,8 @@ return redirect()->to('/auth/verify-code');
         ]);
 
         $this->clearTempSession();
-        $this->activityLogModel->logActivity($userId, 'login_success', 'Logged in with MPIN');
+        $this->activityLogModel->logActivity($userId, 'login_success', 'Logged in with PIN');
+
 
         return $this->redirectToDashboard();
     }

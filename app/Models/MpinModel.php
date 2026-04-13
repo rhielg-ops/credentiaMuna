@@ -6,13 +6,13 @@ use CodeIgniter\Model;
 
 class MpinModel extends Model
 {
-    protected $table      = 'user_mpin';
-    protected $primaryKey = 'mpin_id';
+    protected $table      = 'user_pin';
+    protected $primaryKey = 'pin_id';
     protected $returnType = 'array';
 
     protected $allowedFields = [
-        'user_id', 'mpin', 'set_by',
-        'mpin_changed_at', 'mpin_verified_at', 'mpin_expires_at',
+        'user_id', 'pin', 'set_by',
+        'pin_changed_at', 'pin_verified_at', 'pin_expires_at',
         'created_at',
     ];
 
@@ -43,19 +43,19 @@ public function setMpin(int $userId, string $plainMpin, int $setBy): bool
         $now      = date('Y-m-d H:i:s');
         $existing = $this->getByUser($userId);
         if ($existing) {
-            return (bool) $this->update($existing['mpin_id'], [
-                'mpin'            => $hashed,
+            return (bool) $this->update($existing['pin_id'], [
+                'pin'             => $hashed,
                 'set_by'          => $setBy,
-                'mpin_changed_at' => $now,
-                'mpin_expires_at' => $expires,
+                'pin_changed_at'  => $now,
+                'pin_expires_at'  => $expires,
             ]);
         }
        return (bool) $this->insert([
-    'user_id'         => $userId,
-    'mpin'            => $hashed,
-    'set_by'          => $setBy,
-    'mpin_changed_at' => $now,
-    'mpin_expires_at' => $expires,
+    'user_id'        => $userId,
+    'pin'            => $hashed,
+    'set_by'         => $setBy,
+    'pin_changed_at' => $now,
+    'pin_expires_at' => $expires,
 ]);
     }
 
@@ -63,7 +63,7 @@ public function setMpin(int $userId, string $plainMpin, int $setBy): bool
     {
         $record = $this->getByUser($userId);
         if (!$record) return false;
-        return password_verify($plainMpin, $record['mpin']);
+        return password_verify($plainMpin, $record['pin']);
     }
 
     /**
@@ -84,9 +84,9 @@ public function setMpin(int $userId, string $plainMpin, int $setBy): bool
 
         // If expiry was never set, treat the MPIN as VALID but schedule renewal.
         // Change this to `return true` if you want NULL expiry to force OTP.
-        if (empty($record['mpin_expires_at'])) return false;
+        if (empty($record['pin_expires_at'])) return false;
 
-        return strtotime($record['mpin_expires_at']) < time();
+        return strtotime($record['pin_expires_at']) < time();
     }
 
     /** Extends expiry by 7 more days from now */
@@ -94,9 +94,9 @@ public function setMpin(int $userId, string $plainMpin, int $setBy): bool
     {
         $record = $this->getByUser($userId);
         if (!$record) return false;
-        return (bool) $this->update($record['mpin_id'], [
-            'mpin_expires_at'  => date('Y-m-d H:i:s', strtotime('+30 days')),
-            'mpin_verified_at' => date('Y-m-d H:i:s'),
+        return (bool) $this->update($record['pin_id'], [
+            'pin_expires_at'  => date('Y-m-d H:i:s', strtotime('+30 days')),
+            'pin_verified_at' => date('Y-m-d H:i:s'),
         ]);
     }
 }

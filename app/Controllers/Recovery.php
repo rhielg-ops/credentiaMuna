@@ -187,11 +187,11 @@ class Recovery extends BaseController
             return redirect()->to('/auth/forgot-mpin-verify');
         }
 
-        $otp = $this->tokenModel->generateToken((int)$user['user_id'], $email, 'mpin_reset');
-        $this->emailService->sendRecoveryOtp($email, $user['full_name'], $otp, 'MPIN Recovery');
+        $otp = $this->tokenModel->generateToken((int)$user['user_id'], $email, 'pin_reset');
+        $this->emailService->sendRecoveryOtp($email, $user['full_name'], $otp, 'PIN Recovery');
 
         $this->activityLogModel->logActivity(
-            $user['user_id'], 'mpin_recovery_otp_sent', 'MPIN recovery OTP sent'
+            $user['user_id'], 'mpin_recovery_otp_sent', 'PIN recovery OTP sent'
         );
 
         session()->set('mpin_recovery_email', $email);
@@ -217,7 +217,7 @@ class Recovery extends BaseController
             return redirect()->back()->with('error', "Locked. Try again in {$mins} minute(s).");
         }
 
-        $record = $this->tokenModel->verifyToken($email, $otp, 'mpin_reset');
+        $record = $this->tokenModel->verifyToken($email, $otp, 'pin_reset');
         if (!$record) {
             $this->_recordRecoveryAttempt($email);
             return redirect()->back()->with('error', 'Invalid or expired OTP.');
@@ -227,7 +227,7 @@ class Recovery extends BaseController
         session()->set('mpin_reset_user_id',  $record['user_id']);
 
         $this->activityLogModel->logActivity(
-            $record['user_id'], 'mpin_recovery_otp_verified', 'MPIN recovery OTP verified'
+            $record['user_id'], 'mpin_recovery_otp_verified', 'PIN recovery OTP verified'
         );
 
         return redirect()->to('/auth/reset-mpin');
@@ -258,7 +258,7 @@ class Recovery extends BaseController
         $this->mpinModel->refreshExpiry($userId);
 
         $this->activityLogModel->logActivity(
-            $userId, 'mpin_reset_via_recovery', 'MPIN reset via email OTP recovery'
+            $userId, 'mpin_reset_via_recovery', 'PIN reset via email OTP recovery'
         );
 
         // Clear MPIN recovery session keys
@@ -270,7 +270,7 @@ class Recovery extends BaseController
                                'temp_full_name','temp_role','awaiting_2fa']);
         }
 
-        return redirect()->to('/login')->with('success', 'MPIN reset successfully. Please log in.');
+        return redirect()->to('/login')->with('success', 'PIN reset successfully. Please log in.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────

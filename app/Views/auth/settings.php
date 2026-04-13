@@ -111,12 +111,7 @@
         </div>
       </div>
 
-      <!-- User ID -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">User ID</label>
-        <input type="text" value="<?= esc($user['user_id']); ?>" disabled
-          class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"/>
-      </div>
+      <!-- User ID removed for security -->
     </div>
 
     <?php if ($is_super_admin): ?>
@@ -173,35 +168,67 @@
     <div class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-        <input type="password" name="current_password" placeholder="Enter current password" required
-          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        <div class="relative">
+          <input type="password" id="currentPasswordInput" name="current_password" placeholder="Enter current password" required
+            class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"/>
+          <button type="button" id="currentPasswordEyeBtn" title="Show"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-600 p-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <div>
+     <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-        <input type="password" name="new_password" placeholder="Enter new password (min. 8 characters)" required minlength="8"
-          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        <div class="relative">
+          <input type="password" id="newPasswordSettings" name="new_password" placeholder="Enter new password (min. 8 characters)" required minlength="8"
+            class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"/>
+          <button type="button" id="newPasswordEyeBtn" title="Show"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-600 p-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <div>
+     <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-        <input type="password" name="confirm_password" placeholder="Re-enter new password" required minlength="8"
-          class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        <div class="relative">
+          <input type="password" id="confirmNewPassword" name="confirm_password" placeholder="Re-enter new password" required minlength="8"
+            class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"/>
+          <button type="button" id="confirmPasswordEyeBtn" title="Show"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-600 p-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
+    <div id="passwordMismatchErrorSettings" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mt-4">
+      Passwords do not match. Please ensure both fields are identical.
+    </div>
+
     <div class="mt-6">
-      <button type="submit" class="w-full px-6 py-3 bg-green-700 text-white rounded-lg hover:bg-green-800 font-semibold">Change Password</button>
+      <button type="submit" id="submitPasswordBtnSettings" class="w-full px-6 py-3 bg-green-700 text-white rounded-lg hover:bg-green-800 font-semibold">Change Password</button>
     </div>
   </form>
 </div>
 
-<!-- ===== Change MPIN Card (only shown if admin has set an MPIN for this user) ===== -->
+<!-- ===== Change PIN Card (only shown if admin has set a PIN for this user) ===== -->
+
 <?php if ($has_mpin): ?>
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
-  <h3 class="text-lg font-semibold text-gray-800 mb-1">Change MPIN</h3>
+  <h3 class="text-lg font-semibold text-gray-800 mb-1">Change PIN</h3>
   <p class="text-sm text-gray-500 mb-4">
-    Your MPIN is valid for 7 days. You can update it here anytime while logged in.
+    Your PIN is valid for 30 days. You can update it here anytime while logged in.
   </p>
 
   <?php if (session()->getFlashdata('mpin_success')): ?>
@@ -210,39 +237,68 @@
     </div>
   <?php endif; ?>
 
+
   <?php if (session()->getFlashdata('mpin_error')): ?>
     <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
       <?= session()->getFlashdata('mpin_error') ?>
     </div>
   <?php endif; ?>
 
+
   <form action="<?= base_url('settings/change-mpin') ?>" method="post" class="space-y-4 max-w-sm">
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Current MPIN</label>
-      <input type="password" name="current_mpin" maxlength="4" inputmode="numeric"
-             autocomplete="off"
-             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-center
-                    tracking-widest font-mono focus:outline-none focus:border-green-500"
-             placeholder="••••"
-             oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Current PIN</label>
+      <div class="relative">
+        <input type="password" id="currentMpinInput" name="current_mpin" maxlength="4" inputmode="numeric"
+               autocomplete="off"
+               class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-center
+                      tracking-widest font-mono focus:outline-none focus:border-green-500"
+               placeholder="••••"
+               oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        <button type="button" id="currentMpinEyeBtn" title="Show"
+                class="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-600 p-1">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <div>
       <label class="block text-sm font-medium text-gray-700 mb-1">New MPIN</label>
-      <input type="password" name="new_mpin" maxlength="4" inputmode="numeric"
-             autocomplete="off"
-             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-center
-                    tracking-widest font-mono focus:outline-none focus:border-green-500"
-             placeholder="••••"
-             oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <div class="relative">
+        <input type="password" id="newMpinInput" name="new_mpin" maxlength="4" inputmode="numeric"
+               autocomplete="off"
+               class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-center
+                      tracking-widest font-mono focus:outline-none focus:border-green-500"
+               placeholder="••••"
+               oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        <button type="button" id="newMpinEyeBtn" title="Show"
+                class="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-600 p-1">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <div>
-      <label class="block text-sm font-medium text-gray-700 mb-1">Confirm New MPIN</label>
-      <input type="password" name="new_mpin_confirm" maxlength="4" inputmode="numeric"
-             autocomplete="off"
-             class="w-full px-3 py-2 border border-gray-300 rounded-lg text-center
-                    tracking-widest font-mono focus:outline-none focus:border-green-500"
-             placeholder="••••"
-             oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Confirm New PIN</label>
+      <div class="relative">
+        <input type="password" id="confirmMpinInput" name="new_mpin_confirm" maxlength="4" inputmode="numeric"
+               autocomplete="off"
+               class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-center
+                      tracking-widest font-mono focus:outline-none focus:border-green-500"
+               placeholder="••••"
+               oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        <button type="button" id="confirmMpinEyeBtn" title="Show"
+                class="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-600 p-1">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <button type="submit"
             class="px-6 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 font-medium text-sm">
@@ -282,4 +338,79 @@
 </div>
 <?php endif; ?>
 
+<?= $this->endSection() ?>
+
+<?= $this->section('scripts') ?>
+<script>
+// Eye toggle function (reused from recovery_dashboard.php)
+(function () {
+  var PATH_OPEN   = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>'
+                  + '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+  var PATH_CLOSED = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>';
+
+  function wireEye(inputId, buttonId) {
+    var inp = document.getElementById(inputId);
+    var btn = document.getElementById(buttonId);
+    if (!inp || !btn) return;
+    btn.addEventListener('click', function () {
+      var svg = btn.querySelector('svg');
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        if (svg) svg.innerHTML = PATH_CLOSED;
+        btn.title = 'Hide';
+      } else {
+        inp.type = 'password';
+        if (svg) svg.innerHTML = PATH_OPEN;
+        btn.title = 'Show';
+      }
+    });
+  }
+
+  // Wire all password fields
+  wireEye('currentPasswordInput', 'currentPasswordEyeBtn');
+  wireEye('newPasswordSettings', 'newPasswordEyeBtn');
+  wireEye('confirmNewPassword', 'confirmPasswordEyeBtn');
+  
+  // Wire all MPIN fields
+  wireEye('currentMpinInput', 'currentMpinEyeBtn');
+  wireEye('newMpinInput', 'newMpinEyeBtn');
+  wireEye('confirmMpinInput', 'confirmMpinEyeBtn');
+})();
+(function() {
+  var newPassInput = document.getElementById('newPasswordSettings');
+  var confirmPassInput = document.getElementById('confirmNewPassword');
+  var errorDiv = document.getElementById('passwordMismatchErrorSettings');
+  var submitBtn = document.getElementById('submitPasswordBtnSettings');
+  var form = submitBtn ? submitBtn.closest('form') : null;
+
+  function validatePasswordMatch() {
+    if (confirmPassInput && confirmPassInput.value && newPassInput && newPassInput.value !== confirmPassInput.value) {
+      errorDiv.classList.remove('hidden');
+      confirmPassInput.classList.add('border-red-500');
+      confirmPassInput.classList.remove('border-gray-300');
+      return false;
+    } else if (confirmPassInput && errorDiv) {
+      errorDiv.classList.add('hidden');
+      confirmPassInput.classList.remove('border-red-500');
+      confirmPassInput.classList.add('border-gray-300');
+      return true;
+    }
+    return true;
+  }
+
+  if (confirmPassInput) {
+    confirmPassInput.addEventListener('input', validatePasswordMatch);
+    confirmPassInput.addEventListener('blur', validatePasswordMatch);
+  }
+
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      if (!validatePasswordMatch()) {
+        e.preventDefault();
+        confirmPassInput.focus();
+      }
+    });
+  }
+})();
+</script>
 <?= $this->endSection() ?>

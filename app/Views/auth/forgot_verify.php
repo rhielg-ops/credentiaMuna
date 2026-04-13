@@ -16,7 +16,14 @@
         <p class="text-gray-500 text-sm mt-1">
           A 6-digit code was sent to <strong><?= esc($email) ?></strong>
         </p>
-        <p class="text-yellow-600 text-xs mt-1 font-semibold">⏱ This code expires in 5 minutes</p>
+        <p class="text-yellow-600 text-xs mt-1 font-semibold">
+          ⏱ Code expires in:
+          <span id="recoveryCountdown"
+                style="font-family:'Courier New',monospace;font-weight:700;color:#b45309;">
+            05:00
+          </span>
+        </p>
+
       </div>
 
       <?php if (session()->getFlashdata('error')): ?>
@@ -86,6 +93,46 @@
       });
     });
     inputs[0].focus();
+
+    // ── Recovery OTP Countdown Timer ────────────────────────────────────────
+    (function () {
+      var remaining = 5 * 60; // 300 seconds = 5 minutes
+      var el = document.getElementById('recoveryCountdown');
+      if (!el) return;
+
+      function fmt(s) {
+        var m   = Math.floor(s / 60);
+        var sec = s % 60;
+        return (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+      }
+
+      el.textContent = fmt(remaining);
+
+      var timer = setInterval(function () {
+        remaining -= 1;
+
+        if (remaining <= 0) {
+          clearInterval(timer);
+          el.textContent = '00:00';
+          el.style.color = '#dc2626';
+          var btn = document.getElementById('verifyBtn');
+          if (btn) {
+            btn.disabled      = true;
+            btn.textContent   = 'Code Expired';
+            btn.style.opacity = '0.5';
+          }
+          return;
+        }
+
+        el.textContent = fmt(remaining);
+
+        if (remaining <= 60)  { el.style.color = '#dc2626'; } // red under 1 min
+        else if (remaining <= 120) { el.style.color = '#d97706'; } // orange under 2 min
+        else                        { el.style.color = '#b45309'; } // yellow-brown default
+      }, 1000);
+    })();
+
+
   </script>
 </body>
 </html>

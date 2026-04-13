@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Forgot MPIN — CredentiaTAU</title>
+  <title>Forgot PIN — CredentiaTAU</title>
   <link rel="icon" href="<?= base_url('assets/img/TAU.png'); ?>">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -17,8 +17,8 @@
                   d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
           </svg>
         </div>
-        <h2 class="text-2xl font-bold text-gray-800">Forgot MPIN</h2>
-        <p class="text-gray-500 text-sm mt-2">Enter your email to reset your MPIN</p>
+        <h2 class="text-2xl font-bold text-gray-800">Forgot PIN</h2>
+        <p class="text-gray-500 text-sm mt-2">Enter your email to reset your PIN</p>
       </div>
 
       <?php if (session()->getFlashdata('error')): ?>
@@ -37,13 +37,13 @@
         <button type="submit"
                 class="w-full py-3 bg-purple-700 hover:bg-purple-800 text-white font-semibold
                        rounded-xl transition-colors">
-          Send MPIN Reset Code
+          Send PIN Reset Code
         </button>
       </form>
 
       <div class="text-center mt-5">
         <a href="<?= base_url('auth/mpin-entry'); ?>" class="text-sm text-gray-500 hover:text-gray-700">
-          ← Back to MPIN Entry
+          ← Back to PIN Entry
         </a>
       </div>
     </div>

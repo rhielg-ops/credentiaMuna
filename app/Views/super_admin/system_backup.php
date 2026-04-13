@@ -204,35 +204,103 @@ $isSuperAdmin = (session()->get('role') === 'admin' && session()->get('access_le
   </div>
 </div>
 
-<!-- ── Modal: Confirm Manual Backup ────────────────────────── -->
-<div id="modalBackup" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-    <div class="flex items-center gap-4 mb-4">
-      <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-        <svg class="w-6 h-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-        </svg>
+<!-- ── Modal Step 1: Ask whether to use a PIN ─────────────── -->
+    <div id="modalBackupStep1"
+         class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <div class="flex items-center gap-4 mb-5">
+          <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <svg class="w-6 h-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-900">Create Manual Backup</h3>
+            <p class="text-sm text-gray-500">Do you want to protect the backup with a 4-digit PIN?</p>
+          </div>
+        </div>
+        
+        <div class="flex gap-3 justify-end">
+          <button onclick="closeModal('modalBackupStep1')"
+            class="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 text-sm transition-colors">
+            Cancel
+          </button>
+          <button onclick="closeModal('modalBackupStep1'); runBackup('')"
+            class="px-4 py-2.5 rounded-lg bg-gray-600 text-white font-semibold hover:bg-gray-700 text-sm transition-colors">
+            No PIN — Backup Now
+          </button>
+          <button onclick="closeModal('modalBackupStep1'); openBackupPinModal()"
+            class="px-4 py-2.5 rounded-lg bg-green-700 text-white font-semibold hover:bg-green-800 text-sm transition-colors">
+            Yes — Set PIN
+          </button>
+        </div>
       </div>
-      <div>
-        <h3 class="text-lg font-bold text-gray-900">Create Manual Backup</h3>
-        <p class="text-sm text-gray-500">This will ZIP all files in academic_records.</p>
+    </div>
+
+    <!-- ── Modal Step 2: Enter the 4-digit backup PIN ──────────── -->
+    <div id="modalBackupPin"
+         class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+        <div class="flex items-center gap-4 mb-5">
+          <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <svg class="w-6 h-6 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0
+                       00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-900">Set Backup PIN</h3>
+            <p class="text-sm text-gray-500">Enter a 4-digit numeric PIN for this backup.</p>
+          </div>
+        </div>
+        <div class="mb-5">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">4-Digit PIN</label>
+          <div class="relative">
+            <input type="password" id="backupPinInput" maxlength="4" inputmode="numeric"
+                   class="w-full text-center text-2xl tracking-[0.5em] px-4 py-3 pr-12
+                          border-2 border-gray-300 rounded-xl focus:outline-none focus:border-purple-500
+                          font-mono"
+                   placeholder="••••"
+                   oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();confirmBackupPin();}">
+            <button type="button" id="backupPinEyeBtn" title="Show"
+                    class="absolute right-3 top-1/2 -translate-y-1/2
+                           bg-transparent border-none cursor-pointer
+                           text-gray-400 hover:text-gray-600 p-1">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943
+                         9.542 7-1.274 4.057-5.064 7-9.542 7
+                         -4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+          <p id="backupPinError" class="text-xs text-red-600 mt-1 hidden">
+            Please enter exactly 4 digits.
+          </p>
+          <p class="text-xs text-gray-400 mt-2">
+            ⚠️ Store this PIN safely — you will need it to open the backup file.
+          </p>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="closeModal('modalBackupPin'); document.getElementById('modalBackupStep1').classList.remove('hidden')"
+            class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-700
+                   font-semibold hover:bg-gray-50 text-sm transition-colors">
+            ← Back
+          </button>
+          <button onclick="confirmBackupPin()"
+            class="flex-1 px-4 py-2.5 bg-purple-700 text-white rounded-xl
+                   font-semibold hover:bg-purple-800 text-sm transition-colors">
+            Start Backup
+          </button>
+        </div>
       </div>
     </div>
-    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-5 text-sm text-yellow-800">
-      ⚠️ This may take a few moments depending on the number of files.
-    </div>
-    <div class="flex gap-3 justify-end">
-      <button onclick="closeModal('modalBackup')"
-        class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors text-sm">
-        Cancel
-      </button>
-      <button onclick="closeModal('modalBackup'); runBackup()"
-        class="px-5 py-2.5 rounded-lg bg-green-700 text-white font-semibold hover:bg-green-800 transition-colors text-sm">
-        Yes, Start Backup
-      </button>
-    </div>
-  </div>
-</div>
+
 
 <!-- ── Modal: Confirm Delete Backup ────────────────────────── -->
 <div id="modalDelete" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -291,7 +359,7 @@ $isSuperAdmin = (session()->get('role') === 'admin' && session()->get('access_le
 
   // Close modals when clicking the dark backdrop
   document.addEventListener('click', e => {
-    ['modalBackup', 'modalDelete'].forEach(id => {
+    ['modalBackupStep1', 'modalBackupPin', 'modalDelete'].forEach(id => {
       const modal = document.getElementById(id);
       if (e.target === modal) closeModal(id);
     });
@@ -323,10 +391,48 @@ $isSuperAdmin = (session()->get('role') === 'admin' && session()->get('access_le
 
   // ── Manual Backup ────────────────────────────────────────────
   function performBackup() {
-    document.getElementById('modalBackup').classList.remove('hidden');
-  }
+      document.getElementById('modalBackupStep1').classList.remove('hidden');
+    }
 
-  async function runBackup() {
+    function openBackupPinModal() {
+      // Clear previous value and error
+      var inp = document.getElementById('backupPinInput');
+      if (inp) { inp.value = ''; inp.type = 'password'; }
+      document.getElementById('backupPinError').classList.add('hidden');
+      document.getElementById('modalBackupPin').classList.remove('hidden');
+
+      // Wire the eye-icon toggle (only once per modal open)
+      var btn = document.getElementById('backupPinEyeBtn');
+      if (btn && !btn._wired) {
+        btn._wired = true;
+        var PATH_OPEN   = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>'
+                        + '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+        var PATH_CLOSED = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>';
+        btn.addEventListener('click', function () {
+          var svg = btn.querySelector('svg');
+          if (inp.type === 'password') { inp.type = 'text';     if (svg) svg.innerHTML = PATH_CLOSED; btn.title = 'Hide'; }
+          else                          { inp.type = 'password'; if (svg) svg.innerHTML = PATH_OPEN;   btn.title = 'Show'; }
+        });
+      }
+    }
+
+    function confirmBackupPin() {
+      var pin   = document.getElementById('backupPinInput').value.trim();
+      var errEl = document.getElementById('backupPinError');
+      if (!/^\d{4}$/.test(pin)) {
+        errEl.classList.remove('hidden');
+        return;
+      }
+      errEl.classList.add('hidden');
+      closeModal('modalBackupPin');
+      runBackup(pin);
+    }
+
+
+
+  async function runBackup(pin) {
+      pin = pin || '';
+
     const btn    = document.getElementById('btnManualBackup');
     const icon   = document.getElementById('backupIcon');
     const spin   = document.getElementById('backupSpinner');
@@ -338,11 +444,21 @@ $isSuperAdmin = (session()->get('role') === 'admin' && session()->get('access_le
     label.textContent = 'Creating Backup…';
 
     try {
-      const res  = await fetch(BASE + '/run', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+      const fetchBody = JSON.stringify(pin ? { pin: pin } : {});
+      const res = await fetch(BASE + '/run', {
+        method:  'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type':     'application/json',
+        },
+        body: fetchBody,
+      });
+
       const data = await res.json();
 
-      if (data.success) {
-        showToast('success', 'Backup Complete!',
+       if (data.success) {
+        var pinLabel = data.protected ? ' 🔒 PIN-protected' : '';
+        showToast('success', 'Backup Complete!' + pinLabel,
           `${data.file_count} file(s) → ${data.zip_size} — ${data.filename}`);
         loadBackupList();
       } else {

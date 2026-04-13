@@ -194,6 +194,7 @@ class UserPrivilegeModel extends Model
                 'user_management'  => true,
                 'system_backup'    => true,
                 'audit_logs'       => true,
+                'record_types'     => true,
                 'full_admin'       => true,
             ],
             'user' => [
@@ -207,9 +208,11 @@ class UserPrivilegeModel extends Model
                 'user_management'  => false,
                 'system_backup'    => false,
                 'audit_logs'       => false,
+                'record_types'     => false,
                 'full_admin'       => false,
             ],
         ];
+
 
         return $defaults[$role] ?? [];
     }
@@ -286,6 +289,11 @@ class UserPrivilegeModel extends Model
             'audit_logs' => [
                 'label'       => 'Audit Logs',
                 'description' => 'View system activity logs',
+                'category'    => 'Administration',
+            ],
+            'record_types' => [
+                'label'       => 'Manage Record Types',
+                'description' => 'Add, edit, and delete OCR document types and keywords',
                 'category'    => 'Administration',
             ],
             'full_admin' => [

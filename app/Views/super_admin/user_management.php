@@ -276,9 +276,10 @@
           <p class="text-xs text-gray-500 mt-1">User will be required to change this password on first login</p>
         </div>
 
-        <!-- ✅ NEW: MPIN field in Add modal -->
+        <!-- ✅ NEW: PIN field in Add modal -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">MPIN <span class="text-red-500">*</span> <span class="text-gray-400 font-normal">(Required — exactly 4 digits)</span></label>
+           <label class="block text-sm font-medium text-gray-700 mb-2">PIN <span class="text-red-500">*</span> <span class="text-gray-400 font-normal">(Required — exactly 4 digits)</span></label>
+
           <div class="relative">
             <input type="password" name="mpin" id="add_mpin" maxlength="4"
                    class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -293,7 +294,8 @@
               </svg>
             </button>
           </div>
-          <p class="text-xs text-gray-500 mt-1">Exactly 4 digits. This MPIN will be included in the welcome email. Valid for 30 days.</p>
+          <p class="text-xs text-gray-500 mt-1">Exactly 4 digits. This PIN will be included in the welcome email. Valid for 30 days.</p>
+
         </div>
 
         <!-- User Privileges -->
@@ -381,6 +383,14 @@
                 <p class="text-xs text-gray-500">View system activity logs</p>
               </div>
             </label>
+            <label class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-green-50">
+              <input type="checkbox" name="privileges[]" value="record_types"
+                     class="add-priv-cb mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
+              <div>
+                <p class="text-sm font-medium text-gray-800">Manage Record Types</p>
+                <p class="text-xs text-gray-500">Add, edit, and delete OCR document types and keywords</p>
+              </div>
+            </label>
             <label class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-green-50 sm:col-span-2">
               <input type="checkbox" name="privileges[]" value="full_admin" id="add_full_admin"
                      class="add-priv-cb mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
@@ -389,6 +399,7 @@
                 <p class="text-xs text-gray-500">Automatically grants all privileges when selected</p>
               </div>
             </label>
+
           </div>
         </div>
       </div>
@@ -489,7 +500,7 @@
 
         <!-- ✅ NEW: MPIN field in Edit modal -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">MPIN <span class="text-gray-400 font-normal">(Optional)</span></label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">PIN <span class="text-gray-400 font-normal">(Optional)</span></label>
           <div class="relative">
             <input type="password" name="mpin" id="edit_mpin" maxlength="4"
                    class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -503,7 +514,7 @@
               </svg>
             </button>
           </div>
-          <p class="text-xs text-gray-500 mt-1">Digits only, exactly 4 digits. Leave blank to keep current MPIN.</p>
+         <p class="text-xs text-gray-500 mt-1">Digits only, exactly 4 digits. Leave blank to keep current PIN.</p>
           <p id="edit_mpin_status" class="text-xs text-purple-600 mt-1 hidden"></p>
         </div>
 
@@ -592,6 +603,14 @@
                 <p class="text-xs text-gray-500">View system activity logs</p>
               </div>
             </label>
+            <label class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-green-50">
+              <input type="checkbox" id="ep_record_types" data-key="record_types"
+                     class="edit-priv-cb mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
+              <div>
+                <p class="text-sm font-medium text-gray-800">Manage Record Types</p>
+                <p class="text-xs text-gray-500">Add, edit, and delete OCR document types and keywords</p>
+              </div>
+            </label>
             <label class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-green-50 sm:col-span-2">
               <input type="checkbox" id="ep_full_admin" data-key="full_admin"
                      class="edit-priv-cb mt-0.5 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
@@ -600,6 +619,7 @@
                 <p class="text-xs text-gray-500">Automatically grants all privileges when selected</p>
               </div>
             </label>
+
           </div>
 
           <!-- Folder Access -->
@@ -945,7 +965,7 @@ function openEditModal(user, userPrivileges) {
   document.getElementById('edit_mpin').value = '';
   const mpinStatus = document.getElementById('edit_mpin_status');
   if (user.has_mpin) {
-    mpinStatus.textContent = '🔒 This user already has an MPIN set. Enter a new one to replace it.';
+    mpinStatus.textContent = '🔒 This user already has a PIN set. Enter a new one to replace it.';
     mpinStatus.classList.remove('hidden');
   } else {
     mpinStatus.textContent = '';

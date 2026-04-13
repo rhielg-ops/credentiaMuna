@@ -125,8 +125,14 @@ class Backup extends BaseController
     // ─────────────────────────────────────────────────────────────
     
 
-    private function createZip(bool $overwrite = false): array
+    private function createZip(bool $overwrite = false, string $password = ''): array
+
     {
+        // If caller supplied a password, delegate to 7-Zip AES-256 method
+        if ($password !== '') {
+            return $this->createZip7z($zipPath ?? '', $password);
+        }
+
         if (!class_exists('ZipArchive')) {
             return ['success' => false, 'message' => 'ZipArchive extension not available on this server.'];
         }
@@ -215,6 +221,122 @@ class Backup extends BaseController
         ];
     }
 
+/**
+     * Creates an AES-256 password-protected ZIP using 7-Zip.
+     *
+     * Requirements:
+     *   Windows: Install 7-Zip from https://www.7-zip.org/
+     *            Default path: C:\Program Files\7-Zip\7z.exe
+     *   Linux:   sudo apt install p7zip-full
+     *            Default path: /usr/bin/7z
+     *
+     * The produced .zip file cannot be opened without the PIN.
+     */
+    private function createZip7z(string $zipPath, string $password): array
+{
+    // Locate 7-Zip executable — Windows first, Linux fallback
+    // Locate 7-Zip executable — Windows first, Linux fallback
+$sevenZip = 'C:\\Program Files (x86)\\7-Zip\\7z.exe';
+
+if (!file_exists($sevenZip)) {
+    $sevenZip = 'C:\\Program Files\\7-Zip\\7z.exe';
+}
+
+if (!file_exists($sevenZip)) {
+    $sevenZip = '/usr/bin/7z';
+}
+
+if (!file_exists($sevenZip)) {
+    return [
+        'success' => false,
+        'message' => '7-Zip not found. Install 7-Zip to use PIN-protected backups.',
+    ];
+}
+
+    if (!file_exists($sevenZip)) {
+        $sevenZip = '/usr/bin/7z';
+    }
+
+    if (!file_exists($sevenZip)) {
+        return [
+            'success' => false,
+            'message' => '7-Zip not found. Install 7-Zip to use PIN-protected backups.',
+        ];
+    }
+
+    if (!is_dir($this->sourceDir)) {
+        return ['success' => false, 'message' => 'Source directory does not exist.'];
+    }
+
+    // Build the destination filename if not already provided
+    $timestamp = (new \DateTime('now', new \DateTimeZone('Asia/Manila')))->format('Y-m-d_H-i-s');
+    if ($zipPath === '') {
+        $filename = 'academic_records_backup_' . $timestamp . '_protected.zip';
+        $zipPath  = $this->backupDir . $filename;
+    } else {
+        $filename = basename($zipPath);
+    }
+
+    // Normalize path separators for Windows
+    $zipPath = str_replace('/', DIRECTORY_SEPARATOR, $zipPath);
+
+    // Validate PIN: digits only, exactly 4 characters
+    $safePass = preg_replace('/[^0-9]/', '', $password);
+    if (strlen($safePass) !== 4) {
+        return ['success' => false, 'message' => 'PIN must be exactly 4 digits.'];
+    }
+
+    // Build the 7-Zip command
+    // NOTE: -mhe=on is REMOVED because it only works with .7z format, not .zip
+    // ZIP format with password still encrypts the file contents using AES-256
+    $sourceGlob = rtrim($this->sourceDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . '*';
+
+    $cmd = "\"$sevenZip\""
+         . " a -tzip"
+         . " -p$safePass"
+         . " -mem=AES256"  // Use AES-256 encryption for ZIP
+         . " \"$zipPath\""
+         . " \"$sourceGlob\""
+         . " 2>&1";
+
+    $output  = [];
+    $retCode = 0;
+    exec($cmd, $output, $retCode);
+
+    if ($retCode !== 0 || !file_exists($zipPath)) {
+        return [
+            'success' => false,
+            'message' => '7-Zip failed (exit code ' . $retCode . '). '
+                       . 'Output: ' . implode(' | ', $output),
+        ];
+    }
+
+    $zipSize = filesize($zipPath);
+    $now     = (new \DateTime('now', new \DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
+
+    $this->appendHistory([
+        'filename'    => $filename,
+        'created_at'  => $now,
+        'file_count'  => '(see archive)',
+        'source_size' => '—',
+        'zip_size'    => $this->formatBytes($zipSize),
+        'type'        => 'manual_protected',
+        'user'        => session()->get('full_name') ?? session()->get('email') ?? 'System',
+        'errors'      => [],
+    ]);
+
+    return [
+        'success'    => true,
+        'filename'   => $filename,
+        'file_count' => '(see archive)',
+        'zip_size'   => $this->formatBytes($zipSize),
+        'created_at' => $now,
+        'errors'     => [],
+        'protected'  => true,
+    ];
+}
+
+
     private function formatBytes(int $bytes): string
     {
         if ($bytes >= 1073741824) return round($bytes / 1073741824, 2) . ' GB';
@@ -232,7 +354,19 @@ class Backup extends BaseController
     {
         if ($r = $this->checkAuth()) return $r;
 
-        $result = $this->createZip(false);
+        // Read optional PIN from JSON request body sent by the frontend modal
+        $body     = $this->request->getJSON(true) ?? [];
+        $password = trim((string) ($body['pin'] ?? ''));
+
+        // If a PIN was supplied it must be exactly 4 digits
+        if ($password !== '' && !preg_match('/^\d{4}$/', $password)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'PIN must be exactly 4 digits.',
+            ]);
+        }
+
+        $result = $this->createZip(false, $password);
 
         return $this->response->setJSON($result);
     }

@@ -331,19 +331,21 @@ if (!$isFullAdmin && !($userPrivs['profile_edit'] ?? false)) {
 
         if (!$this->mpinModel->hasMpin($userId)) {
             return redirect()->back()
-                ->with('mpin_error', 'No MPIN has been set for your account. Contact your administrator.');
+                ->with('mpin_error', 'No PIN has been set for your account. Contact your administrator.');
+
         }
 
         if (!$this->mpinModel->verifyMpin($userId, (string) $currentMpin)) {
-            return redirect()->back()->with('mpin_error', 'Current MPIN is incorrect.');
+            return redirect()->back()->with('mpin_error', 'Current PIN is incorrect.');
         }
 
         if (!$newMpin || strlen((string) $newMpin) !== 4 || !ctype_digit($newMpin)) {
-            return redirect()->back()->with('mpin_error', 'New MPIN must be exactly 4 digits.');
+            return redirect()->back()->with('mpin_error', 'New PIN must be exactly 4 digits.');
         }
 
         if ($newMpin !== $confirmMpin) {
-            return redirect()->back()->with('mpin_error', 'New MPINs do not match.');
+            return redirect()->back()->with('mpin_error', 'New PINs do not match.');
+
         }
 
         // Save — set_by = the user themselves (self-change)
@@ -351,11 +353,11 @@ if (!$isFullAdmin && !($userPrivs['profile_edit'] ?? false)) {
         $this->mpinModel->refreshExpiry($userId);
 
         $this->activityLogModel->logActivity(
-            $userId, 'mpin_changed', 'User changed their own MPIN'
+            $userId, 'mpin_changed', 'User changed their own PIN'
         );
 
         return redirect()->back()
-            ->with('mpin_success', 'MPIN updated successfully. Valid for 7 days.');
+            ->with('mpin_success', 'PIN updated successfully. Valid for 30 days.');
     }
 }
 

@@ -200,8 +200,15 @@
 
     <div class="info-box">
       <p>📧 A 6-digit verification code has been sent to <strong><?= esc($email); ?></strong></p>
-      <p style="margin-top: 10px;">⏱️ The code will expire in 10 minutes</p>
+      <p style="margin-top: 10px;">
+        ⏱️ Code expires in:
+        <strong id="otpCountdown"
+                style="font-family:'Courier New',monospace;color:#1d6b37;font-size:1.1em;">
+          10:00
+        </strong>
+      </p>
     </div>
+
 
     <?php if (session()->getFlashdata('error')): ?>
       <p class="error"><?= session()->getFlashdata('error'); ?></p>
@@ -365,6 +372,47 @@
 
     // Initialize
     updateFullCode();
+
+    // ── OTP Countdown Timer ──────────────────────────────────────────────────
+    (function () {
+      var remaining = 10 * 60; // 600 seconds = 10 minutes
+      var el = document.getElementById('otpCountdown');
+      if (!el) return;
+
+      function formatTime(s) {
+        var m   = Math.floor(s / 60);
+        var sec = s % 60;
+        return (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+      }
+
+      el.textContent = formatTime(remaining);
+
+      var timer = setInterval(function () {
+        remaining -= 1;
+
+        if (remaining <= 0) {
+          clearInterval(timer);
+          el.textContent  = '00:00';
+          el.style.color  = '#dc2626';
+          // Disable the Verify button and update its text
+          var btn = document.getElementById('verifyBtn');
+          if (btn) {
+            btn.disabled        = true;
+            btn.style.opacity   = '0.5';
+            btn.textContent     = 'Code Expired — Request a New Code';
+          }
+          return;
+        }
+
+        el.textContent = formatTime(remaining);
+
+        // Colour changes: orange at 2 min left, red at 30 sec left
+        if (remaining <= 30)  { el.style.color = '#dc2626'; }
+        else if (remaining <= 120) { el.style.color = '#d97706'; }
+        else                       { el.style.color = '#1d6b37'; }
+      }, 1000);
+    })();
+
   </script>
 </body>
 </html>

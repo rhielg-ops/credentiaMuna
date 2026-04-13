@@ -14,11 +14,31 @@ class RecordTypes extends BaseController
 
     private function requireAdmin(): ?object
     {
-        if (!session()->get('logged_in') || session()->get('role') !== 'admin') {
-            return redirect()->to('/login')->with('error', 'Unauthorized.');
+        if (!session()->get('logged_in')) {
+            return redirect()->to('/login')->with('error', 'Please log in first.');
         }
+
+        $role        = session()->get('role');
+        $accessLevel = session()->get('access_level');
+
+        // Full admins always pass — no privilege check needed
+        if ($role === 'admin' && $accessLevel === 'full') {
+            return null;
+        }
+
+        // Everyone else (limited admins, regular users) must have record_types privilege
+        $privModel = new \App\Models\UserPrivilegeModel();
+        $privs     = $privModel->getUserPrivileges((int) session()->get('user_id'));
+
+        if (!($privs['record_types'] ?? false)) {
+            $redirectTo = ($role === 'admin') ? '/super-admin/dashboard' : '/dashboard';
+            return redirect()->to($redirectTo)
+                ->with('error', 'You do not have permission to manage record types.');
+        }
+
         return null;
     }
+
 
     // GET  super-admin/record-types
     public function index()

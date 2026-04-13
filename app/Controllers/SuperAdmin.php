@@ -329,7 +329,8 @@ foreach ($users as $u) {
                 $allKeys = [
                     'records_upload', 'files_view', 'records_organize',
                     'folders_add', 'records_delete', 'folders_delete',
-                    'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin',
+                    'profile_edit', 'user_management', 'system_backup',
+                    'audit_logs', 'record_types', 'full_admin',
                 ];
                 $privileges = [];
                 foreach ($allKeys as $key) {
@@ -872,7 +873,7 @@ public function toggleSuspend($id)
             $this->activityLogModel->logActivity(
                 session()->get('user_id'),
                 'mpin_set',
-                'Admin set/reset MPIN for user: ' . $user['email']
+                'Admin set/reset PIN for user: ' . $user['email']
             );
         }
 
@@ -966,7 +967,6 @@ private function _getUserPrivilegesData($userId)
                 'description' => 'View, download, and print archived records',
                 'category'    => 'Records Management',
             ],
-            
             'records_organize' => [
                 'label'       => 'Organize Records',
                 'description' => 'Move files/folders, rename files, and manage file structure',
@@ -1007,12 +1007,18 @@ private function _getUserPrivilegesData($userId)
                 'description' => 'View system activity logs',
                 'category'    => 'Administration',
             ],
+            'record_types' => [
+                'label'       => 'Manage Record Types',
+                'description' => 'Add, edit, and delete OCR document types and keywords',
+                'category'    => 'Administration',
+            ],
             'full_admin' => [
                 'label'       => 'Full Admin Access',
                 'description' => 'Automatically grants all privileges when selected',
                 'category'    => 'Administration',
             ],
         ];
+
         
         // Build privileges object showing which privileges the user has
         $privileges = [];
@@ -1119,7 +1125,8 @@ if (!$this->privilegeModel->canEditPrivileges($actingAdminId, (int) $userId, $ac
         $allKeys = [
             'records_upload', 'files_view', 'records_organize',
             'folders_add', 'records_delete', 'folders_delete',
-            'profile_edit', 'user_management', 'system_backup', 'audit_logs', 'full_admin'
+            'profile_edit', 'user_management', 'system_backup',
+            'audit_logs', 'record_types', 'full_admin'
         ];
 
         // Parse submitted JSON body
