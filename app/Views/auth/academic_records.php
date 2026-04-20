@@ -188,7 +188,7 @@
 
   <!-- ── Hierarchy Tree Panel ─────────────────────────────────────────────── -->
   <div id="hierarchyPanel"
-     style="width:320px; min-width:320px; display:flex; flex-direction:column; flex-shrink:0; margin-right:20px;">
+     style="width:320px; min-width:320px; display:flex; flex-direction:column; flex-shrink:0; margin-right:20px; position:sticky; top:16px; align-self:flex-start; max-height:calc(100vh - 32px);">
     <div class="bg-white rounded-2xl overflow-hidden flex flex-col"
          style="border:1px solid #e2e8f0; box-shadow:0 2px 12px rgba(0,0,0,0.06); min-height:520px;">
 
@@ -240,7 +240,7 @@
       </div>
 
       <!-- Tree scroll area -->
-      <div id="hierarchyTreeScroll" style="flex:1;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 280px);">
+      <div id="hierarchyTreeScroll" style="flex:1;overflow-y:auto;overflow-x:hidden;max-height:calc(100vh - 200px);">
         <div id="hierarchyRoot" data-path=""
              onclick="hierarchySelectFolder('','Academic Records')"
              style="display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;border-bottom:1px solid #f1f5f9;transition:background .15s;"
@@ -285,7 +285,8 @@
        style="display:none;width:34px;min-width:34px;flex-shrink:0;margin-right:16px;cursor:pointer;
               background:white;border:1px solid #e2e8f0;border-radius:12px;
               box-shadow:0 2px 8px rgba(0,0,0,0.06);
-              flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:160px;"
+              flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:160px;
+              position:sticky; top:16px; align-self:flex-start;"
        onmouseover="this.style.boxShadow='0 4px 16px rgba(22,163,74,0.18)'"
        onmouseout="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)'">
     <svg width="14" height="14" fill="none" stroke="#16a34a" viewBox="0 0 24 24">
@@ -566,24 +567,7 @@
     <form id="uploadForm" action="<?= base_url('academic-records/upload'); ?>" method="post" enctype="multipart/form-data">
       <?= csrf_field() ?>
       <input type="hidden" name="folder_path" id="uploadFolderPath" value="">
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-2">Select Folder <span class="text-gray-400 font-normal">(Optional)</span></label>
-        <div class="relative">
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-          </svg>
-          <select name="folder_id"
-            class="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-green-700 focus:ring-2 focus:ring-green-700 appearance-none bg-white transition-colors">
-            <option value="">— No folder —</option>
-            <option value="academic-records">Academic Records</option>
-            <option value="transcripts-2023">Transcripts 2023</option>
-            <option value="certificates">Certificates</option>
-          </select>
-          <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-          </svg>
-        </div>
-      </div>
+     
       <div class="mb-4">
         <label id="recordDropZone" for="recordFileInput"
           class="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-600 hover:bg-green-50 transition-colors"
@@ -707,30 +691,128 @@
 
 <!-- RENAME MODAL -->
 <?php if ($can_organize ?? $priv_records_organize ?? false): ?>
-<div id="renameModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-  <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+<div id="renameModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl">
     <div class="flex items-center justify-between mb-6">
-      <h3 class="text-xl font-bold text-gray-800">Rename</h3>
-      <button onclick="closeRenameModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5
+                     m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-gray-800">Rename</h3>
+          <p class="text-sm text-gray-500">Update record type and filename</p>
+        </div>
+      </div>
+      <button onclick="closeRenameModal()" class="text-gray-400 hover:text-gray-600 transition-colors ml-2">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
       </button>
     </div>
-    <div class="mb-6">
-      <label class="block text-sm font-medium text-gray-700 mb-2">New Name</label>
-      <input type="text" id="renameInput" placeholder="Enter new name"
-        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-green-700 focus:ring-2 focus:ring-green-700 transition-colors"/>
+
+    <!-- Document Type (Record Type) selector — reuses editFilenameModal data -->
+    <div class="mb-4">
+      <label class="block text-xs font-semibold text-gray-600 mb-1">Document Type Label</label>
+      <?php
+        $recordTypeModel = new \App\Models\RecordTypeModel();
+        $renameDocTypes  = $recordTypeModel->getAllActive();
+      ?>
+      <select id="renameDocType"
+              class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-700 mb-1 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              onchange="onRenameDocTypeChange()">
+        <option value="">-- Select document type (optional) --</option>
+        <?php foreach ($renameDocTypes as $keyName => $type): ?>
+          <option value="<?= esc($type['suffix']) ?>"><?= esc($type['label']) ?></option>
+        <?php endforeach; ?>
+      </select>
     </div>
+
+    <!-- Filename input -->
+    <div class="mb-6">
+      <label class="block text-xs font-semibold text-gray-600 mb-1">
+        New Name <span class="text-gray-400 font-normal">(without extension)</span>
+      </label>
+      <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-amber-400">
+        <input id="renameInput" type="text"
+               class="flex-1 px-3 py-2.5 text-sm text-gray-800 outline-none"
+               placeholder="e.g. 2023-001_Juan_dela_Cruz_Transcript_Record" />
+        <span id="renameExtBadge" class="px-3 py-2.5 text-sm text-gray-400 bg-gray-50 border-l border-gray-300"></span>
+      </div>
+      <p class="text-xs text-gray-400 mt-1.5">Spaces will be replaced with underscores automatically.</p>
+    </div>
+
     <div class="flex justify-end gap-3">
-      <button onclick="closeRenameModal()" class="px-5 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 font-medium text-gray-700 transition-colors">Back</button>
-      <button onclick="submitRename()" class="px-5 py-2.5 bg-green-700 text-white rounded-xl hover:bg-green-800 font-medium transition-colors">Rename</button>
+      <button onclick="closeRenameModal()"
+              class="px-5 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 font-medium text-gray-700 transition-colors text-sm">
+        Cancel
+      </button>
+      <button onclick="submitRename()"
+              class="px-5 py-2.5 bg-green-700 text-white rounded-xl hover:bg-green-800 font-medium transition-colors text-sm">
+        Rename
+      </button>
     </div>
   </div>
 </div>
 <?php else: ?>
 <div id="renameModal" class="hidden"></div>
 <?php endif; ?>
+
+<!-- RENAME FOLDER MODAL -->
+<?php if ($can_organize ?? $priv_records_organize ?? false): ?>
+<div id="renameFolderModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5
+                     m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-gray-800">Rename Folder</h3>
+          <p class="text-sm text-gray-500">Enter a new name for this folder</p>
+        </div>
+      </div>
+      <button onclick="closeRenameFolderModal()" class="text-gray-400 hover:text-gray-600 transition-colors ml-2">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Folder Name input -->
+    <div class="mb-6">
+      <label class="block text-xs font-semibold text-gray-600 mb-1">
+        New Folder Name <span class="text-red-500">*</span>
+      </label>
+      <input id="renameFolderInput" type="text"
+             class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+             placeholder="e.g. 2024_Student_Records" />
+      <p class="text-xs text-gray-400 mt-1.5">Spaces will be replaced with underscores automatically.</p>
+    </div>
+
+    <div class="flex justify-end gap-3">
+      <button onclick="closeRenameFolderModal()"
+              class="px-5 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 font-medium text-gray-700 transition-colors text-sm">
+        Cancel
+      </button>
+      <button onclick="submitRenameFolder()"
+              class="px-5 py-2.5 bg-green-700 text-white rounded-xl hover:bg-green-800 font-medium transition-colors text-sm">
+        Save
+      </button>
+    </div>
+  </div>
+</div>
+<?php else: ?>
+<div id="renameFolderModal" class="hidden"></div>
+<?php endif; ?>
+
 
 <!-- MOVE TO FOLDER MODAL -->
 <?php if ($can_organize ?? $priv_records_organize ?? false): ?>
@@ -993,60 +1075,20 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
     } catch (_) { /* individual path errors are non-fatal */ }
   }
 
-  // FIX: One request instead of N recursive listFolder calls.
-// The new listAllFolders endpoint returns the complete flat folder list
-// in a single PHP scandir walk on the server.
-async function buildUnifiedIndex() {
+  // Option 5: listAllFolders now returns both folders AND files in one
+  // request — no more Promise.all loop firing one request per folder.
+  async function buildUnifiedIndex() {
     const now = Date.now();
     if (_unifiedIndex && now - _unifiedIndexTs < INDEX_TTL_MS) return _unifiedIndex;
     if (_unifiedIndexPromise) return _unifiedIndexPromise;
 
     _unifiedIndexPromise = (async () => {
         try {
-            // Step 1: get all folders fast via the single-request endpoint
+            // ONE request — server returns folders AND files together
             const data = await apiFetch(API.listAllFolders);
-            const folders = data.success ? (data.folders || []) : [];
-
-            // Step 2: for each folder, fetch its files too
-            const fileResults = await Promise.all(
-                folders.map(f =>
-                    apiFetch(API.listFolder + '?path=' + encodeURIComponent(f.path))
-                        .then(d => (d.files || []).map(file => ({
-                            kind: 'file',
-                            name: file.name,
-                            path: file.path,
-                            ext:  file.ext,
-                            size: file.size,
-                            modified: file.modified,
-                            download_url: file.download_url,
-                            preview_url:  file.preview_url,
-                            parentPath:   f.path,
-                            locationLabel: 'Academic Records › ' + f.name,
-                        })))
-                        .catch(() => [])
-                )
-            );
-
-            // Also get files in root folder
-            const rootData = await apiFetch(API.listFolder + '?path=').catch(() => ({}));
-            const rootFiles = (rootData.files || []).map(file => ({
-                kind: 'file',
-                name: file.name,
-                path: file.path,
-                ext:  file.ext,
-                size: file.size,
-                modified: file.modified,
-                download_url: file.download_url,
-                preview_url:  file.preview_url,
-                parentPath:   '',
-                locationLabel: 'Academic Records',
-            }));
-
-            _unifiedIndex = [
-                ...folders,
-                ...rootFiles,
-                ...fileResults.flat(),
-            ];
+            _unifiedIndex = data.success
+                ? [...(data.folders || []), ...(data.files || [])]
+                : [];
         } catch (_) {
             _unifiedIndex = [];
         }
@@ -1056,7 +1098,8 @@ async function buildUnifiedIndex() {
     })();
 
     return _unifiedIndexPromise;
-}
+  }
+
 
   // Single invalidation point — replaces invalidateSearchIndex,
   // invalidateMoveFolderIndex, and invalidateFolderBrowserIndex
@@ -1392,7 +1435,11 @@ async function buildUnifiedIndex() {
       case 'delete-folder':      fileAction_deleteFolder(path, menuId); break;
       case 'preview':            fileAction_preview(path);              break;
       case 'download':           fileAction_download(path);             break;
-      case 'rename':             openRenameModal(path, type);           break;
+     case 'rename':
+        if (type === 'folder') { openRenameFolderModal(path); }
+        else                   { openRenameModal(path, type); }
+        break;
+
       case 'move':               openMoveModal(path, type);             break;
       case 'upload-here':        openUploadModalForFolder(path);        break;
     }
@@ -2063,22 +2110,52 @@ async function buildUnifiedIndex() {
     const originalExt = (currentTempMetadata?.ext || 'pdf').toLowerCase();
     window._ocrSuggestedFilename = finalName + '.' + originalExt;
     if (currentTempMetadata) currentTempMetadata.suggested_filename = finalName + '.' + originalExt;
+
+    // Update the OCR suggestion panel's displayed filename to match what the user typed
+    const ocrFilenameDisplay = document.querySelector('#ocrSuggestionPanel .flex.flex-col span:last-child strong');
+    if (ocrFilenameDisplay) ocrFilenameDisplay.textContent = window._ocrSuggestedFilename;
+
     closeEditFilenameModal();
+    // Derive the best folder search term:
+    // Prefer the OCR-suggested folder (contains student ID + full name).
+    // If the user has edited the filename, also try to extract the student ID
+    // from the beginning of the new filename as a fallback search term,
+    // since the OCR folder suggestion remains the most reliable signal.
     const suggestedFolder = (window._ocrSuggestedFolder || '').trim();
-    invalidateFolderBrowserIndex(); // FIX #1: now calls invalidateUnifiedIndex internally
+
+    // Extract student ID prefix from the confirmed filename (digits at the start)
+    // e.g. "2022101042_jayron_Certificate_Of_Registration" → "2022101042"
+    // Falls back to empty string if the filename doesn't start with digits.
+    const filenameIdMatch = window._ocrSuggestedFilename
+        ? window._ocrSuggestedFilename.match(/^(\d{5,20})/)
+        : null;
+    const filenameIdPrefix = filenameIdMatch ? filenameIdMatch[1] : '';
+
+    // Use the raw input the user typed — grab the first underscore-separated word
+    // after stripping any leading digits (student ID prefix).
+    // e.g. user typed "rafael"                          → effectiveSearch = "rafael"
+    // e.g. user typed "rafael_Certificate_Of_Registration" → effectiveSearch = "rafael"
+    // e.g. user typed "2022101042_rafael_Certificate"   → effectiveSearch = "rafael"
+    const rawInput = document.getElementById('editFilenameInput')?.value?.trim() || finalName;
+    const strippedInput = rawInput.replace(/^\d+_?/, ''); // strip leading student ID
+    const effectiveSearch = strippedInput.split('_')[0] || suggestedFolder;
+
+    invalidateFolderBrowserIndex(); // calls invalidateUnifiedIndex internally
+    invalidateUnifiedIndex();       // explicit second call ensures _unifiedIndex is
+                                    // fully cleared even if the shim is ever changed
     openFolderBrowserModal();
-    if (!suggestedFolder) return;
+    if (!effectiveSearch) return;
     await new Promise(resolve => requestAnimationFrame(resolve));
-    const index = await getFolderEntries(); // FIX #1: uses unified index
+    const index = await getFolderEntries(); // uses unified index
     const searchInput = document.getElementById('folderSearchInput');
     if (!searchInput) return;
-    const lower = suggestedFolder.toLowerCase();
+    const lower = effectiveSearch.toLowerCase();
     const match =
       index.find(f => f.name.toLowerCase() === lower) ||
-      index.find(f => f.name.toLowerCase().startsWith(lower)) ||
-      index.find(f => lower.startsWith(f.name.toLowerCase())) ||
-      index.find(f => f.name.toLowerCase().includes(lower));
-    searchInput.value = match ? match.name : suggestedFolder;
+      index.find(f => f.name.toLowerCase().startsWith(lower) && f.name.length > 8) ||
+      index.find(f => lower.startsWith(f.name.toLowerCase()) && f.name.length > 8) ||
+      index.find(f => f.name.toLowerCase().includes(lower) && f.name.length > 8);
+       searchInput.value = match ? match.name : effectiveSearch;
     _folderBrowserSearchActive = true;
     renderFolderBrowserResults(searchInput.value);
     if (!match) return;
@@ -2089,6 +2166,7 @@ async function buildUnifiedIndex() {
         }
       });
     });
+
   }
 
   // ─── Temp Preview Modal ───────────────────────────────────────────────────
@@ -3038,32 +3116,142 @@ async function buildUnifiedIndex() {
     window.location.href = API.download + '?path=' + encodeURIComponent(filePath);
   }
 
-  // ─── Rename Modal ─────────────────────────────────────────────────────────
+   // ─── Rename Modal ─────────────────────────────────────────────────────────
   let currentRenameTarget = null;
   let currentRenameType   = null;
+
+  // ─── Rename FOLDER Modal ──────────────────────────────────────────────────
+  let currentRenameFolderTarget = null;
+
+  function openRenameFolderModal(targetPath) {
+    if (!PRIV_ORGANIZE) { denyAction(); return; }
+    currentRenameFolderTarget = targetPath;
+
+    const folderName = targetPath.split('/').pop();
+    const inp = document.getElementById('renameFolderInput');
+    if (inp) { inp.value = folderName; }
+
+    document.getElementById('renameFolderModal').classList.remove('hidden');
+    setTimeout(() => inp?.focus(), 50);
+  }
+
+  function closeRenameFolderModal() {
+    document.getElementById('renameFolderModal').classList.add('hidden');
+    currentRenameFolderTarget = null;
+  }
+
+  async function submitRenameFolder() {
+    if (!PRIV_ORGANIZE) { denyAction(); return; }
+    let name = (document.getElementById('renameFolderInput')?.value || '').trim();
+    if (!name) { showDialog('Please enter a folder name.', 'warning'); return; }
+
+    // Sanitise: replace spaces with underscores, strip unsafe chars
+    name = name.replace(/\s+/g, '_').replace(/[^\w\-]/g, '');
+    if (!name) { showDialog('Folder name contains invalid characters.', 'warning'); return; }
+
+    // Save target before closing (closeRenameFolderModal nulls it)
+    const targetPath = currentRenameFolderTarget;
+    const parentPath = targetPath.includes('/')
+      ? targetPath.slice(0, targetPath.lastIndexOf('/'))
+      : currentFolderPath;
+
+    const saveBtn = document.querySelector('#renameFolderModal button[onclick="submitRenameFolder()"]');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+    const resetBtn = () => {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+    };
+
+    try {
+      const data = await apiFetch(API.rename, 'POST', { path: targetPath, new_name: name });
+      if (!data.success) {
+        showDialog('Rename failed: ' + (data.message || 'Unknown error'), 'error');
+        resetBtn();
+        return;
+      }
+      closeRenameFolderModal();
+      invalidateFolderCache(currentFolderPath);
+      loadFolder(currentFolderPath);
+      _htRefreshPath(parentPath);
+    } catch (err) {
+      showDialog('Rename failed. Please check your connection and try again.', 'error');
+      resetBtn();
+    }
+  }
+
+
+
   function openRenameModal(targetPath, type) {
     if (!PRIV_ORGANIZE) { denyAction(); return; }
     currentRenameTarget = targetPath;
     currentRenameType   = type;
+
+    // Split filename into stem + extension
+    const fullName  = targetPath.split('/').pop();
+    const dotIdx    = fullName.lastIndexOf('.');
+    const stem      = dotIdx > -1 ? fullName.slice(0, dotIdx) : fullName;
+    const ext       = dotIdx > -1 ? fullName.slice(dotIdx)    : '';
+
+    // Populate filename input (stem only) and extension badge
     const inp = document.getElementById('renameInput');
-    if (inp) { inp.value = targetPath.split('/').pop(); inp.focus(); }
+    const badge = document.getElementById('renameExtBadge');
+    if (inp)   { inp.value = stem; }
+    if (badge) { badge.textContent = ext; }
+
+    // Reset doc-type selector; try to pre-select if the stem ends with a known suffix
+    const select = document.getElementById('renameDocType');
+    if (select) {
+      const knownLabels = Array.from(select.options).map(o => o.value).filter(Boolean);
+      const matched = knownLabels.find(label => stem.toLowerCase().endsWith('_' + label.toLowerCase()) || stem.toLowerCase() === label.toLowerCase());
+      select.value = matched || '';
+    }
+
     document.getElementById('renameModal').classList.remove('hidden');
+    setTimeout(() => inp?.focus(), 50);
   }
+
   function closeRenameModal() {
     document.getElementById('renameModal').classList.add('hidden');
     currentRenameTarget = currentRenameType = null;
+    const select = document.getElementById('renameDocType');
+    if (select) select.value = '';
   }
+
+  // Mirrors onDocTypeLabelChange() from editFilenameModal — appends suffix to stem
+  function onRenameDocTypeChange() {
+    const select = document.getElementById('renameDocType');
+    const label  = select?.value;
+    const input  = document.getElementById('renameInput');
+    if (!label || !input) return;
+    let current = input.value.trim();
+    const knownLabels = Array.from(select.options).map(o => o.value).filter(Boolean);
+    knownLabels.forEach(l => {
+      current = current.replace(new RegExp('_?' + l + '$', 'i'), '').replace(/_+$/, '');
+    });
+    input.value = (current ? current + '_' : '') + label;
+  }
+
   async function submitRename() {
     if (!PRIV_ORGANIZE) { denyAction(); return; }
-    const name = (document.getElementById('renameInput')?.value || '').trim();
-    if (!name) { showDialog('Please enter a new name.', 'warning'); return; }
-    const data = await apiFetch(API.rename, 'POST', { path: currentRenameTarget, new_name: name });
+    let stem = (document.getElementById('renameInput')?.value || '').trim();
+    if (!stem) { showDialog('Please enter a new name.', 'warning'); return; }
+
+    // Sanitise: replace spaces with underscores, strip unsafe chars
+    stem = stem.replace(/\s+/g, '_').replace(/[^\w\-]/g, '');
+
+    // Re-attach the original extension
+    const badge = document.getElementById('renameExtBadge');
+    const ext   = badge?.textContent || '';
+    const newName = stem + ext;
+
+    const data = await apiFetch(API.rename, 'POST', { path: currentRenameTarget, new_name: newName });
     if (!data.success) { showDialog('Rename failed: ' + data.message, 'error'); return; }
     closeRenameModal();
-    invalidateFolderCache(currentFolderPath); // FIX #2
+    invalidateFolderCache(currentFolderPath);
     loadFolder(currentFolderPath);
-    _htRefreshPath(currentFolderPath);        // FIX #8
+    _htRefreshPath(currentFolderPath);
   }
+
+
 
   // ─── Move Modal ───────────────────────────────────────────────────────────
   let currentMoveTarget  = null;
@@ -3750,6 +3938,12 @@ window.addEventListener('load', function() {
     if (!PRIV_ORGANIZE || !isModalReal('renameModal')) { showPermissionDenied(); return; }
     if (_openRenameModal) _openRenameModal.apply(this, arguments);
   };
+  var _openRenameFolderModal = window.openRenameFolderModal;
+  window.openRenameFolderModal = function() {
+    if (!PRIV_ORGANIZE || !isModalReal('renameFolderModal')) { showPermissionDenied(); return; }
+    if (_openRenameFolderModal) _openRenameFolderModal.apply(this, arguments);
+  };
+
   var _openMoveModal = window.openMoveModal;
   window.openMoveModal = function() {
     if (!PRIV_ORGANIZE || !isModalReal('moveModal')) { showPermissionDenied(); return; }
@@ -3899,65 +4093,49 @@ document.addEventListener('click', function(e) {
         return;
       }
 
-      // ── Show initial progress toast ─────────────────────────────────────────
-      _showUploadToast(`Uploading 0 / ${files.length} file(s)…`, 'progress');
-
-      let successCount = 0;
-      let failCount    = 0;
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        // Update progress counter in toast
-        _showUploadToast(`Uploading ${i + 1} / ${files.length}: ${file.name}`, 'progress');
-
-        try {
-          // Phase 1: temp upload (OCR runs here)
-          const fd1 = new FormData();
-          fd1.append(CSRF_NAME, CSRF_TOKEN);
-          fd1.append('record_file', file);
-          fd1.append('folder_path', currentFolderPath);
-
-          const res1  = await fetch(
-            API.listFolder.replace('/list-folder', '/temp-upload'),
-            { method: 'POST', body: fd1 }
-          );
-          if (!res1.ok) { failCount++; continue; }
-          const data1 = await res1.json();
-          if (!data1.success) { failCount++; continue; }
-
-          // Phase 2: finalize (move temp → permanent)
-          const fd2 = new FormData();
-          fd2.append(CSRF_NAME, CSRF_TOKEN);
-          fd2.append('token', data1.token);
-          fd2.append('folder_path', currentFolderPath);
-
-          const res2  = await fetch(
-            API.listFolder.replace('/list-folder', '/finalize-upload'),
-            { method: 'POST', body: fd2 }
-          );
-          if (!res2.ok) { failCount++; continue; }
-          const data2 = await res2.json();
-          if (data2.success) { successCount++; } else { failCount++; }
-
-        } catch (_) {
-          failCount++;
-        }
+      // Only handle one file at a time via the OCR + Upload Record Modal flow.
+      // If multiple files are dropped, process only the first one and notify user.
+      if (files.length > 1) {
+        showDialog('Only one file at a time is supported via drag-and-drop. Processing the first file.', 'warning');
       }
 
-      // ── Final feedback ──────────────────────────────────────────────────────
-      if (successCount > 0) {
-        invalidateFolderCache(currentFolderPath);
-        invalidateUnifiedIndex();
-        loadFolder(currentFolderPath);
-        _htRefreshPath(currentFolderPath);
+      const file = files[0];
 
-        const msg = failCount > 0
-          ? `${successCount} uploaded, ${failCount} failed.`
-          : `${successCount} file(s) uploaded successfully.`;
-        _showUploadToast(msg, failCount > 0 ? 'error' : 'success');
-      } else {
-        _showUploadToast('Upload failed. Check file types and permissions.', 'error');
+      // ── Phase 1: Temp upload with OCR ──────────────────────────────────────
+      _showUploadToast(`Scanning: ${file.name}…`, 'progress');
+
+      try {
+        const fd = new FormData();
+        fd.append(CSRF_NAME, CSRF_TOKEN);
+        fd.append('record_file', file);
+        fd.append('folder_path', currentFolderPath);
+
+        const res  = await fetch(
+          API.listFolder.replace('/list-folder', '/temp-upload'),
+          { method: 'POST', body: fd }
+        );
+        _hideUploadToast();
+
+        if (!res.ok) { showDialog('Upload failed. Server error.', 'error'); return; }
+        const data = await res.json();
+        if (!data.success) { showDialog('Upload failed: ' + (data.message || 'Unknown error'), 'error'); return; }
+
+        // Store temp token and metadata (same as the Upload Record Modal flow)
+        currentTempToken    = data.token;
+        currentTempMetadata = {
+          original_name: data.original_name,
+          size:          data.size,
+          preview_url:   data.preview_url,
+          ext: data.file_ext || data.original_name.split('.').pop().toLowerCase() || 'pdf',
+        };
+
+        // ── Phase 2: Open the Upload Record Modal preview (reuse existing flow)
+        openTempPreviewModal(data.token, data.preview_url, data.original_name);
+        applyOcrSuggestions(data);
+
+      } catch (err) {
+        _hideUploadToast();
+        showDialog('Upload failed. Please try again.', 'error');
       }
     }, false);
   })();

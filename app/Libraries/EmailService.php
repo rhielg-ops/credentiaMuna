@@ -86,7 +86,7 @@ class EmailService
     /**
      * Send welcome email to new admin
      */
-    public function sendWelcomeEmail($to, $recipientName, $initialPassword, $createdBy)
+    public function sendWelcomeEmail($to, $recipientName, $initialPassword)
     {
         try {
             $this->mailer->clearAddresses();
@@ -95,8 +95,8 @@ class EmailService
             $this->mailer->isHTML(true);
             $this->mailer->Subject = 'Welcome to CredentiaTAU';
             
-            $this->mailer->Body = $this->getWelcomeEmailTemplate($recipientName, $to, $initialPassword, $createdBy);
-            $this->mailer->AltBody = "Welcome to CredentiaTAU!\n\nYour account has been created.\nEmail: $to\nInitial Password: $initialPassword\n\nPlease login and change your password.";
+            $this->mailer->Body = $this->getWelcomeEmailTemplate($recipientName, $to, $initialPassword);
+            $this->mailer->AltBody = "Welcome to CredentiaTAU!\n\nYour account has been created.\nEmail: $to\nInitial Password: $initialPassword\n\nFor security, please change your PIN and password upon first login.";
 
             $this->mailer->send();
             return true;
@@ -191,7 +191,7 @@ HTML;
     /**
      * Welcome email template
      */
-    protected function getWelcomeEmailTemplate($name, $email, $password, $createdBy)
+   protected function getWelcomeEmailTemplate($name, $email, $password)
     {
         $loginUrl = base_url('login');
         
@@ -218,12 +218,12 @@ HTML;
     <div class="container">
         <div class="header">
             <h1 style="margin: 0;">Welcome to CredentiaTAU</h1>
-            <p style="margin: 10px 0 0 0;">Academic Records Management System</p>
+            <p style="margin: 10px 0 0 0;">Academic Records Archiving System</p>
         </div>
         <div class="content">
             <p>Hello <strong>$name</strong>,</p>
             
-            <p>Your administrator account has been created by <strong>$createdBy</strong>. You now have access to the CredentiaTAU system.</p>
+            <p>Your account has been created. You can now access the CredentiaTAU system using the credentials below.</p>
             
             <div class="credentials">
                 <h3 style="margin-top: 0; color: #16a34a;">Your Login Credentials</h3>
@@ -239,20 +239,12 @@ HTML;
             
             <div class="warning">
                 <strong>🔒 Important Security Notice:</strong><br>
-                You must change your password upon first login for security reasons.
+                For your security, please change your <strong>PIN and password</strong> immediately upon first login.
             </div>
             
             <div style="text-align: center;">
                 <a href="$loginUrl" class="button">Login to CredentiaTAU</a>
             </div>
-            
-            <p><strong>What's Next?</strong></p>
-            <ol>
-                <li>Click the login button above or visit: <a href="$loginUrl">$loginUrl</a></li>
-                <li>Enter your email and initial password</li>
-                <li>Complete the two-factor authentication</li>
-                <li>Change your password when prompted</li>
-            </ol>
             
             <p>If you have any questions or need assistance, please contact your system administrator.</p>
         </div>
@@ -395,17 +387,15 @@ HTML;
   </div>
   <div style="background:#f9f9f9;padding:30px;border-radius:0 0 8px 8px;">
     <p>Hello <strong>{$name}</strong>,</p>
-    <p>Your account has been created by <strong>{$createdBy}</strong>.</p>
+    <p>Your account has been created. You can now access the CredentiaTAU system using the credentials below.</p>
     <div style="background:white;border:2px solid #16a34a;padding:20px;border-radius:8px;margin:20px 0;">
       <h3 style="color:#16a34a;margin-top:0;">Your Login Credentials</h3>
       <p><strong>Email:</strong> {$to}</p>
       <p><strong>Password:</strong> <code>{$password}</code></p>
-      <p><strong>PIN:</strong> <code>{$mpin}</code>
-</p>
+      <p><strong>PIN:</strong> <code>{$mpin}</code></p>
     </div>
     <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:12px;border-radius:4px;">
-      <strong>⚠️ Security Notice:</strong> Please change your password after first login.
-      Your PIN is valid for 30 days.
+      <strong>⚠️ Security Notice:</strong> For your security, please change your <strong>PIN and password</strong> immediately upon first login.
     </div>
     <div style="text-align:center;margin:25px 0;">
       <a href="{$loginUrl}" style="background:#16a34a;color:white;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:bold;">
@@ -422,7 +412,7 @@ HTML;
             $this->mailer->send();
             return true;
         } catch (\Exception $e) {
-            log_message('error', 'Welcome+MPIN email failed: ' . $this->mailer->ErrorInfo);
+            log_message('error', 'Welcome+PIN email failed: ' . $this->mailer->ErrorInfo);
             return false;
         }
     }

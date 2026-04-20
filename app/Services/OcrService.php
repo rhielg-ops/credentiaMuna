@@ -440,7 +440,7 @@ private function pdfToImageOcr(string $pdfPath): string
         $text = preg_replace(
             '/(\w)\s+((?:Student\s*(?:No|ID|Number)|Gender|College|Program|Major|'
             . 'Year\s*Level|Academic\s*Year|LRN|ID\s*No|Retention\s*Status|'
-            . 'Fullname|Full\s*Name|Student\s*Name)\s*[:\-])/i',
+            . 'Fullname|Full\s*Name|Student\s*Name|(?<![A-Za-z])Name)\s*[:\-])/i',
             "$1\n$2",
             $text
         );
@@ -485,7 +485,30 @@ private function pdfToImageOcr(string $pdfPath): string
     //         "Student Name: ...", "Name of Student: ..."
     // The lookahead uses \n OR a next known label so the capture terminates
     // cleanly whether preprocessText() split the lines or not.
+   // ── Strategy 0: Bare "Name:" label — highest priority ─────────────────────
+    // Matches "Name: Juan dela Cruz" or "Name - SANTOS, Maria" before any
+    // other strategy so that documents with a plain Name field are handled
+    // first. The negative lookbehind prevents matching mid-word labels such as
+    // "Surname:", "Filename:", "Username:", or "Nickname:" while still
+    // catching "Given Name:" / "Middle Name:" / "Last Name:" variants via
+    // Strategy 1 below.
     if (preg_match(
+        '/(?<![A-Za-z])(?:given\s*name|middle\s*name|last\s*name|name)\s*[:\-]\s*'
+        . '([A-Za-z][A-Za-z,\.\s]{2,60}?)'
+        . '(?=\s*(?:\n|student\s*(?:no|id|number)|gender|college|program|major|'
+        . 'year\s*level|academic\s*year|lrn|id\s*no|retention|surname|given|middle|$))/i',
+        $text, $m
+    )) {
+        $studentName = trim($m[1]);
+        log_message('debug', '[OcrService] Strategy 0 (bare Name label) matched: ' . $studentName);
+    }
+
+    // ── Strategy 1: Labeled field with colon/dash ─────────────────────────────
+    // Covers: "Fullname : AQUINO, Wency Sampang", "Full Name: Maria Santos",
+    //         "Student Name: ...", "Name of Student: ..."
+    // The lookahead uses \n OR a next known label so the capture terminates
+    // cleanly whether preprocessText() split the lines or not.
+    elseif (preg_match(
         '/(?:student\s*name|full\s*name|fullname|name\s*of\s*student)\s*[:\-]\s*'
         . '([A-Za-z][A-Za-z,\.\s]{2,60}?)'
         . '(?=\s*(?:\n|student\s*(?:no|id|number)|gender|college|program|major|'

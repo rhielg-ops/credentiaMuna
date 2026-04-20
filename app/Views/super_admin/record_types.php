@@ -2,8 +2,8 @@
 <?= $this->section('content') ?>
 
 <div class="bg-green-700 text-white p-8 rounded-xl mb-6">
-  <h2 class="text-3xl font-bold mb-2">Document Types & OCR Keywords</h2>
-  <p class="text-green-100">Manage what document types are detected and what keywords trigger them</p>
+  <h2 class="text-3xl font-bold mb-2">Record Types & OCR Keywords</h2>
+  <p class="text-green-100">Manage what Record types are detected and what keywords trigger them</p>
 </div>
 
 
@@ -118,6 +118,34 @@
   </div>
 </div>
 
+<!-- ── Delete Keyword Confirmation Modal ── -->
+<div id="deleteKeywordModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+    <div class="flex flex-col items-center text-center gap-3 mb-5">
+      <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-gray-800">Delete Keyword?</h3>
+      <p class="text-sm text-gray-500">You are about to delete the keyword:</p>
+      <p id="deleteKeywordName" class="text-sm font-semibold text-red-600 bg-red-50 px-3 py-1 rounded-lg"></p>
+      <p class="text-sm text-gray-400">This action cannot be undone.</p>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="closeDeleteKeywordModal()"
+              class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium text-sm">
+        Cancel
+      </button>
+      <button id="confirmDeleteKeywordBtn"
+              class="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium text-sm">
+        Yes, Delete
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Keywords Modal ── -->
 <div id="keywordsModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
   <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
@@ -157,7 +185,8 @@
 
 <?= $this->section('scripts') ?>
 <script>
-let _currentTypeId = null;
+let _currentTypeId    = null;
+let _currentTypeLabel = null;
 
 // ── Type Modal ──
 function openTypeModal(type) {
@@ -174,7 +203,8 @@ function closeTypeModal() { document.getElementById('typeModal').classList.add('
 
 // ── Keywords Modal ──
 function openKeywordsModal(typeId, typeLabel) {
-  _currentTypeId = typeId;
+  _currentTypeId  = typeId;
+  _currentTypeLabel = typeLabel;
   document.getElementById('kwModalSubtitle').textContent = typeLabel;
   document.getElementById('keywordsModal').classList.remove('hidden');
   document.getElementById('newKeywordInput').value = '';
@@ -183,27 +213,43 @@ function openKeywordsModal(typeId, typeLabel) {
 function closeKeywordsModal() { document.getElementById('keywordsModal').classList.add('hidden'); }
 
 function loadKeywords() {
-  fetch('<?= base_url('super-admin/record-types/keywords/') ?>' + _currentTypeId)
+  const list = document.getElementById('keywordList');
+  list.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Loading…</p>';
+  fetch('<?= base_url('super-admin/record-types/keywords/') ?>' + _currentTypeId + '?_=' + Date.now(), { cache: 'no-store' })
     .then(r => r.json())
     .then(data => {
       const list = document.getElementById('keywordList');
       if (!data.keywords.length) {
         list.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">No keywords yet. Add one above.</p>';
-        return;
-      }
-      list.innerHTML = data.keywords.map(kw => `
-        <div class="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
-          <span class="text-sm text-gray-800">${kw.keyword}</span>
-          <button onclick="deleteKeyword(${kw.keyword_id})"
+      } else {
+        list.innerHTML = data.keywords.map(kw => `
+          <div class="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+            <span class="text-sm text-gray-800">${kw.keyword}</span>
+            <button onclick="deleteKeyword(${kw.keyword_id}, '${kw.keyword.replace(/'/g, "\\'")}')"
                   class="text-red-400 hover:text-red-600 text-xs font-medium">✕</button>
-        </div>`).join('');
+          </div>`).join('');
+      }
+
+      // ── Update the badge on the main table row in real time ──
+      const count = data.keywords.length;
+      document.querySelectorAll('button[onclick]').forEach(btn => {
+        if (btn.getAttribute('onclick') === `openKeywordsModal(${_currentTypeId}, '${_currentTypeLabel}')`) {
+          btn.textContent = count + (count === 1 ? ' keyword' : ' keywords');
+        }
+      });
     });
 }
 
 function addKeyword() {
-  const input = document.getElementById('newKeywordInput');
-  const kw    = input.value.trim();
+  const input  = document.getElementById('newKeywordInput');
+  const kw     = input.value.trim();
   if (!kw) return;
+
+  // Disable button and input to prevent double-submission while saving
+  const btn = document.querySelector('button[onclick="addKeyword()"]');
+  input.disabled = true;
+  btn.disabled   = true;
+  btn.textContent = 'Saving…';
 
   const fd = new FormData();
   fd.append('type_id', _currentTypeId);
@@ -211,17 +257,60 @@ function addKeyword() {
 
   fetch('<?= base_url('super-admin/record-types/save-keyword') ?>', { method: 'POST', body: fd })
     .then(r => r.json())
-    .then(data => { if (data.success) { input.value = ''; loadKeywords(); } });
+    .then(data => {
+      if (data.success) {
+        input.value = '';
+        loadKeywords(); // reloads list AND updates the badge in one call
+      }
+    })
+    .catch(err => console.error('addKeyword failed:', err))
+    .finally(() => {
+      input.disabled  = false;
+      btn.disabled    = false;
+      btn.textContent = 'Add';
+    });
 }
 
-function deleteKeyword(kwId) {
-  if (!confirm('Delete this keyword?')) return;
+let _pendingDeleteId = null;
+
+function deleteKeyword(kwId, kwText) {
+  _pendingDeleteId = kwId;
+  document.getElementById('deleteKeywordName').textContent = kwText;
+  document.getElementById('deleteKeywordModal').classList.remove('hidden');
+}
+
+function closeDeleteKeywordModal() {
+  _pendingDeleteId = null;
+  document.getElementById('deleteKeywordModal').classList.add('hidden');
+}
+
+document.getElementById('confirmDeleteKeywordBtn').addEventListener('click', () => {
+  if (!_pendingDeleteId) return;
+  const btn = document.getElementById('confirmDeleteKeywordBtn');
+  btn.disabled = true;
+  btn.textContent = 'Deleting…';
+
   const fd = new FormData();
-  fetch('<?= base_url('super-admin/record-types/delete-keyword/') ?>' + kwId,
+  fetch('<?= base_url('super-admin/record-types/delete-keyword/') ?>' + _pendingDeleteId,
         { method: 'POST', body: fd })
     .then(r => r.json())
-    .then(data => { if (data.success) loadKeywords(); });
-}
+    .then(data => {
+      if (data.success) {
+        closeDeleteKeywordModal();
+        loadKeywords();
+      }
+    })
+    .catch(err => console.error('deleteKeyword failed:', err))
+    .finally(() => {
+      btn.disabled = false;
+      btn.textContent = 'Yes, Delete';
+    });
+});
+
+// Close delete modal on backdrop click
+document.getElementById('deleteKeywordModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('deleteKeywordModal')) closeDeleteKeywordModal();
+});
 
 // Close on backdrop click
 document.getElementById('typeModal').addEventListener('click', e => { if (e.target === document.getElementById('typeModal')) closeTypeModal(); });

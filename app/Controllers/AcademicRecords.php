@@ -113,6 +113,13 @@ class AcademicRecords extends BaseController
         return $bytes . ' B';
     }
 
+    private function clearFolderCache(string $relative): void
+    {
+        $cacheKey = 'folder_' . md5(session()->get('user_id') . '_' . $relative);
+        cache()->delete($cacheKey);
+    }
+
+
     // ── FIX: single scandir pass — returns both folders AND files at once ────
     // Old code called scandir() twice (once in scanFolders, once in scanFiles)
     // AND did a third scandir() per sub-folder just to count its files.
@@ -238,10 +245,22 @@ class AcademicRecords extends BaseController
 
         if (!$this->canAccessPath($relative)) return $this->jsonError('Access denied.', 403);
 
-        // FIX: single scanDirectory call replaces two separate scandir() passes
+        // Option 1: server-side cache — avoids hitting the file server
+        // on every click. Cache is per-user so users never see each other's data.
+        // TTL is 30 seconds — matches the JS folderCache TTL already in place.
+        $cacheKey = 'folder_' . md5(session()->get('user_id') . '_' . $relative);
+        $cached   = cache($cacheKey);
+        if ($cached) {
+            return $this->jsonOk(['path' => $relative, 'folders' => $cached['folders'], 'files' => $cached['files']]);
+        }
+
         $dir = $this->scanDirectory($relative);
+
+        cache()->save($cacheKey, ['folders' => $dir['folders'], 'files' => $dir['files']], 30);
+
         return $this->jsonOk(['path' => $relative, 'folders' => $dir['folders'], 'files' => $dir['files']]);
     }
+
 
     // ── LIST ALL FOLDERS (AJAX) — for search index + move modal ──────────────
     // Returns the complete flat folder list in ONE request instead of the
@@ -257,9 +276,10 @@ class AcademicRecords extends BaseController
         );
 
         $folders = [];
-        $this->_collectAllFolders('', [], $isAdmin, $allowed, $folders);
+        $files   = [];
+        $this->_collectAllFolders('', [], $isAdmin, $allowed, $folders, $files);
 
-        return $this->jsonOk(['folders' => $folders]);
+        return $this->jsonOk(['folders' => $folders, 'files' => $files]);
     }
 
     private function _collectAllFolders(
@@ -267,7 +287,8 @@ class AcademicRecords extends BaseController
         array  $ancestorLabels,
         bool   $isAdmin,
         array  $allowed,
-        array  &$result
+        array  &$result,
+        array  &$files
     ): void {
         $abs = $this->uploadRoot . ltrim($relative, '/');
         if (!is_dir($abs)) return;
@@ -276,39 +297,61 @@ class AcademicRecords extends BaseController
             ? 'Academic Records › ' . implode(' › ', $ancestorLabels)
             : 'Academic Records';
 
-        $entries = scandir($abs, SCANDIR_SORT_NONE);
+        $entries   = scandir($abs, SCANDIR_SORT_NONE);
+        $fileCount = 0;
+
         foreach ($entries as $entry) {
             if ($entry === '.' || $entry === '..') continue;
             $full      = $abs . DIRECTORY_SEPARATOR . $entry;
-            if (!is_dir($full)) continue;
-
             $entryPath = trim(($relative ? $relative . '/' : '') . $entry, '/');
 
-            if (!$isAdmin) {
-                $visible = false;
-                foreach ($allowed as $af) {
-                    $af = ltrim($af, '/');
-                    if ($entryPath === $af
-                        || str_starts_with($entryPath, $af . '/')
-                        || str_starts_with($af, $entryPath . '/')) {
-                        $visible = true; break;
+            if (is_dir($full)) {
+                if (!$isAdmin) {
+                    $visible = false;
+                    foreach ($allowed as $af) {
+                        $af = ltrim($af, '/');
+                        if ($entryPath === $af
+                            || str_starts_with($entryPath, $af . '/')
+                            || str_starts_with($af, $entryPath . '/')) {
+                            $visible = true; break;
+                        }
                     }
+                    if (!$visible) continue;
                 }
-                if (!$visible) continue;
+
+                // Recurse first so child fileCount is resolved before we push
+                $childFiles = [];
+                $this->_collectAllFolders($entryPath, [...$ancestorLabels, $entry], $isAdmin, $allowed, $result, $childFiles);
+
+                $result[] = [
+                    'kind'          => 'folder',
+                    'name'          => $entry,
+                    'path'          => $entryPath,
+                    'parentPath'    => $relative,
+                    'locationLabel' => $locationLabel,
+                    'modified'      => date('Y-m-d', filemtime($full)),
+                    'count'         => count($childFiles), // no more glob()
+                ];
+
+                // Bubble child files up to the caller
+                array_push($files, ...$childFiles);
+
+            } elseif (is_file($full) && ($isAdmin || $this->canAccessPath($relative))) {
+                $ext     = strtolower(pathinfo($entry, PATHINFO_EXTENSION));
+                $relPath = trim($relative . '/' . $entry, '/');
+                $files[] = [
+                    'kind'          => 'file',
+                    'name'          => $entry,
+                    'path'          => $relPath,
+                    'ext'           => $ext,
+                    'parentPath'    => $relative,
+                    'locationLabel' => $locationLabel,
+                    'modified'      => date('Y-m-d', filemtime($full)),
+                    'download_url'  => base_url('academic-records/download?path=' . urlencode($relPath)),
+                    'preview_url'   => base_url('academic-records/preview?path='  . urlencode($relPath)),
+                ];
+                $fileCount++;
             }
-
-            $result[] = [
-                'kind'          => 'folder',
-                'name'          => $entry,
-                'path'          => $entryPath,
-                'parentPath'    => $relative,
-                'locationLabel' => $locationLabel,
-                'modified'      => date('Y-m-d', filemtime($full)),
-                'count'         => count(glob($full . DIRECTORY_SEPARATOR . '*.*', GLOB_NOSORT)),
-            ];
-
-            // Recurse
-            $this->_collectAllFolders($entryPath, [...$ancestorLabels, $entry], $isAdmin, $allowed, $result);
         }
     }
 
@@ -360,6 +403,10 @@ class AcademicRecords extends BaseController
         $file->move($destDir, $safeName);
 
         $filePath = trim($folderPath . '/' . $safeName, '/');
+
+        // Clear cache for the folder the file was uploaded into
+        $this->clearFolderCache($folderPath);
+
         return $this->jsonOk([
             'file_name'    => $safeName,
             'file_path'    => $filePath,
@@ -368,6 +415,7 @@ class AcademicRecords extends BaseController
             'preview_url'  => base_url('academic-records/preview?path='  . urlencode($filePath)),
         ]);
     }
+
 
     // ── UPLOAD MULTIPLE FILES ─────────────────────────────────────────────────
 
@@ -396,10 +444,14 @@ class AcademicRecords extends BaseController
             $uploaded[] = $safeName;
         }
 
+        // Clear cache for the folder the files were uploaded into
+        $this->clearFolderCache($folderPath);
+
         return $this->jsonOk(['uploaded' => $uploaded, 'errors' => $errors]);
     }
 
     // ── PREVIEW — inline, renders PDF/image in browser ────────────────────────
+
 
     public function preview()
     {
@@ -460,6 +512,10 @@ class AcademicRecords extends BaseController
         if (!$this->canAccessPath($relative)) return $this->jsonError('Access denied.', 403);
         if (!unlink($absPath))  return $this->jsonError('Delete failed.');
         $this->fileAccessLogModel->log($relative, 'delete');
+
+        // Clear cache for the folder the file was deleted from
+        $this->clearFolderCache(dirname($relative));
+
         return $this->jsonOk(['message' => 'File deleted.']);
     }
 
@@ -478,6 +534,11 @@ class AcademicRecords extends BaseController
         if (!$this->canAccessPath($relative)) return $this->jsonError('Access denied.', 403);
         $this->rmdirRecursive($absPath);
         $this->fileAccessLogModel->log($relative, 'folder_delete');
+
+        // Clear cache for the deleted folder AND its parent folder
+        $this->clearFolderCache($relative);
+        $this->clearFolderCache(dirname($relative));
+
         return $this->jsonOk(['message' => 'Folder deleted.']);
     }
 
@@ -517,6 +578,9 @@ class AcademicRecords extends BaseController
             basename($relative) . ' → ' . $newName
         );
 
+        // Clear cache for the parent folder — the item name changed inside it
+        $this->clearFolderCache(dirname($relative));
+
         return $this->jsonOk(['new_path' => trim(dirname($relative) . '/' . $newName, '/'), 'new_name' => $newName]);
     }
 
@@ -548,6 +612,10 @@ class AcademicRecords extends BaseController
             'move',
             $srcRelative . ' → ' . trim($destRelative . '/' . basename($absSrc), '/')
         );
+
+        // Clear cache for BOTH the source folder and destination folder
+        $this->clearFolderCache(dirname($srcRelative));
+        $this->clearFolderCache($destRelative);
 
         return $this->jsonOk(['new_path' => trim($destRelative . '/' . basename($absSrc), '/')]);
     }
@@ -935,7 +1003,10 @@ $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
 
     // Clean up session
     session()->remove('temp_upload_' . $token);
-    
+
+    // Clear cache for the folder the file was saved into
+    $this->clearFolderCache($folderPath);
+
     return $this->jsonOk([
         'message' => 'Record saved successfully',
         'file_name' => $finalName,
@@ -944,7 +1015,7 @@ $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
         'download_url' => base_url('academic-records/download?path=' . urlencode($relativePath)),
         'preview_url' => base_url('academic-records/preview?path=' . urlencode($relativePath))
     ]);
-}   
+}
     /**
  * AJAX: metadata + fulltext search across file_metadata table.
  * Route: GET academic-records/metadata-search?q=juan+tor
