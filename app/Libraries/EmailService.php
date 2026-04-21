@@ -86,7 +86,7 @@ class EmailService
     /**
      * Send welcome email to new admin
      */
-    public function sendWelcomeEmail($to, $recipientName, $initialPassword)
+    public function sendWelcomeEmail($to, $recipientName, $username, $initialPassword)
     {
         try {
             $this->mailer->clearAddresses();
@@ -95,8 +95,8 @@ class EmailService
             $this->mailer->isHTML(true);
             $this->mailer->Subject = 'Welcome to CredentiaTAU';
             
-            $this->mailer->Body = $this->getWelcomeEmailTemplate($recipientName, $to, $initialPassword);
-            $this->mailer->AltBody = "Welcome to CredentiaTAU!\n\nYour account has been created.\nEmail: $to\nInitial Password: $initialPassword\n\nFor security, please change your PIN and password upon first login.";
+            $this->mailer->Body = $this->getWelcomeEmailTemplate($recipientName, $to, $username, $initialPassword);
+            $this->mailer->AltBody = "Welcome to CredentiaTAU!\n\nYour account has been created.\nEmail: $to\nUsername: $username\nInitial Password: $initialPassword\n\nFor security, please change your PIN and password upon first login.";
 
             $this->mailer->send();
             return true;
@@ -105,6 +105,7 @@ class EmailService
             return false;
         }
     }
+
 
     /**
      * Send account locked notification
@@ -191,7 +192,7 @@ HTML;
     /**
      * Welcome email template
      */
-   protected function getWelcomeEmailTemplate($name, $email, $password)
+   protected function getWelcomeEmailTemplate($name, $email, $username, $password)
     {
         $loginUrl = base_url('login');
         
@@ -231,6 +232,10 @@ HTML;
                     <div class="credential-label">Email:</div>
                     <div class="credential-value">$email</div>
                 </div>
+                <div class="credential-row">
+                    <div class="credential-label">Username:</div>
+                    <div class="credential-value">$username</div>
+                </div>
                 <div class="credential-row" style="border: none;">
                     <div class="credential-label">Password:</div>
                     <div class="credential-value">$password</div>
@@ -257,6 +262,7 @@ HTML;
 </html>
 HTML;
     }
+
 
     /**
      * Account locked email template
@@ -370,7 +376,7 @@ HTML;
      * Send welcome email WITH MPIN included (required when user_management privilege creates account)
      */
     public function sendWelcomeEmailWithMpin(
-        string $to, string $name, string $password, string $mpin, string $createdBy
+        string $to, string $name, string $username, string $password, string $mpin, string $createdBy
     ): bool {
         try {
             $this->mailer->clearAddresses();
@@ -391,6 +397,7 @@ HTML;
     <div style="background:white;border:2px solid #16a34a;padding:20px;border-radius:8px;margin:20px 0;">
       <h3 style="color:#16a34a;margin-top:0;">Your Login Credentials</h3>
       <p><strong>Email:</strong> {$to}</p>
+      <p><strong>Username:</strong> {$username}</p>
       <p><strong>Password:</strong> <code>{$password}</code></p>
       <p><strong>PIN:</strong> <code>{$mpin}</code></p>
     </div>
@@ -407,7 +414,7 @@ HTML;
 </div>
 </body></html>
 HTML;
-           $this->mailer->AltBody = "Welcome!\nEmail: {$to}\nPassword: {$password}\nPIN: {$mpin}";
+           $this->mailer->AltBody = "Welcome!\nEmail: {$to}\nUsername: {$username}\nPassword: {$password}\nPIN: {$mpin}";
 
             $this->mailer->send();
             return true;
@@ -416,6 +423,7 @@ HTML;
             return false;
         }
     }
+
 
     protected function getRecoveryOtpTemplate(string $name, string $otp, string $purposeLabel): string
     {
@@ -446,5 +454,94 @@ HTML;
 HTML;
     }
 
+    /**
+     * Send approval or rejection notification to a user
+     * whose reactivation request has been reviewed.
+     */
+    public function sendApprovalNotification(string $userEmail, string $userName, bool $isApproved, string $message = ''): bool
+    {
+        if ($isApproved) {
+            $subject      = 'Account Reactivation Approved - CredentiaTAU';
+            $status       = 'Approved';
+            $statusColor  = '#28a745';
+            $icon         = '✅';
+            $actionMessage = 'Your account has been successfully reactivated. You can now log in to CredentiaTAU.';
+        } else {
+            $subject      = 'Account Reactivation Request Reviewed - CredentiaTAU';
+            $status       = 'Rejected';
+            $statusColor  = '#dc3545';
+            $icon         = '❌';
+            $actionMessage = 'Your account reactivation request has been rejected. '
+                           . 'You may submit a new request or contact your administrator for further assistance.';
+        }
+
+        $loginButton = $isApproved
+            ? "<div style='text-align:center;margin:30px 0;'>
+                 <a href='" . base_url('login') . "'
+                    style='display:inline-block;padding:12px 30px;background:#1d6b37;color:white;
+                           text-decoration:none;border-radius:5px;margin:10px 5px;'>
+                   Log In Now
+                 </a>
+               </div>"
+            : '';
+
+        $extraMessage = $message
+            ? "<p style='margin-top:10px;'>" . htmlspecialchars($message) . "</p>"
+            : '';
+
+        $body = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='UTF-8'>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: {$statusColor}; color: white; padding: 20px;
+                          text-align: center; border-radius: 5px 5px 0 0; }
+                .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px; }
+                .status { background: white; padding: 20px;
+                          border-left: 4px solid {$statusColor}; margin: 20px 0; }
+                .footer { color: #666; font-size: 14px; margin-top: 30px; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='header'>
+                    <h2>{$icon} Request Status: {$status}</h2>
+                </div>
+                <div class='content'>
+                    <p>Hello <strong>{$userName}</strong>,</p>
+                    <div class='status'>
+                        <p><strong>Your account reactivation request has been reviewed.</strong></p>
+                        <p>{$actionMessage}</p>
+                        {$extraMessage}
+                    </div>
+                    {$loginButton}
+                    <p class='footer'>
+                        This is an automated message from CredentiaTAU System.<br>
+                        Please do not reply to this email.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>";
+
+        try {
+            $this->mailer->clearAddresses();
+            $this->mailer->addAddress($userEmail, $userName);
+            $this->mailer->isHTML(true);
+            $this->mailer->Subject = $subject;
+            $this->mailer->Body    = $body;
+            $this->mailer->AltBody = strip_tags(str_replace(['<br>', '<br/>'], "\n", $body));
+            $this->mailer->send();
+            return true;
+        } catch (\Exception $e) {
+            log_message('error', 'sendApprovalNotification failed: ' . $this->mailer->ErrorInfo);
+            return false;
+        }
+    }
 
 }
+
+

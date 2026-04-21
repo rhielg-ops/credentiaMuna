@@ -26,17 +26,26 @@
         <p class="text-xs text-gray-500">Requested: <?= date('M d, Y', strtotime($pending['requested_at'])); ?></p>
       </div>
       <div class="flex gap-2">
-        <a href="<?= base_url('super-admin/approve-admin/' . $pending['user_id']); ?>" 
-           class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium"
-           onclick="return confirm('Approve this admin?');">
+        <button type="button"
+                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium"
+                onclick="openConfirmModal(
+                  'Approve User',
+                  'Are you sure you want to approve this user?',
+                  '<?= base_url('super-admin/approve-admin/' . $pending['user_id']); ?>'
+                )">
           ✓ Approve
-        </a>
-        <a href="<?= base_url('super-admin/reject-admin/' . $pending['user_id']); ?>" 
-           class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium"
-           onclick="return confirm('Reject and remove this request?');">
+        </button>
+        <button type="button"
+                class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium"
+                onclick="openConfirmModal(
+                  'Reject User',
+                  'Are you sure you want to reject this user?',
+                  '<?= base_url('super-admin/reject-admin/' . $pending['user_id']); ?>'
+                )">
           ✗ Reject
-        </a>
+        </button>
       </div>
+
     </div>
     <?php endforeach; ?>
   </div>
@@ -80,7 +89,6 @@
         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Access</th>
         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Last Login</th>
-        <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Records</th>
         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Actions</th>
       </tr>
     </thead>
@@ -115,11 +123,11 @@
               <?= esc(ucfirst($user['status'])); ?>
             </span>
           </td>
-          <td class="px-6 py-4 text-sm text-gray-600">
+         <td class="px-6 py-4 text-sm text-gray-600">
             <?= $user['last_login'] ? date('M d, Y H:i', strtotime($user['last_login'])) : 'Never'; ?>
           </td>
-          <td class="px-6 py-4 text-sm text-gray-600"><?= $user['total_records'] ?? 0; ?></td>
           <td class="px-6 py-4">
+
   <div class="flex gap-2">
     <?php
       $uid           = $user['user_id'];
@@ -147,17 +155,25 @@
 
     <?php if ($canToggle): ?>
       <?php if ($user['status'] !== 'inactive'): ?>
-        <a href="<?= base_url('super-admin/toggle-suspend/' . $uid); ?>"
-           class="text-orange-600 hover:text-orange-800 font-medium text-sm"
-           onclick="return confirm('Deactivate this user?');">
+        <button type="button"
+                class="text-orange-600 hover:text-orange-800 font-medium text-sm"
+                onclick="openConfirmModal(
+                  'Deactivate User',
+                  'Are you sure you want to deactivate this user?',
+                  '<?= base_url('super-admin/toggle-suspend/' . $uid); ?>'
+                )">
           Deactivate
-        </a>
-      <?php else: ?>
-        <a href="<?= base_url('super-admin/toggle-suspend/' . $uid); ?>"
-           class="text-green-600 hover:text-green-800 font-medium text-sm"
-           onclick="return confirm('Reactivate this user?');">
+        </button>
+     <?php else: ?>
+        <button type="button"
+                class="text-green-600 hover:text-green-800 font-medium text-sm"
+                onclick="openConfirmModal(
+                  'Reactivate User',
+                  'Are you sure you want to reactivate this user?',
+                  '<?= base_url('super-admin/toggle-suspend/' . $uid); ?>'
+                )">
           Reactivate
-        </a>
+        </button>
       <?php endif; ?>
     <?php else: ?>
       <button type="button"
@@ -169,12 +185,16 @@
       </button>
     <?php endif; ?>
 
-    <?php if ($canDelete): ?>
-      <a href="<?= base_url('super-admin/delete-admin/' . $uid); ?>"
-         class="text-red-600 hover:text-red-800 font-medium text-sm"
-         onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.');">
+     <?php if ($canDelete): ?>
+      <button type="button"
+              class="text-red-600 hover:text-red-800 font-medium text-sm"
+              onclick="openConfirmModal(
+                'Delete User',
+                'Are you sure you want to delete this user? This action cannot be undone.',
+                '<?= base_url('super-admin/delete-admin/' . $uid); ?>'
+              )">
         Delete
-      </a>
+      </button>
     <?php else: ?>
       <button type="button"
               title="<?= esc($lockedMsg) ?>"
@@ -191,7 +211,8 @@
         <?php endforeach; ?>
       <?php else: ?>
         <tr>
-          <td colspan="9" class="px-6 py-12 text-center text-gray-500">
+          <td colspan="8" class="px-6 py-12 text-center text-gray-500">
+
             No users found. Click "Add User" to create one.
           </td>
         </tr>
@@ -202,6 +223,51 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('modals') ?>
+
+<!-- ===== Confirmation Modal (Deactivate / Reactivate / Delete) ===== -->
+<div id="confirmModal"
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 hidden">
+  <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-sm mx-4">
+
+    <!-- Icon -->
+    <div class="flex justify-center mb-4">
+      <div class="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+        <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2
+                   2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <h3 id="confirmModalTitle"
+        class="text-xl font-bold text-gray-800 text-center mb-2">
+      Confirm Action
+    </h3>
+
+    <!-- Message -->
+    <p id="confirmModalMessage"
+       class="text-sm text-gray-600 text-center mb-6">
+      Are you sure?
+    </p>
+
+    <!-- Buttons -->
+    <div class="flex gap-3 justify-center">
+      <button type="button"
+              id="confirmModalYesBtn"
+              class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 font-semibold w-1/2">
+        Yes
+      </button>
+      <button type="button"
+              onclick="closeConfirmModal()"
+              class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 font-semibold w-1/2">
+        Cancel
+      </button>
+    </div>
+
+  </div>
+</div>
 
 <!-- ===== Add User Modal ===== -->
 <div id="addModal" class="modal">
@@ -1238,7 +1304,34 @@ window.onclick = function(event) {
   if (event.target === document.getElementById('privilegesModal')) closePrivilegesModal();
 };
 document.addEventListener('keydown', function(event) {
-  if (event.key === 'Escape') { closeAddModal(); closeEditModal(); closePrivilegesModal(); }
+  if (event.key === 'Escape') { closeAddModal(); closeEditModal(); closePrivilegesModal(); closeConfirmModal(); }
+});
+
+// ────────────────────────────────────────────────
+//   Confirmation Modal (Deactivate / Reactivate / Delete)
+// ────────────────────────────────────────────────
+var _confirmActionUrl = '';
+
+function openConfirmModal(title, message, actionUrl) {
+  _confirmActionUrl = actionUrl;
+  document.getElementById('confirmModalTitle').textContent   = title;
+  document.getElementById('confirmModalMessage').textContent = message;
+  document.getElementById('confirmModal').classList.remove('hidden');
+}
+
+function closeConfirmModal() {
+  _confirmActionUrl = '';
+  document.getElementById('confirmModal').classList.add('hidden');
+}
+
+document.getElementById('confirmModalYesBtn').addEventListener('click', function () {
+  if (_confirmActionUrl) {
+    window.location.href = _confirmActionUrl;
+  }
+});
+
+document.getElementById('confirmModal').addEventListener('click', function (e) {
+  if (e.target === this) closeConfirmModal();
 });
 </script>
 <?= $this->endSection() ?>

@@ -158,14 +158,21 @@ session()->set([
 
 $this->activityLogModel->logActivity($user['user_id'], 'password_verified', 'Password verified');
 
-// MPIN shortcut: if a valid non-expired MPIN exists, skip OTP entirely.
-if ($this->mpinModel->hasMpin((int) $user['user_id'])
+// FIRST LOGIN CHECK: If the user has never logged in before (last_login is NULL),
+// always force email OTP verification regardless of PIN status.
+// This ensures new accounts verify their email on first access.
+$isFirstLogin = empty($user['last_login']);
+
+// MPIN shortcut: if a valid non-expired MPIN exists AND this is NOT the first login,
+// skip OTP and go straight to PIN entry.
+if (!$isFirstLogin
+    && $this->mpinModel->hasMpin((int) $user['user_id'])
     && !$this->mpinModel->isExpired((int) $user['user_id'])) {
     session()->set('awaiting_mpin', true);
     return redirect()->to('/auth/mpin-entry');
 }
 
-// No MPIN set yet, or MPIN expired → generate and send OTP email.
+// First login OR no PIN set OR PIN expired → generate and send OTP email.
 $code = $this->verificationCodeModel->generateCode($user['user_id'], $email, 10);
 if (!$code) {
     return redirect()->back()->with('error', 'Failed to generate verification code. Please try again.');
@@ -177,6 +184,7 @@ if (!$emailSent) {
 }
 
 return redirect()->to('/auth/verify-code');
+
     }
 
     /**

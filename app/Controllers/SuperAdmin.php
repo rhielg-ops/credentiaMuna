@@ -137,69 +137,51 @@ class SuperAdmin extends BaseController
          // Build per-user edit permission map for the view.
         $actingAdminId     = (int) session()->get('user_id');
         $actingAccessLevel = session()->get('access_level') ?? 'limited';
-        $canEditMap    = [];
-        $lockOwnerMap  = [];
+        $canEditMap         = [];
+        $lockOwnerMap       = [];
+        $canToggleStatusMap = [];
+        $canDeleteMap       = [];
 
-foreach ($users as $u) {
-    $uid = (int) $u['user_id'];
+        foreach ($users as $u) {
+            $uid           = (int) $u['user_id'];
+            $targetIsAdmin = ($u['role'] === 'admin');
+            $isSelf        = ($uid === $actingAdminId);
 
-    $canEdit = $this->privilegeModel->canEditPrivileges(
-        $actingAdminId, $uid, $actingAccessLevel
-    );
-    $canEditMap[$uid] = $canEdit;
-$canEditMap          = [];
-$lockOwnerMap        = [];
-$canToggleStatusMap  = [];
-$canDeleteMap        = [];
+            // Full admins can do everything except modify themselves
+            if ($actingAccessLevel === 'full') {
+                $canEditMap[$uid]         = !$isSelf;
+                $canToggleStatusMap[$uid] = !$isSelf;
+                $canDeleteMap[$uid]       = !$isSelf;
+                continue;
+            }
 
-foreach ($users as $u) {
-    $uid            = (int) $u['user_id'];
-    $targetIsAdmin  = ($u['role'] === 'admin');
-    $isSelf         = ($uid === $actingAdminId);
+            // Limited actors cannot edit themselves or other admins
+            if ($isSelf || $targetIsAdmin) {
+                $canEditMap[$uid]         = false;
+                $canToggleStatusMap[$uid] = false;
+                $canDeleteMap[$uid]       = false;
+                if ($targetIsAdmin && !$isSelf) {
+                    $lockOwnerMap[$uid] = 'system (admin accounts are protected)';
+                }
+                continue;
+            }
 
-    // Full admins can do everything except delete/deactivate themselves
-    if ($actingAccessLevel === 'full') {
-        $canEditMap[$uid]         = !$isSelf;
-        $canToggleStatusMap[$uid] = !$isSelf;
-        $canDeleteMap[$uid]       = !$isSelf;
-        continue;
-    }
+            // Regular users: check privilege lock ownership
+            $lockOwnerId = $this->privilegeModel->getPrivilegeLockOwner($uid);
+            $isLockOwner = ($lockOwnerId === $actingAdminId);
+            $hasNoLock   = ($lockOwnerId === null);
+            $canEdit     = $hasNoLock || $isLockOwner;
 
-    // Limited actors: resolve the lock owner once
-    $lockOwnerId = $this->privilegeModel->getPrivilegeLockOwner($uid);
-    $isLockOwner = ($lockOwnerId === $actingAdminId);
-    $hasNoLock   = ($lockOwnerId === null);
+            $canEditMap[$uid]         = $canEdit;
+            $canToggleStatusMap[$uid] = $canEdit;
+            $canDeleteMap[$uid]       = $canEdit;
 
-    // Resolve display name for the tooltip
-    if ($targetIsAdmin) {
-        $lockOwnerMap[$uid] = 'system (admin accounts are protected)';
-    } elseif ($lockOwnerId && !$isLockOwner) {
-        $owner = $this->userModel->find($lockOwnerId);
-        $lockOwnerMap[$uid] = $owner['full_name'] ?? 'another administrator';
-    }
-
-    // Edit privileges: same rule as before
-    $canEdit = !$isSelf && !$targetIsAdmin && ($hasNoLock || $isLockOwner);
-    $canEditMap[$uid] = $canEdit;
-
-    // Deactivate/Reactivate: same rules as edit
-    $canToggleStatusMap[$uid] = $canEdit;
-
-    // Delete: same rules as edit (must own the config to delete)
-    $canDeleteMap[$uid] = $canEdit;
-}
-    // Resolve the lock-owner name for the tooltip shown in the view
-    if (!$canEdit) {
-        $lockOwnerId = $this->privilegeModel->getPrivilegeLockOwner($uid);
-        if ($lockOwnerId) {
-            $owner = $this->userModel->find($lockOwnerId);
-            $lockOwnerMap[$uid] = $owner['full_name'] ?? 'another administrator';
-        } else {
-            // Target is an admin account — blanket rule applies
-            $lockOwnerMap[$uid] = 'system (admin accounts are protected)';
+            if (!$canEdit && $lockOwnerId) {
+                $owner = $this->userModel->find($lockOwnerId);
+                $lockOwnerMap[$uid] = $owner['full_name'] ?? 'another administrator';
+            }
         }
-    }
-}
+
 
         $data = [
             'title'                  => 'User Management - CredentiaTAU',
@@ -352,14 +334,16 @@ foreach ($users as $u) {
                 "Created new {$roleDisplay}: {$userData['email']} (username: {$userData['username']})"
             );
 
-            // Send welcome email WITH MPIN
+           // Send welcome email WITH MPIN
             $this->emailService->sendWelcomeEmailWithMpin(
                 $userData['email'],
                 $userData['full_name'],
+                $userData['username'],
                 $initialPassword,
                 $mpinValue,
                 session()->get('full_name')
             );
+
 
             return redirect()->to('/super-admin/user-management')
                 ->with('success', 'User account created successfully! Welcome email with MPIN sent.');
@@ -526,8 +510,13 @@ public function approveAdmin($id)
         "Approved user: {$user['email']} (username: {$user['username']})"
     );
 
+    $this->emailService->sendApprovalNotification(
+        $user['email'],
+        $user['full_name'],
+        true   // isApproved = true
+    );
     return redirect()->back()->with('success', "User {$user['full_name']} has been approved and activated.");
-}
+  }
 
 /**
  * Reject pending user (delete account + mark request as rejected)
@@ -552,10 +541,18 @@ public function rejectAdmin($id)
         ]);
     }
 
-    $email = $user['email'];
+     $email = $user['email'];
     $name  = $user['full_name'];
 
+    // Send rejection email BEFORE deleting the user record
+    $this->emailService->sendApprovalNotification(
+        $email,
+        $name,
+        false  // isApproved = false
+    );
+
     $this->userModel->delete($id);
+
 
     $this->activityLogModel->logActivity(
         session()->get('user_id'),
