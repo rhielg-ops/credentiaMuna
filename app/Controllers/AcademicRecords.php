@@ -919,41 +919,80 @@ public function finalizeUpload()
     }
 
    // Use confirmed filename from Edit Filename modal, or fall back to timestamped original name
-$suggestedFilename = trim($this->request->getPost('suggested_filename') ?? '');
-if ($suggestedFilename) {
-    // Preserve the dot for extension — sanitize name and extension separately
-    $nameOnly = pathinfo($suggestedFilename, PATHINFO_FILENAME);
-    $extOnly  = pathinfo($suggestedFilename, PATHINFO_EXTENSION);
-    $safeName = preg_replace('/[^\w\-]/', '_', $nameOnly);
-    $finalName = $safeName . ($extOnly ? '.' . $extOnly : '.' . $metadata['ext']);
-} else {
-    $finalName = time() . '_' . $this->sanitiseName($metadata['original_name']);
-}
-$finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
-    // Move file from temp to permanent location
-    // Falls back to copy+delete if rename() fails across different drives/partitions (Windows)
+    $suggestedFilename = trim($this->request->getPost('suggested_filename') ?? '');
+    if ($suggestedFilename) {
+        $nameOnly  = pathinfo($suggestedFilename, PATHINFO_FILENAME);
+        $extOnly   = pathinfo($suggestedFilename, PATHINFO_EXTENSION);
+        $safeName  = preg_replace('/[^\w\-]/', '_', $nameOnly);
+        $finalName = $safeName . ($extOnly ? '.' . $extOnly : '.' . $metadata['ext']);
+    } else {
+        $finalName = time() . '_' . $this->sanitiseName($metadata['original_name']);
+    }
+    $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
+
+    // ── OCR data + hash (read from session — temp file not moved yet) ─────────
+    $ocrData  = $metadata['ocr'] ?? [];
+    $fileHash = $metadata['file_hash']
+             ?? $ocrData['file_hash']
+             ?? hash_file('sha256', $tempPath); // hash temp, not final — file not moved yet
+
+    // ── Duplicate Detection (BEFORE rename — temp file must stay intact) ──────
+    $duplicateAction = $this->request->getPost('duplicate_action') ?? '';
+
+    $existingByName = null;
+    foreach (glob($destDir . DIRECTORY_SEPARATOR . '*') ?: [] as $existingFile) {
+        if (is_file($existingFile) && strcasecmp(basename($existingFile), $finalName) === 0) {
+            $existingByName = $existingFile;
+            break;
+        }
+    }
+
+    $isDuplicate = ($existingByName !== null);
+
+    if ($isDuplicate && $duplicateAction === '') {
+        // Return 409 — temp file is still safe in WRITEPATH/temp_uploads/
+        return $this->response->setStatusCode(409)->setJSON([
+            'success'          => false,
+            'duplicate'        => true,
+            'duplicate_name'   => basename($existingByName),
+            'duplicate_folder' => $folderPath,
+            'message'          => 'A file with this name already exists in the selected folder.',
+        ]);
+    }
+
+    if ($isDuplicate && $duplicateAction === 'replace') {
+        @unlink($existingByName);
+        $this->fileMetadataModel
+            ->where('folder_path', $folderPath)
+            ->where('LOWER(filename)', strtolower(basename($existingByName)))
+            ->delete();
+    }
+
+    if ($isDuplicate && $duplicateAction === 'keep_both') {
+        $nameOnly = pathinfo($finalName, PATHINFO_FILENAME);
+        $extOnly  = pathinfo($finalName, PATHINFO_EXTENSION);
+        $counter  = 1;
+        do {
+            $finalName = $nameOnly . '(' . $counter . ')' . ($extOnly ? '.' . $extOnly : '');
+            $finalPath = $destDir . DIRECTORY_SEPARATOR . $finalName;
+            $counter++;
+        } while (file_exists($finalPath));
+    }
+
+    $hashDuplicate = $this->fileMetadataModel->findByHash($fileHash);
+    if ($hashDuplicate && !$isDuplicate) {
+        log_message('notice', 'Content duplicate: ' . $finalName
+            . ' matches ' . $hashDuplicate['filename']
+            . ' in ' . $hashDuplicate['folder_path']);
+    }
+    // ── END Duplicate Detection ───────────────────────────────────────────────
+
+    // Move temp file to permanent location (AFTER duplicate check clears)
     if (!@rename($tempPath, $finalPath)) {
         if (!copy($tempPath, $finalPath)) {
             return $this->jsonError('Failed to save file to permanent location.');
         }
-        unlink($tempPath); // delete temp only after successful copy
-    }
-
-    // ── Save metadata to file_metadata table ─────────────────────────
-    $ocrData  = $metadata['ocr'] ?? [];
-    // Reuse hash computed at temp-upload time to avoid reading the file twice.
-    // Only recompute if the session value is missing (should not happen normally).
-    $fileHash = $metadata['file_hash']
-             ?? $ocrData['file_hash']
-             ?? hash_file('sha256', $finalPath);
-
-    // Duplicate detection: warn but still save (let admin decide)
-    $duplicate = $this->fileMetadataModel->findByHash($fileHash);
-    if ($duplicate) {
-        log_message('notice', 'Duplicate file uploaded: ' . $finalName
-            . ' matches existing ' . $duplicate['filename']);
-        // You can add a session flash or JSON key here if you want to
-        // surface this in the UI — for now it just logs.
+        unlink($tempPath);
     }
 
     $docTypeId = null;

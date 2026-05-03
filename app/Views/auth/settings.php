@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <!-- Page Header -->
 <div class="bg-green-700 text-white p-8 rounded-xl mb-6">
-  <h2 class="text-3xl font-bold mb-2"><?= ($user['role'] === 'admin' && $user['access_level'] === 'full') ? 'Super Admin' : 'Admin' ?> Profile</h2>
+  <h2 class="text-3xl font-bold mb-2"><?= ($user['role'] === 'admin' && $user['access_level'] === 'full') ? 'Admin' : 'User' ?> Profile</h2>
   <p class="text-green-100">
     <?= ($user['role'] === 'admin' && $user['access_level'] === 'full') 
         ? 'Manage your account and system settings' 
@@ -302,7 +302,7 @@
     </div>
     <button type="submit"
             class="px-6 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 font-medium text-sm">
-      Update MPIN
+      Update PIN
     </button>
   </form>
 </div>

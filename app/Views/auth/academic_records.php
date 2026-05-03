@@ -173,7 +173,64 @@
     transition: background .1s, outline .1s;
   }
 
+  /* ── Upload Tray rows ─────────────────────────────────────────── */
+  .tray-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    border-bottom: 1px solid rgba(22,101,52,.1); /* light green divider */
+    transition: background .12s;
+  }
+  .tray-row:last-child { border-bottom: none; }
+  .tray-row:hover { background: rgba(22,163,74,.06); } /* subtle green hover */
+
+  .tray-row-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 14px;
+  }
+  /* Icon state colors — all green/white tones */
+  .tray-row-icon.queued    { background: #f0fdf4; color: #86efac; }
+  .tray-row-icon.uploading { background: #dcfce7; color: #16a34a; }
+  .tray-row-icon.reviewing { background: #bbf7d0; color: #15803d; }
+  .tray-row-icon.done      { background: #16a34a; color: #ffffff; }
+  .tray-row-icon.error     { background: #fee2e2; color: #ef4444; }
+
+  .tray-row-body {
+    flex: 1; min-width: 0;
+  }
+  .tray-row-name {
+    font-size: 12px; font-weight: 600; color: #166534; /* dark green text */
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tray-row-status {
+    font-size: 10.5px; color: #86efac; margin-top: 1px; /* light green status */
+  }
+  .tray-row-bar-wrap {
+    height: 3px; background: #dcfce7; border-radius: 2px; margin-top: 4px; overflow: hidden;
+  }
+  .tray-row-bar {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg,#16a34a,#4ade80); /* green progress bar */
+    transition: width .25s ease;
+  }
+  .tray-row-bar.done  { background: #16a34a; }
+  .tray-row-bar.error { background: #ef4444; }
+
+  /* Minimised state — hide the list but keep header visible */
+  #uploadProgressTray.minimised #trayFileList,
+  #uploadProgressTray.minimised #trayOverallWrap {
+    display: none;
+  }
+
+  /* Scrollbar inside tray */
+  #trayFileList::-webkit-scrollbar { width: 3px; }
+  #trayFileList::-webkit-scrollbar-track { background: transparent; }
+  #trayFileList::-webkit-scrollbar-thumb { background: #bbf7d0; border-radius: 2px; }
+
 </style>
+
 
 <!-- Page Title -->
 <div class="flex items-center justify-between mb-6">
@@ -480,9 +537,88 @@
   </button>
 </div>
 
+<!-- ── Google Drive–style Upload Progress Tray ─────────────────────────────── -->
+<div id="uploadProgressTray"
+     style="display:none;position:fixed;bottom:24px;right:24px;z-index:10000;
+            width:340px;background:#ffffff;border-radius:16px;
+            box-shadow:0 12px 40px rgba(22,101,52,0.18);overflow:hidden;
+            font-family:inherit;transition:transform .25s,opacity .25s;
+            border:1px solid #bbf7d0;">
+
+  <!-- Tray header — dark green background, white text -->
+  <div style="display:flex;align-items:center;justify-content:space-between;
+              padding:12px 16px;background:#166534;border-bottom:1px solid #15803d;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <!-- Animated upload icon -->
+      <svg id="trayHeaderIcon" style="width:18px;height:18px;flex-shrink:0;color:#ffffff;
+                                       animation:trayIconSpin 1.4s linear infinite;"
+           fill="none" viewBox="0 0 24 24">
+        <style>
+          @keyframes trayIconSpin { to { transform:rotate(360deg); } }
+        </style>
+        <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,.35)" stroke-width="2.5"/>
+        <path fill="rgba(255,255,255,.95)"
+              d="M4 12a8 8 0 018-8v3.5a4.5 4.5 0 00-4.5 4.5H4z"/>
+      </svg>
+      <span id="trayHeaderLabel"
+            style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:.3px;">
+        Uploading…
+      </span>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button id="trayMinimiseBtn"
+              onclick="toggleTrayMinimise()"
+              title="Minimise"
+              style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.75);
+                     display:flex;align-items:center;justify-content:center;
+                     width:24px;height:24px;border-radius:6px;transition:background .12s;"
+              onmouseover="this.style.background='rgba(255,255,255,.15)'"
+              onmouseout="this.style.background='none'">
+        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h14"/>
+        </svg>
+      </button>
+      <button onclick="cancelAllUploads()"
+              title="Cancel uploads"
+              style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.75);
+                     display:flex;align-items:center;justify-content:center;
+                     width:24px;height:24px;border-radius:6px;transition:background .12s;"
+              onmouseover="this.style.background='rgba(255,255,255,.15)'"
+              onmouseout="this.style.background='none'">
+        <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- File rows list (scrollable) — white background -->
+  <div id="trayFileList"
+       style="max-height:260px;overflow-y:auto;padding:6px 0;background:#ffffff;">
+    <!-- Rows injected by JS -->
+  </div>
+
+  <!-- Overall progress bar — white background, green bar -->
+  <div id="trayOverallWrap"
+       style="padding:8px 16px 12px;border-top:1px solid #dcfce7;background:#f0fdf4;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+      <span style="color:#15803d;font-size:11px;">Overall progress</span>
+      <span id="trayOverallPct" style="color:#15803d;font-size:11px;">0%</span>
+    </div>
+    <div style="height:4px;background:#dcfce7;border-radius:2px;overflow:hidden;">
+      <div id="trayOverallBar"
+           style="height:100%;width:0%;background:linear-gradient(90deg,#16a34a,#4ade80);
+                  border-radius:2px;transition:width .3s ease;"></div>
+    </div>
+  </div>
+</div>
+<!-- ── End Upload Progress Tray ─────────────────────────────────────────────── -->
+
 <?= $this->endSection() ?>
 
 <?= $this->section('modals') ?>
+
 
 <!-- PERMISSION DENIED MODAL -->
 <div id="permissionDeniedModal"
@@ -579,8 +715,8 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
           </svg>
           <p class="text-sm font-medium text-gray-500">Drag &amp; drop file here</p>
-          <p class="text-xs text-gray-400 mt-1">PDF, DOC, DOCX — max 10MB</p>
-          <input id="recordFileInput" type="file" name="record_file" accept=".pdf,.doc,.docx" class="hidden" onchange="updateRecordFileLabel(this)" />
+          <p class="text-xs text-gray-400 mt-1">PDF, DOC, DOCX, JPG, PNG — max 10MB</p>
+          <input id="recordFileInput" type="file" name="record_file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="hidden" onchange="updateRecordFileLabel(this)" />
         </label>
         <p id="recordFileName" class="text-xs text-green-700 font-medium mt-2 hidden"></p>
       </div>
@@ -632,24 +768,7 @@
     <form id="uploadFolderForm" action="<?= base_url('academic-records/upload-folder'); ?>" method="post" enctype="multipart/form-data">
       <?= csrf_field() ?>
       <input type="hidden" name="folder_path" id="uploadFolderFolderPath" value="">
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-2">Select Folder <span class="text-gray-400 font-normal">(Optional)</span></label>
-        <div class="relative">
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-          </svg>
-          <select name="folder_id"
-            class="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:border-green-700 focus:ring-2 focus:ring-green-700 appearance-none bg-white transition-colors">
-            <option value="">— No folder —</option>
-            <option value="academic-records">Academic Records</option>
-            <option value="transcripts-2023">Transcripts 2023</option>
-            <option value="certificates">Certificates</option>
-          </select>
-          <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-          </svg>
-        </div>
-      </div>
+     
       <div class="mb-4">
         <label id="folderDropZone" for="folderFilesInput"
           class="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-green-600 hover:bg-green-50 transition-colors"
@@ -742,7 +861,6 @@
                placeholder="e.g. 2023-001_Juan_dela_Cruz_Transcript_Record" />
         <span id="renameExtBadge" class="px-3 py-2.5 text-sm text-gray-400 bg-gray-50 border-l border-gray-300"></span>
       </div>
-      <p class="text-xs text-gray-400 mt-1.5">Spaces will be replaced with underscores automatically.</p>
     </div>
 
     <div class="flex justify-end gap-3">
@@ -794,7 +912,6 @@
       <input id="renameFolderInput" type="text"
              class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
              placeholder="e.g. 2024_Student_Records" />
-      <p class="text-xs text-gray-400 mt-1.5">Spaces will be replaced with underscores automatically.</p>
     </div>
 
     <div class="flex justify-end gap-3">
@@ -893,7 +1010,6 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
                placeholder="e.g. 2023-001_Juan_dela_Cruz_Transcript_Record" />
         <span id="editFilenameExt" class="px-3 py-2.5 text-sm text-gray-400 bg-gray-50 border-l border-gray-300">.pdf</span>
       </div>
-      <p class="text-xs text-gray-400 mt-1.5">Spaces will be replaced with underscores automatically.</p>
     </div>
     <div class="px-6 pb-6 flex gap-3">
       <button onclick="closeEditFilenameModal()"
@@ -1000,7 +1116,8 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
     });
   }
 
-  function showDuplicateConfirm(name, onReplace, onCancel) {
+  // duplicate_action: 'replace' | 'keep_both' | null (cancel)
+  function showDuplicateConfirm(name, onReplace, onCancel, onKeepBoth) {
     document.getElementById('_dupConfirmDialog')?.remove();
     const overlay = document.createElement('div');
     overlay.id = '_dupConfirmDialog';
@@ -1012,19 +1129,21 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
           <svg class="w-10 h-10 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
           </svg>
-          <p class="mt-4 text-center text-gray-800 font-semibold text-base leading-snug">A file or folder with this name already exists.</p>
+          <p class="mt-4 text-center text-gray-800 font-semibold text-base leading-snug">A file with this name already exists.</p>
           <p class="mt-1 text-center text-gray-500 text-sm break-all">"${name}"</p>
-          <p class="mt-2 text-center text-gray-700 text-sm">Do you want to replace it?</p>
+          <p class="mt-2 text-center text-gray-700 text-sm">What would you like to do?</p>
         </div>
-        <div class="px-8 py-4 flex gap-3 bg-white">
-          <button id="_dupCancel" class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium text-gray-700 transition-colors text-sm">Cancel</button>
-          <button id="_dupReplace" class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors text-sm">Replace</button>
+        <div class="px-8 py-4 flex flex-col gap-2 bg-white">
+          <button id="_dupReplace"  class="w-full px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold transition-colors text-sm">Replace Existing File</button>
+          <button id="_dupKeepBoth" class="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors text-sm">Keep Both <span class="font-normal opacity-80">(auto-rename new file)</span></button>
+          <button id="_dupCancel"   class="w-full px-4 py-2.5 border border-gray-300 rounded-xl hover:bg-gray-50 font-medium text-gray-700 transition-colors text-sm">Cancel Upload</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
     const close = () => overlay.remove();
-    document.getElementById('_dupReplace').addEventListener('click', () => { close(); onReplace(); });
-    document.getElementById('_dupCancel').addEventListener('click',  () => { close(); if (onCancel) onCancel(); });
+    document.getElementById('_dupReplace').addEventListener('click',  () => { close(); onReplace(); });
+    document.getElementById('_dupKeepBoth').addEventListener('click', () => { close(); if (onKeepBoth) onKeepBoth(); });
+    document.getElementById('_dupCancel').addEventListener('click',   () => { close(); if (onCancel) onCancel(); });
     overlay.addEventListener('click', e => { if (e.target === overlay) { close(); if (onCancel) onCancel(); } });
     document.addEventListener('keydown', function esc(e) {
       if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); if (onCancel) onCancel(); }
@@ -1282,9 +1401,18 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
   }
 
   function openFolder(folderPath, folderLabel) {
-    if (breadcrumbStack[breadcrumbStack.length - 1].folderPath === folderPath) return;
-    breadcrumbStack.push({ label: folderLabel, folderPath, isHome: false });
-    renderBreadcrumb();
+    // Only skip navigation if the path is identical AND the folder cache is
+    // still warm. After an upload, the cache is invalidated, so we must allow
+    // re-entry even when the breadcrumb already shows the same path.
+    const alreadyHere = breadcrumbStack[breadcrumbStack.length - 1].folderPath === folderPath;
+    const cacheWarm   = folderCache.has(folderPath) &&
+                        (Date.now() - (folderCache.get(folderPath)?.ts ?? 0)) < FOLDER_TTL_MS;
+    if (alreadyHere && cacheWarm) return;
+
+    if (!alreadyHere) {
+      breadcrumbStack.push({ label: folderLabel, folderPath, isHome: false });
+      renderBreadcrumb();
+    }
     _htSetSelected(folderPath ?? '');
     _htExpandToPath(folderPath);
     loadFolder(folderPath);
@@ -1934,6 +2062,11 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
     document.getElementById('uploadModal').classList.remove('hidden');
   }
   function closeUploadModal() {
+    // If user clicks Cancel/X during a queued multi-upload, mark that tray row as errored
+    if (window.UploadTray && currentTempMetadata && currentTempMetadata._trayId) {
+      window.UploadTray.setError(currentTempMetadata._trayId, 'Cancelled');
+    }
+
     document.getElementById('uploadModal').classList.add('hidden');
     document.getElementById('uploadForm')?.reset();
     const submitBtn = document.querySelector('#uploadForm button[type="submit"]');
@@ -2058,7 +2191,7 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
       </div>
       <button onclick="applyOcrToFolderBrowser()"
               class="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg transition-colors">
-        ✦ Apply Suggestions or edit
+        ✦ Apply or Edit Suggestions
       </button>`;
     const footer = document.querySelector('#previewModal .flex.items-center.justify-end.gap-3');
     if (footer) footer.parentNode.insertBefore(panel, footer);
@@ -2207,14 +2340,27 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
   }
   async function cancelTempUpload() {
     if (!currentTempToken) { closePreviewModal(); return; }
+    const _nextInQueue = currentTempMetadata?._onComplete || null;
     try {
       const fd = new FormData();
       fd.append(CSRF_NAME, CSRF_TOKEN);
       fd.append('token', currentTempToken);
       await fetch(API.listFolder.replace('/list-folder', '/cancel-pending'), { method: 'POST', body: fd });
     } catch (e) { console.error('Error cancelling upload:', e); }
-    finally { currentTempToken = null; currentTempMetadata = null; closePreviewModal(); }
+    finally {
+      currentTempToken    = null;
+      currentTempMetadata = null;
+      closePreviewModal();
+
+      // If there are more files queued, the user intentionally cancelled —
+      // stop the queue and hide the tray instead of continuing to the next file.
+      if (typeof _nextInQueue === 'function') {
+        if (window.UploadTray) window.UploadTray.cancelAll();
+      }
+    }
   }
+
+
 
   // =========================================================================
   // FIX #1 (continued): Folder Browser — now backed by unified index
@@ -2484,24 +2630,14 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
   }
 
   // ─── Finalize Upload ──────────────────────────────────────────────────────
-  async function finalizeUploadToFolder() {
+ async function finalizeUploadToFolder() {
     if (!currentTempToken) { showDialog('No upload in progress.', 'warning'); return; }
-    const uploadedName  = currentTempMetadata?.original_name || '';
-    if (uploadedName) {
-      const cachedFiles = _folderBrowserFilesCache[selectedFolderPath] || [];
-      const duplicate   = cachedFiles.find(f => (f.name || '').toLowerCase() === uploadedName.toLowerCase());
-      if (duplicate) {
-        showDuplicateConfirm(uploadedName,
-          () => _doFinalizeUploadToFolder(true, duplicate.path || ''),
-          null
-        );
-        return;
-      }
-    }
-    _doFinalizeUploadToFolder(false);
+    // Duplicate check is handled server-side (409 response).
+    // No JS pre-check needed — server is the source of truth.
+    _doFinalizeUploadToFolder('');
   }
 
-  async function _doFinalizeUploadToFolder(isReplace = false, existingFilePath = '') {
+  async function _doFinalizeUploadToFolder(duplicateAction = '') {
     if (!currentTempToken) return;
     const formData = new FormData();
     formData.append(CSRF_NAME, CSRF_TOKEN);
@@ -2509,6 +2645,8 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
     formData.append('folder_path', selectedFolderPath);
     if (currentTempMetadata?.suggested_filename)
       formData.append('suggested_filename', currentTempMetadata.suggested_filename);
+    if (duplicateAction)
+      formData.append('duplicate_action', duplicateAction);
 
     const btn = document.querySelector('#folderBrowserModal button[onclick*="finalizeUpload"]');
     const originalText = btn ? btn.textContent.trim() : 'Save to This Folder';
@@ -2519,28 +2657,91 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
     const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = originalText; } };
 
     try {
-      if (isReplace && existingFilePath) {
-        await apiFetch(API.deleteFile, 'POST', { path: existingFilePath });
-      }
       const response = await fetch(API.listFolder.replace('/list-folder', '/finalize-upload'), { method: 'POST', body: formData });
-      const data     = await response.json();
+
+      // 409 = server detected a duplicate — show the 3-option modal
+      if (response.status === 409) {
+        resetBtn();
+        const conflict = await response.json();
+        const dupName  = conflict.duplicate_name || currentTempMetadata?.original_name || 'this file';
+        showDuplicateConfirm(
+          dupName,
+          () => _doFinalizeUploadToFolder('replace'),    // Replace existing
+          () => { resetBtn(); },                          // Cancel — keep temp, do nothing
+          () => _doFinalizeUploadToFolder('keep_both')   // Keep Both — auto-rename
+        );
+        return;
+      }
+
+      const data = await response.json();
       if (!data.success) { showDialog('Failed to save: ' + data.message, 'error'); resetBtn(); return; }
 
+      // ── Capture everything we need BEFORE closing any modal ──────────────
+      // closeFolderBrowserModal() zeroes out selectedFolderPath, so capture first.
+      const _savedDest    = selectedFolderPath;
+      const _destParent   = _savedDest.includes('/')
+        ? _savedDest.slice(0, _savedDest.lastIndexOf('/'))
+        : '';
+      const _nextInQueue  = currentTempMetadata?._onComplete || null;
+      const _trayId       = currentTempMetadata?._trayId || null;
+
+      // ── Close modals & clear state ────────────────────────────────────────
       resetBtn();
       closeFolderBrowserModal();
       closePreviewModal();
-      showDialog(isReplace ? 'File replaced successfully.' : (data.message || 'Record saved successfully.'), 'success');
+
+      // ── Tray: mark done ───────────────────────────────────────────────────
+      if (window.UploadTray && _trayId) {
+        window.UploadTray.setDone(_trayId);
+      }
+
       currentTempToken    = null;
       currentTempMetadata = null;
-      invalidateFolderCache(selectedFolderPath); // FIX #2: targeted
-      loadFolder(currentFolderPath);
-      _htRefreshPath(selectedFolderPath);        // FIX #8: surgical tree refresh
+
+      // ── Show success message ──────────────────────────────────────────────
+      showDialog(duplicateAction === 'replace' ? 'File replaced successfully.' : (data.message || 'Record saved successfully.'), 'success');
+
+      // ── Navigate INTO the destination folder so the user sees the file ────
+      // Only navigate if the destination differs from where the user currently is.
+      if (_savedDest !== currentFolderPath) {
+        // Push it onto the breadcrumb stack so the user can navigate back naturally
+        const destLabel = _savedDest.split('/').pop() || 'Academic Records';
+        breadcrumbStack.push({ label: destLabel, folderPath: _savedDest, isHome: false });
+        renderBreadcrumb();
+        _htSetSelected(_savedDest);
+        _htExpandToPath(_savedDest);
+      }
+
+      // ── Bust caches for destination, its parent, and previously viewed folder
+      invalidateFolderCache(_savedDest);
+      invalidateFolderCache(_destParent);
+      invalidateFolderCache(currentFolderPath);
+
+      delete _htCache[_savedDest];
+      delete _htCache[_destParent];
+      delete _htCache[currentFolderPath];
+
+      // ── Reload: always load the destination so the new file appears ───────
+      await loadFolder(_savedDest);
+
+      // ── Refresh tree ──────────────────────────────────────────────────────
+      await _htRefreshPath(_savedDest);
+      if (_destParent && _destParent !== _savedDest) {
+        await _htRefreshPath(_destParent);
+      }
+
+      // ── Patch file-count badges ───────────────────────────────────────────
+      _htPatchBadgeFromCache(_savedDest);
+      if (_destParent) _htPatchBadgeFromCache(_destParent);
+
+      // ── Trigger next queued file (drag-drop multi-upload) ─────────────────
+      if (typeof _nextInQueue === 'function') _nextInQueue();
+
     } catch (error) {
       showDialog('Failed to save file. Please try again.', 'error');
       resetBtn();
     }
   }
-
   // ─── Upload Folder ────────────────────────────────────────────────────────
   const UPLOAD_FOLDER_BTN_LABEL = 'Upload Folder';
   let _pendingFolderFiles = [];
@@ -2730,15 +2931,34 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
     };
     const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = originalText; } };
     setLoading('Saving...');
-    try {
-      const allFiles   = _pendingFolderFiles;
-      const rootName   = _pendingFolderName;
+
+    // ── Show upload tray for folder upload (same UX as file uploads) ──────────
+    const allFiles  = _pendingFolderFiles;
+    const rootName  = _pendingFolderName;
+    let _trayIds    = [];
+    if (window.UploadTray && allFiles.length > 0) {
+      _trayIds = window.UploadTray.initBatch(allFiles);
+      window.UploadTray.resetCancelled();
+    }
+
+     try {
       const destPrefix = selectedFolderPath ? selectedFolderPath + '/' : '';
-      const rootPath   = destPrefix + rootName;
+      // FIX BUG 1: When skipRootCreation is true the root folder already exists
+      // at selectedFolderPath (the user navigated INTO it in the folder browser).
+      // Use selectedFolderPath directly as rootPath to avoid the double-nesting
+      // "dummy records/dummy records" problem.
+      const rootPath = skipRootCreation
+        ? selectedFolderPath
+        : destPrefix + rootName;
+
+      // ── Step 1: create root folder ─────────────────────────────────────────
       if (!skipRootCreation) {
         const createData = await apiFetch(API.createFolder, 'POST', { parent_path: selectedFolderPath, folder_name: rootName });
         if (!createData.success) { showDialog('Could not create folder: ' + createData.message, 'error'); resetBtn(); return; }
       }
+
+
+      // ── Step 2: create sub-directories ────────────────────────────────────
       const subDirSet = new Set();
       allFiles.forEach(f => {
         const parts = (f.webkitRelativePath || f.name).split('/');
@@ -2751,6 +2971,8 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
         const parentPath = rootPath + (parts.length > 1 ? '/' + parts.slice(0, -1).join('/') : '');
         await apiFetch(API.createFolder, 'POST', { parent_path: parentPath, folder_name: folderName });
       }
+
+      // ── Step 3: upload files ───────────────────────────────────────────────
       if (allFiles.length > 0) {
         const byFolder = new Map();
         allFiles.forEach(f => {
@@ -2761,6 +2983,7 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
           byFolder.get(target).push(f);
         });
         let done = 0;
+        let trayIdx = 0;
         const uploadErrors = [];
         for (const [folderPath, files] of byFolder) {
           setLoading('Uploading ' + done + ' / ' + allFiles.length + '...');
@@ -2768,31 +2991,155 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
           fd.append(CSRF_NAME, CSRF_TOKEN);
           fd.append('folder_path', folderPath);
           files.forEach(f => fd.append('folder_files[]', f));
+
+          // Mark tray rows as "uploading" for this batch
+          if (window.UploadTray) {
+            files.forEach((_, i) => {
+              const tid = _trayIds[trayIdx + i];
+              if (tid) window.UploadTray.setReviewing(tid);
+            });
+          }
+
           try {
             const res  = await fetch(API.uploadFolder, { method: 'POST', body: fd });
             const data = await res.json();
-            if (!data.success) uploadErrors.push(data.message);
-            else if (data.errors?.length) uploadErrors.push(...data.errors);
-          } catch(e) { uploadErrors.push(folderPath + ': network error'); }
-          done += files.length;
+            if (!data.success) {
+              uploadErrors.push(data.message);
+              // Mark batch as errored in tray
+              if (window.UploadTray) {
+                files.forEach((_, i) => {
+                  const tid = _trayIds[trayIdx + i];
+                  if (tid) window.UploadTray.setError(tid, data.message || 'Failed');
+                });
+              }
+            } else {
+              if (data.errors?.length) uploadErrors.push(...data.errors);
+              // Mark batch as done in tray
+              if (window.UploadTray) {
+                files.forEach((_, i) => {
+                  const tid = _trayIds[trayIdx + i];
+                  if (tid) window.UploadTray.setDone(tid);
+                });
+              }
+            }
+          } catch(e) {
+            uploadErrors.push(folderPath + ': upload failed');
+            if (window.UploadTray) {
+              files.forEach((_, i) => {
+                const tid = _trayIds[trayIdx + i];
+                if (tid) window.UploadTray.setError(tid, 'Upload failed');
+              });
+            }
+          }
+          done    += files.length;
+          trayIdx += files.length;
         }
         if (uploadErrors.length) showDialog('Some files were skipped: ' + uploadErrors.slice(0, 3).join(', '), 'warning');
       }
+
+      // ── Step 4: close modal and update UI ─────────────────────────────────
+      // Capture destination BEFORE closeFolderBrowserModal() zeroes selectedFolderPath
+      const _savedDest        = selectedFolderPath;
+      // FIX BUG 1: rootPath is already correctly set above (handles skipRootCreation).
+      // Use it directly instead of rebuilding the path (which caused the duplicate).
+      const _uploadedRootPath = rootPath;
+
+
+
       resetBtn();
       closeFolderBrowserModal();
+
+      // ── Show success — NOT an error — this is the correct success path ─────
       showDialog(skipRootCreation ? 'Folder replaced successfully.' : 'Folder uploaded successfully.', 'success');
+
       _pendingFolderFiles    = [];
       _pendingFolderName     = '';
       _folderBrowserSaveMode = 'record';
-      invalidateFolderCache(selectedFolderPath); // FIX #2
-      invalidateUnifiedIndex();                  // FIX #1
-      loadFolder(currentFolderPath);
-      _htRefreshPath(selectedFolderPath);        // FIX #8
+
+       // ── Bust ALL relevant caches so loadFolder fetches fresh data ──────────
+      invalidateFolderCache(_savedDest);
+      invalidateFolderCache(_uploadedRootPath);
+      invalidateFolderCache(currentFolderPath);
+      invalidateUnifiedIndex();
+      delete _htCache[_savedDest];
+      delete _htCache[_uploadedRootPath];
+      delete _htCache[currentFolderPath];
+
+     // ── Bust cache for every subfolder created during upload ───────────────
+      // subDirs contains relative paths like "SubA" or "SubA/SubB".
+      // Convert each to an absolute path and invalidate both folderCache and
+      // _htCache so no level ever returns stale empty data.
+      subDirs.forEach(rel => {
+        const absPath = _uploadedRootPath + '/' + rel;
+        invalidateFolderCache(absPath);
+        delete _htCache[absPath];
+        // Also invalidate the parent of each subfolder so that parent's
+        // child-list is refetched and includes the new nested directories.
+        const parentOfSub = absPath.includes('/')
+          ? absPath.slice(0, absPath.lastIndexOf('/'))
+          : '';
+        if (parentOfSub && parentOfSub !== _uploadedRootPath) {
+          invalidateFolderCache(parentOfSub);
+          delete _htCache[parentOfSub];
+        }
+      });
+      // Finally, force a full unified index rebuild so search and folder browser
+      // reflect all new paths immediately.
+      invalidateUnifiedIndex();
+
+
+
+     // ── Navigate into the newly-created folder and refresh the tree ────────
+      breadcrumbStack.push({ label: rootName, folderPath: _uploadedRootPath, isHome: false });
+      renderBreadcrumb();
+
+      // Step A: Refresh the parent level so the new root folder node appears
+      // in the storage tree immediately. We await this so the DOM is updated
+      // before we try to expand into it.
+      await _htRefreshPath(_savedDest);
+
+     // Step B: If the uploaded folder contains subfolders, refresh root level
+      // AND each intermediate subfolder level so the full hierarchy is visible.
+      if (subDirs.length > 0) {
+        await _htRefreshLevel(_uploadedRootPath);
+        // Refresh each subfolder level in depth order so parent nodes exist
+        // in the DOM before their children are appended.
+        const sortedDirs = [...subDirs].sort((a, b) => a.split('/').length - b.split('/').length);
+        for (const rel of sortedDirs) {
+          const absPath = _uploadedRootPath + '/' + rel;
+          // Only refresh levels that have children (i.e. not leaf directories)
+          const hasChildren = sortedDirs.some(d => d !== rel && d.startsWith(rel + '/'));
+          if (hasChildren) {
+            delete _htCache[absPath];
+            await _htRefreshLevel(absPath);
+          }
+        }
+      }
+
+      // Flush microtask queue so all freshly appended <li> nodes are queryable
+      await new Promise(r => setTimeout(r, 0));
+
+      // Step C: Expand the full path in the tree and highlight the new folder
+      await _htExpandToPath(_uploadedRootPath);
+      _htSetSelected(_uploadedRootPath);
+
+      // Step D: Load the main content panel (fire-and-forget — runs in parallel
+      // with the tree highlight above since the tree DOM is already updated)
+      loadFolder(_uploadedRootPath);
+
+
+      if (_savedDest && _savedDest !== _uploadedRootPath) {
+        _htPatchBadgeFromCache(_savedDest);
+      }
+
+
+
     } catch (err) {
       showDialog('Failed to save. Please try again.', 'error');
       resetBtn();
     }
   }
+
 
   function updateRecordFileLabel(input) {
     const label = document.getElementById('recordFileName');
@@ -2887,7 +3234,10 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
           function readAll() {
             reader.readEntries(async (results) => {
               if (results.length === 0) {
-                const nested = await Promise.all(allEntries.map(e => traverseEntry(e, pathPrefix + entry.name + '/')));
+                // pathPrefix already has this directory's name from the caller.
+                // Do NOT append entry.name again — pass pathPrefix directly so
+                // children inherit the correct cumulative path without duplication.
+                const nested = await Promise.all(allEntries.map(e => traverseEntry(e, pathPrefix)));
                 resolve(nested.flat());
               } else { allEntries.push(...results); readAll(); }
             }, () => resolve([]));
@@ -2897,6 +3247,8 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
       }
       return [];
     }
+
+
     Promise.all(entries.map(entry => {
       if (entry.isDirectory) return traverseEntry(entry, entry.name + '/');
       return traverseEntry(entry, '');
@@ -2947,10 +3299,27 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
   async function _doDeleteFile(filePath) {
     const data = await apiFetch(API.deleteFile, 'POST', { path: filePath });
     if (!data.success) { showDialog('Delete failed: ' + data.message, 'error'); return; }
+
+    // Bust the folder cache so loadFolder re-fetches from the server
     invalidateFolderCache(currentFolderPath);
-    loadFolder(currentFolderPath);
-    _htRefreshPath(currentFolderPath);
+
+    // Explicitly clear the hierarchy-tree cache for this path AND its parent
+    // before calling _htRefreshPath, otherwise _htLoadChildren will short-circuit
+    // and return the stale cached result (file count won't decrease).
+    const _htParentOfCurrent = currentFolderPath.includes('/')
+      ? currentFolderPath.slice(0, currentFolderPath.lastIndexOf('/'))
+      : '';
+    delete _htCache[currentFolderPath];
+    delete _htCache[_htParentOfCurrent];
+
+    // Reload the main list and refresh the tree node (now guaranteed fresh)
+    await loadFolder(currentFolderPath);
+    await _htRefreshPath(currentFolderPath);
+
+    // Patch the badge in the tree immediately from the freshly-loaded cache
+    _htPatchBadgeFromCache(currentFolderPath);
   }
+
 
   function showDeleteConfirmModal(filePath) {
     // Remove any previous instance
@@ -3008,16 +3377,74 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
   }
 
 
-  async function fileAction_deleteFolder(folderPath, menuId) {
+ async function fileAction_deleteFolder(folderPath, menuId) {
     if (!PRIV_DELETE_FOLDER) { denyAction(); return; }
-    if (!confirm('Delete this folder and ALL its contents? This cannot be undone.')) return;
-    const data = await apiFetch(API.deleteFolder, 'POST', { path: folderPath });
-    if (!data.success) { showDialog('Delete failed: ' + data.message, 'error'); return; }
-    const parentPath = folderPath.includes('/') ? folderPath.slice(0, folderPath.lastIndexOf('/')) : '';
-    invalidateFolderCache(currentFolderPath); // FIX #2
-    loadFolder(currentFolderPath);
-    _htRefreshPath(parentPath);               // FIX #8
+    // Show styled confirmation modal instead of native browser confirm()
+    showDeleteFolderConfirmModal(folderPath);
   }
+
+  function showDeleteFolderConfirmModal(folderPath) {
+    document.getElementById('_deleteFolderConfirmModal')?.remove();
+
+    const folderName = folderPath.split('/').pop();
+    const overlay    = document.createElement('div');
+    overlay.id       = '_deleteFolderConfirmModal';
+    overlay.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4';
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+
+    overlay.innerHTML = `
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <div class="flex flex-col items-center px-8 py-7 bg-red-50 border-b border-red-200">
+          <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <svg class="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+            </svg>
+          </div>
+          <p class="text-lg font-bold text-gray-900 text-center mb-1">
+            Are you sure you want to delete this folder and all its records?
+          </p>
+          <p class="text-sm text-gray-500 text-center break-all px-2">"${folderName}"</p>
+          <p class="text-xs text-red-600 mt-2 text-center">This action cannot be undone.</p>
+        </div>
+        <div class="flex gap-3 px-6 py-4 bg-white">
+          <button id="_deleteFolderConfirmCancelBtn"
+                  class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl
+                         hover:bg-gray-50 font-medium text-gray-700 transition-colors text-sm">
+            Cancel
+          </button>
+          <button id="_deleteFolderConfirmYesBtn"
+                  class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white
+                         font-semibold rounded-xl transition-colors text-sm">
+            Yes, Delete
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+
+    document.getElementById('_deleteFolderConfirmYesBtn').addEventListener('click', async () => {
+      close();
+      const data = await apiFetch(API.deleteFolder, 'POST', { path: folderPath });
+      if (!data.success) { showDialog('Delete failed: ' + data.message, 'error'); return; }
+      const parentPath = folderPath.includes('/') ? folderPath.slice(0, folderPath.lastIndexOf('/')) : '';
+      invalidateFolderCache(currentFolderPath);
+      invalidateUnifiedIndex();
+      delete _htCache[folderPath];
+      delete _htCache[parentPath];
+      loadFolder(currentFolderPath);
+      _htRefreshPath(parentPath);
+    });
+
+    document.getElementById('_deleteFolderConfirmCancelBtn').addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function escHandler(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escHandler); }
+    });
+  }
+
 
   // ─── Preview ──────────────────────────────────────────────────────────────
   let currentPreviewUrl = null;
@@ -3087,18 +3514,28 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
     // Case 2 — Image (jpg/jpeg/png) shown directly
     const img = content.querySelector('img');
     if (img) {
-      // Build a minimal printable page with just the image
+      // Build a minimal printable page with just the image.
+      // NOTE: Do NOT call window.close() inside onload — window.print() is
+      // non-blocking on modern browsers, so calling close() immediately causes
+      // the print window to disappear before the dialog appears.
       const printWin = window.open('', '_blank', 'width=800,height=600');
       if (!printWin) return;
       printWin.document.write(
         '<!DOCTYPE html><html><head><title>Print</title>' +
-        '<style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;}' +
-        'img{max-width:100%;max-height:100vh;object-fit:contain;}</style>' +
-        '</head><body><img src="' + img.src + '" onload="window.print();window.close();"></body></html>'
+        '<style>' +
+        '  body { margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; }' +
+        '  img  { max-width:100%; max-height:100vh; object-fit:contain; }' +
+        '  @media print { body { margin:0; } img { max-width:100%; max-height:100%; } }' +
+        '</style>' +
+        '</head><body>' +
+        '<img src="' + img.src + '" onload="window.focus(); window.print();">' +
+        '<script>window.addEventListener("afterprint", () => window.close());<\/script>' +
+        '</body></html>'
       );
       printWin.document.close();
       return;
     }
+
 
     // Case 3 — Fallback: use the preview URL (not download URL)
     if (currentPreviewUrl) {
@@ -3464,8 +3901,36 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
       _htToggle(li, folder, depth);
     });
     li.querySelector('.ht-row').addEventListener('mouseenter', () => {
+      // Pre-load children data (original behaviour — keeps it fast)
       if (!_htCache[folder.path]?.loaded) _htLoadChildren(folder.path);
+
+      // ── Auto-expand on hover (file-explorer style) ────────────────────────
+      // Start a 600 ms timer. If the cursor is still over this folder when
+      // it fires, expand it — exactly like Windows Explorer / Google Drive.
+      // The timer is stored on the element so mouseleave can cancel it.
+      const row = li.querySelector('.ht-row');
+      if (!row._htHoverTimer) {
+        row._htHoverTimer = setTimeout(async () => {
+          row._htHoverTimer = null;
+          const childrenUl  = li.querySelector('ul[data-children-of]');
+          const isCollapsed = !childrenUl || childrenUl.classList.contains('closed');
+          if (isCollapsed) {
+            await _htToggle(li, { path: folder.path, name: folder.name }, depth);
+          }
+        }, 600);
+      }
+      // ─────────────────────────────────────────────────────────────────────
     });
+
+    li.querySelector('.ht-row').addEventListener('mouseleave', () => {
+      // Cancel pending hover-expand when the cursor moves away
+      const row = li.querySelector('.ht-row');
+      if (row._htHoverTimer) {
+        clearTimeout(row._htHoverTimer);
+        row._htHoverTimer = null;
+      }
+    });
+
 
     // ── Drag-and-Drop: make this folder node a valid DROP TARGET ─────────────
     // Files and folder-cards dragged from #masterList can be dropped here.
@@ -3516,23 +3981,25 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
       // automatically schedules the same logic for any newly revealed
       // child rows so that deeper nesting keeps expanding while the
       // user holds the drag over nested folders.
-      if (!row._htExpandTimer) {
-        row._htExpandTimer = setTimeout(async () => {
-          row._htExpandTimer = null;
-          const li = row.closest('li');
-          if (!li) return;
-          const childrenUl = li.querySelector('ul[data-children-of]');
-          const isCollapsed = !childrenUl || childrenUl.classList.contains('closed');
-          if (isCollapsed) {
-            // Trigger the normal toggle so children load if not yet cached
-            await _htToggle(li, { path: folder.path, name: folder.name }, depth);
-            // After expansion, simulate a fresh dragenter on the same row
-            // so any nested folders the user hovers over will also get their
-            // own auto-expand timers attached via the normal dragenter handler.
-            // (The child <li> rows are rendered after _htToggle resolves.)
-          }
-        }, 700);
-      }
+       // Always clear any stale timer before starting a fresh one so that
+      // re-entering the same row after the previous timer fired (and set
+      // _htExpandTimer back to null) correctly starts a new countdown.
+      if (row._htExpandTimer) clearTimeout(row._htExpandTimer);
+      row._htExpandTimer = setTimeout(async () => {
+        row._htExpandTimer = null;
+        const li = row.closest('li');
+        if (!li) return;
+        const childrenUl  = li.querySelector('ul[data-children-of]');
+        const isCollapsed = !childrenUl || childrenUl.classList.contains('closed');
+        if (isCollapsed) {
+          // Trigger the normal toggle so children load if not yet cached
+          await _htToggle(li, { path: folder.path, name: folder.name }, depth);
+          // Child rows rendered by _htToggle inherit their own dragenter
+          // handlers (attached by _htAppendNode), so deep navigation works
+          // automatically as the user drags over newly revealed subfolders.
+        }
+      }, 700);
+
       // ─────────────────────────────────────────────────────────────────────
     });
 
@@ -3874,9 +4341,47 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
       _htSetSelected(_htSelectedPath);
       _htUpdateCount();
     } else {
-      const cu = document.querySelector(`#hierarchyTree ul[data-children-of="${CSS.escape(path)}"]`);
-      if (cu && !cu.classList.contains('closed')) {
+      const parentLi = document.querySelector(`#hierarchyTree li[data-path="${CSS.escape(path)}"]`);
+      let cu = document.querySelector(`#hierarchyTree ul[data-children-of="${CSS.escape(path)}"]`);
+
+      // FIX BUG 2: If the children UL doesn't exist yet (parent never expanded),
+      // create and attach it so the new subfolder appears immediately without
+      // requiring a manual expand or browser refresh.
+      if (!cu && parentLi) {
+        cu = document.createElement('ul');
+        cu.className = 'ht-children open';
+        cu.dataset.childrenOf = path;
+        cu.style.maxHeight = 'none';
+        parentLi.appendChild(cu);
+        // Update the toggle button to show it now has children
+        const toggleBtn = parentLi.querySelector('.ht-toggle');
+        if (toggleBtn) {
+          toggleBtn.classList.remove('leaf');
+          toggleBtn.classList.add('open');
+        }
+      }
+
+      if (cu) {
+        // If closed, open it so the user can see the new subfolder
+        if (cu.classList.contains('closed')) {
+          cu.classList.remove('closed');
+          cu.classList.add('open');
+          cu.style.maxHeight = 'none';
+          const toggleBtn = parentLi?.querySelector('.ht-toggle');
+          if (toggleBtn) {
+            // FIX: always remove 'leaf' when we know children now exist,
+            // so the toggle remains clickable even if it was previously
+            // rendered as a leaf node (zero children).
+            toggleBtn.classList.remove('leaf');
+            toggleBtn.classList.add('open');
+          }
+        } else {
+          // Parent is already open — still ensure toggle is not stuck in leaf state
+          const toggleBtn = parentLi?.querySelector('.ht-toggle');
+          if (toggleBtn) toggleBtn.classList.remove('leaf');
+        }
         const depth = parseInt(cu.closest('li[data-depth]')?.dataset.depth ?? 1);
+
         cu.innerHTML = '';
         if (folders.length === 0) {
           cu.innerHTML = `<li style="padding:4px 10px 4px ${14+(depth+1)*16}px;font-size:11px;color:#94a3b8;font-style:italic;">No subfolders</li>`;
@@ -3889,8 +4394,42 @@ $dynamicDocTypes  = $recordTypeModel->getAllActive();
     }
   }
 
+
+  // ── Patch a single tree-node badge from already-fetched cache data ───────
+  // Reads folderCache[path].files.length so there is NO extra network request.
+  // Call this after await loadFolder() to guarantee the cache is fresh.
+  function _htPatchBadgeFromCache(folderPath) {
+    // Pull file count from the folder cache (populated by loadFolder)
+    const cached   = folderCache.get(folderPath);
+    const newCount = cached ? (cached.files || []).length : null;
+    if (newCount === null) return; // cache miss — nothing to patch
+
+    // Locate this folder's rendered tree row
+    const row = document.querySelector(
+      `#hierarchyTree .ht-row[data-path="${CSS.escape(folderPath)}"]`
+    );
+    if (!row) return; // node not yet visible in the tree — skip
+
+    const inner = row.querySelector('.ht-inner');
+    if (!inner) return;
+
+    // Determine the depth-colour class for badge styling
+    const li = row.closest('li[data-depth]');
+    const dc = _htDepthClass(parseInt(li?.dataset.depth ?? 1));
+
+    // Remove the stale badge and re-stamp with the new count
+    inner.querySelector('.ht-badge')?.remove();
+    if (newCount > 0) {
+      const badge = document.createElement('span');
+      badge.className   = `ht-badge ${dc}`;
+      badge.textContent = newCount;
+      inner.appendChild(badge);
+    }
+  }
+
   // Boot hierarchy tree after initial folder load settles
   setTimeout(() => initHierarchyTree(), 600);
+
 </script>
 
 <script>
@@ -3988,6 +4527,251 @@ document.addEventListener('click', function(e) {
   }
 }, true);
 
+// ══════════════════════════════════════════════════════════════════════════════
+// UPLOAD PROGRESS TRAY  — Google Drive–style multi-file status panel
+// ══════════════════════════════════════════════════════════════════════════════
+(function UploadTray() {
+
+  // ── Internal state ──────────────────────────────────────────────────────────
+  const _files   = [];          // { id, name, status, progress, rowEl, barEl, statusEl, iconEl }
+  let   _total   = 0;           // total bytes across all files
+  let   _loaded  = 0;           // bytes confirmed uploaded so far
+  let   _trayVisible = false;
+  let   _cancelled   = false;   // true when user clicks × during an active batch
+  let   _activeXhr   = null;    // reference to the in-flight XHR (so we can abort it)
+
+
+  // Status → display config
+  const _cfg = {
+    queued:    { icon: '⏳', label: 'Queued',       barColor: null },
+    uploading: { icon: '🔄', label: 'Uploading…',   barColor: 'linear-gradient(90deg,#3b82f6,#60a5fa)' },
+    reviewing: { icon: '🔍', label: 'Reviewing…',   barColor: '#34d399' },
+    done:      { icon: '✅', label: 'Saved',         barColor: '#22c55e' },
+    error:     { icon: '❌', label: 'Failed',        barColor: '#ef4444' },
+  };
+
+  // ── Public API ───────────────────────────────────────────────────────────────
+  window.UploadTray = {
+
+    /**
+     * Register a batch of File objects before uploading begins.
+     * Returns an array of IDs you can pass to the update* methods.
+     */
+    initBatch(files) {
+      _files.length = 0;
+      _total  = files.reduce((s, f) => s + f.size, 0);
+      _loaded = 0;
+
+      files.forEach((file, i) => {
+        const id = 'trf_' + Date.now() + '_' + i;
+        _files.push({ id, name: file.name, status: 'queued', progress: 0,
+                      rowEl: null, barEl: null, statusEl: null, iconEl: null });
+      });
+
+      _renderTray();
+      _showTray();
+      return _files.map(f => f.id);
+    },
+
+    /** Call as XHR upload.onprogress fires for a specific file-id. */
+    updateProgress(id, loaded, total) {
+      const entry = _files.find(f => f.id === id);
+      if (!entry) return;
+      const prev   = entry.progress;
+      entry.progress = total > 0 ? Math.round((loaded / total) * 100) : 0;
+      entry.status   = 'uploading';
+      _loaded += (loaded - prev * total / 100);   // approximate delta
+      _updateRow(entry);
+      _updateOverall();
+    },
+
+    /** Mark file as temp-uploaded, now waiting for user review. */
+    setReviewing(id) {
+      const entry = _files.find(f => f.id === id);
+      if (!entry) return;
+      entry.status   = 'reviewing';
+      entry.progress = 100;
+      _updateRow(entry);
+    },
+
+    /** Mark file as fully saved (after user confirms the review modal). */
+    setDone(id) {
+      const entry = _files.find(f => f.id === id);
+      if (!entry) return;
+      entry.status   = 'done';
+      entry.progress = 100;
+      _updateRow(entry);
+      _updateOverall();
+      _maybeAutoClose();
+    },
+
+    /** Mark file as failed. */
+    setError(id, msg) {
+      const entry = _files.find(f => f.id === id);
+      if (!entry) return;
+      entry.status   = 'error';
+      entry.statusMsg = msg || 'Failed';
+      _updateRow(entry);
+      _updateOverall();
+    },
+
+   /** Programmatically hide the tray (e.g. on cancel-all). */
+    hide() { _hideTray(); },
+
+    /** Register the active XHR so the tray can abort it on cancel. */
+    setActiveXhr(xhr) { _activeXhr = xhr; },
+
+    /** Called by the × button — aborts live XHR and sets the stop flag. */
+    cancelAll() {
+      _cancelled = true;
+      if (_activeXhr) { _activeXhr.abort(); _activeXhr = null; }
+      _hideTray();
+    },
+
+    /** Reset the cancelled flag (called before starting a new batch). */
+    resetCancelled() { _cancelled = false; },
+
+    /** Read the flag — drop queue loop checks this before each file. */
+    isCancelled() { return _cancelled; },
+  };
+
+
+  // ── Render helpers ───────────────────────────────────────────────────────────
+
+  function _renderTray() {
+    const list = document.getElementById('trayFileList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    _files.forEach(entry => {
+      const row = document.createElement('div');
+      row.className = 'tray-row';
+      row.id = 'tray_row_' + entry.id;
+
+      const cfg = _cfg[entry.status];
+      row.innerHTML = `
+        <div class="tray-row-icon ${entry.status}" id="tray_icon_${entry.id}">${cfg.icon}</div>
+        <div class="tray-row-body">
+          <div class="tray-row-name" title="${_esc(entry.name)}">${_esc(entry.name)}</div>
+          <div class="tray-row-status" id="tray_status_${entry.id}">${cfg.label}</div>
+          <div class="tray-row-bar-wrap">
+            <div class="tray-row-bar" id="tray_bar_${entry.id}" style="width:0%"></div>
+          </div>
+        </div>`;
+
+      entry.rowEl    = row;
+      entry.barEl    = row.querySelector('#tray_bar_' + entry.id);
+      entry.statusEl = row.querySelector('#tray_status_' + entry.id);
+      entry.iconEl   = row.querySelector('#tray_icon_' + entry.id);
+
+      list.appendChild(row);
+    });
+  }
+
+  function _updateRow(entry) {
+    if (!entry.rowEl) return;
+    const cfg = _cfg[entry.status];
+
+    // Icon
+    if (entry.iconEl) {
+      entry.iconEl.textContent = cfg.icon;
+      entry.iconEl.className   = 'tray-row-icon ' + entry.status;
+    }
+    // Status text
+    if (entry.statusEl) {
+      entry.statusEl.textContent = entry.statusMsg || cfg.label;
+    }
+    // Progress bar
+    if (entry.barEl) {
+      entry.barEl.style.width      = entry.progress + '%';
+      if (cfg.barColor) entry.barEl.style.background = cfg.barColor;
+    }
+  }
+
+  function _updateOverall() {
+    const pctEl = document.getElementById('trayOverallPct');
+    const barEl = document.getElementById('trayOverallBar');
+    const done  = _files.filter(f => f.status === 'done' || f.status === 'error').length;
+    const pct   = _files.length > 0 ? Math.round((done / _files.length) * 100) : 0;
+
+    const headerLabel = document.getElementById('trayHeaderLabel');
+    if (headerLabel) {
+      const pending = _files.filter(f => f.status !== 'done' && f.status !== 'error').length;
+      headerLabel.textContent = pending > 0
+        ? `Uploading ${_files.length - pending + 1} of ${_files.length}…`
+        : `${done} file${done !== 1 ? 's' : ''} uploaded`;
+    }
+
+    if (pctEl) pctEl.textContent = pct + '%';
+    if (barEl) barEl.style.width = pct + '%';
+  }
+
+  function _maybeAutoClose() {
+    const allDone = _files.every(f => f.status === 'done' || f.status === 'error');
+    if (!allDone) return;
+
+    const headerIcon = document.getElementById('trayHeaderIcon');
+    if (headerIcon) headerIcon.style.animation = 'none';
+
+    const headerLabel = document.getElementById('trayHeaderLabel');
+    if (headerLabel) {
+      const errors = _files.filter(f => f.status === 'error').length;
+      headerLabel.textContent = errors === 0
+        ? `Upload complete ✅`
+        : `Done — ${errors} error${errors > 1 ? 's' : ''}`;
+    }
+
+    // Auto-hide after 6 s when everything is done
+    setTimeout(_hideTray, 6000);
+  }
+
+  function _showTray() {
+    const tray = document.getElementById('uploadProgressTray');
+    if (!tray) return;
+    tray.style.display  = 'block';
+    tray.style.opacity  = '0';
+    tray.style.transform = 'translateY(20px)';
+    _trayVisible = true;
+    requestAnimationFrame(() => {
+      tray.style.opacity   = '1';
+      tray.style.transform = 'translateY(0)';
+    });
+  }
+
+  function _hideTray() {
+    const tray = document.getElementById('uploadProgressTray');
+    if (!tray) return;
+    tray.style.opacity   = '0';
+    tray.style.transform = 'translateY(20px)';
+    _trayVisible = false;
+    setTimeout(() => { tray.style.display = 'none'; }, 280);
+  }
+
+  function _esc(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Global tray controls (called from HTML onclick) ──────────────────────────
+  window.toggleTrayMinimise = function() {
+    const tray = document.getElementById('uploadProgressTray');
+    if (tray) tray.classList.toggle('minimised');
+  };
+  window.closeTray = function() { _hideTray(); };
+
+})(); // end UploadTray
+
+// Cancels the entire active upload batch (called by tray × button)
+window.cancelAllUploads = function() {
+  if (window.UploadTray) window.UploadTray.cancelAll();
+  // Also cancel the preview modal's current temp token if one is open
+  if (typeof cancelTempUpload === 'function' && currentTempToken) {
+    cancelTempUpload();
+  }
+};
+
+
 // ── Part A: Global drag-from-desktop upload ───────────────────────────────
   (function initGlobalDrop() {
     let _dragEnterCount = 0;
@@ -4010,7 +4794,7 @@ document.addEventListener('click', function(e) {
       }
 
       const styles = {
-        progress: { bg: '#1e293b', text: '#f8fafc', border: '#334155' },
+        progress: { bg: '#166534', text: '#ffffff', border: '#15803d' }, // green header style
         success:  { bg: '#14532d', text: '#f0fdf4', border: '#166534' },
         error:    { bg: '#7f1d1d', text: '#fef2f2', border: '#991b1b' },
       };
@@ -4071,7 +4855,7 @@ document.addEventListener('click', function(e) {
       e.preventDefault();
     }, false);
 
-    document.addEventListener('drop', async e => {
+     document.addEventListener('drop', async e => {
       // Skip if the drop landed inside an open modal — let the modal handle it
       if (e.target.closest('.modal.active, #folderBrowserModal:not(.hidden),' +
                             '#uploadModal:not(.hidden), #uploadFolderModal:not(.hidden)')) return;
@@ -4083,61 +4867,209 @@ document.addEventListener('click', function(e) {
       if (!PRIV_UPLOAD) { showPermissionDenied(); return; }
 
       const ALLOWED_EXT = ['pdf','doc','docx','jpg','jpeg','png'];
-      const files = Array.from(e.dataTransfer.files).filter(f => {
-        const ext = f.name.split('.').pop().toLowerCase();
-        return ALLOWED_EXT.includes(ext);
-      });
+
+      // ── Collect files via FileSystemEntry API so folders are traversed ──────
+      async function _getFilesFromEntry(entry, pathPrefix) {
+        if (entry.isFile) {
+          return new Promise(resolve => {
+            entry.file(f => {
+              const ext = f.name.split('.').pop().toLowerCase();
+              if (!ALLOWED_EXT.includes(ext)) { resolve([]); return; }
+              const wrapped = new File([f], f.name, { type: f.type, lastModified: f.lastModified });
+              Object.defineProperty(wrapped, 'webkitRelativePath', { value: pathPrefix + f.name, writable: false });
+              resolve([wrapped]);
+            }, () => resolve([]));
+          });
+        } else if (entry.isDirectory) {
+          return new Promise(resolve => {
+            const reader     = entry.createReader();
+            const collected  = [];
+            function readAll() {
+              reader.readEntries(async results => {
+                if (results.length === 0) {
+                  // Pass pathPrefix + entry.name + '/' so nested directory entries
+                  // carry their full relative path, preserving the subfolder structure.
+                  const nested = await Promise.all(
+                    collected.map(e =>
+                      _getFilesFromEntry(e, pathPrefix + entry.name + '/')
+                    )
+                  );
+                  resolve(nested.flat());
+                } else { collected.push(...results); readAll(); }
+              }, () => resolve([]));
+            }
+            readAll();
+          });
+        }
+
+        return [];
+      }
+
+
+      // Use FileSystemEntry API when available (covers folder drops)
+      let files   = [];
+      let _droppedFolderEntry = null; // tracks a top-level folder entry if present
+
+      if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+        const entries = Array.from(e.dataTransfer.items)
+          .map(item => item.webkitGetAsEntry ? item.webkitGetAsEntry() : null)
+          .filter(Boolean);
+
+        // ── Detect folder drop: route through Upload Folder modal path ────────
+        // This gives the user the same tray + confirmation UX as the modal.
+        const folderEntries = entries.filter(en => en.isDirectory);
+        if (folderEntries.length > 0) {
+          // Use the first dropped folder (multi-folder drops are rare; handle one at a time)
+          _droppedFolderEntry = folderEntries[0];
+          const allDroppedFiles = await (async () => {
+            const results = await Promise.all(
+              entries.map(en => en.isDirectory
+                ? _getFilesFromEntry(en, en.name + '/')
+                : _getFilesFromEntry(en, '')
+              )
+            );
+            return results.flat();
+          })();
+
+          if (allDroppedFiles.length === 0) {
+            showDialog('The dropped folder appears to be empty.', 'warning');
+            return;
+          }
+
+          // Populate the pending folder state and open the folder browser directly
+          // (same path as the Upload Folder modal submit button)
+          _pendingFolderFiles = allDroppedFiles;
+          _pendingFolderName  = _droppedFolderEntry.name;
+
+          // Show the folder browser so the user can choose a destination,
+          // which will then call _doFinalizeUploadFolderToFolder() — that function
+          // now shows the upload tray automatically (see Change 1 of 3 above).
+          if (!PRIV_UPLOAD) { showPermissionDenied(); return; }
+          _folderBrowserSaveMode = 'folder';
+          openFolderBrowserModalForFolder();
+          return; // handled — skip the per-file temp-upload loop below
+        }
+
+        if (entries.length > 0) {
+          const results = await Promise.all(entries.map(entry =>
+            entry.isDirectory
+              ? _getFilesFromEntry(entry, entry.name + '/')
+              : _getFilesFromEntry(entry, '')
+          ));
+          files = results.flat();
+        }
+      }
+
+      // Fallback: plain file drop (no folder involved)
+      if (files.length === 0) {
+        files = Array.from(e.dataTransfer.files).filter(f => {
+          const ext = f.name.split('.').pop().toLowerCase();
+          return ALLOWED_EXT.includes(ext);
+        });
+      }
 
       if (files.length === 0) {
         showDialog('No supported files dropped. Accepted: PDF, DOC, DOCX, JPG, PNG', 'warning');
         return;
       }
 
-      // Only handle one file at a time via the OCR + Upload Record Modal flow.
-      // If multiple files are dropped, process only the first one and notify user.
-      if (files.length > 1) {
-        showDialog('Only one file at a time is supported via drag-and-drop. Processing the first file.', 'warning');
+      // ── Build queue, register with Tray, process files one at a time ──────
+      const _dropQueue = [...files];
+
+
+      // Register all files with the Tray so rows appear immediately
+      const _trayIds = window.UploadTray
+        ? window.UploadTray.initBatch(files)
+        : files.map(() => null);
+
+      // Reset any previous cancel flag before starting a fresh batch
+      if (window.UploadTray) window.UploadTray.resetCancelled();
+
+      let _dropQueueIndex = 0;  // tracks which tray ID to use
+
+      async function _processNextDropped() {
+        // Stop the loop if the user clicked × on the tray
+        if (window.UploadTray && window.UploadTray.isCancelled()) return;
+
+        if (_dropQueue.length === 0) return;
+        const file   = _dropQueue.shift();
+        const trayId = _trayIds[_dropQueueIndex++];
+
+        _showUploadToast(`Scanning: ${file.name}…`, 'progress');
+
+        try {
+          // Use XHR instead of fetch so we get real upload progress events
+          const responseData = await new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const fd  = new FormData();
+            fd.append(CSRF_NAME, CSRF_TOKEN);
+            fd.append('record_file', file);
+            fd.append('folder_path', currentFolderPath);
+
+            // Register XHR so the tray × button can abort it mid-flight
+            if (window.UploadTray) window.UploadTray.setActiveXhr(xhr);
+
+            xhr.upload.onprogress = e => {
+              if (e.lengthComputable && window.UploadTray && trayId) {
+                window.UploadTray.updateProgress(trayId, e.loaded, e.total);
+              }
+            };
+
+            xhr.onload = () => {
+              if (window.UploadTray) window.UploadTray.setActiveXhr(null);
+              if (xhr.status >= 200 && xhr.status < 300) {
+                try { resolve(JSON.parse(xhr.responseText)); }
+                catch { reject(new Error('Bad JSON')); }
+              } else {
+                reject(new Error('HTTP ' + xhr.status));
+              }
+            };
+            xhr.onerror = () => { if (window.UploadTray) window.UploadTray.setActiveXhr(null); reject(new Error('Network error')); };
+            xhr.onabort = () => { if (window.UploadTray) window.UploadTray.setActiveXhr(null); reject(new Error('Aborted')); };
+
+            xhr.open('POST', API.listFolder.replace('/list-folder', '/temp-upload'));
+            xhr.send(fd);
+          });
+
+          _hideUploadToast();
+
+          if (!responseData.success) {
+            if (window.UploadTray && trayId) window.UploadTray.setError(trayId, responseData.message || 'Failed');
+            showDialog('Upload failed: ' + (responseData.message || 'Unknown error'), 'error');
+            return;
+          }
+
+          // Mark file as "in review" in the Tray
+          if (window.UploadTray && trayId) window.UploadTray.setReviewing(trayId);
+
+          // Store temp token and metadata (same as the Upload Record Modal flow)
+          currentTempToken    = responseData.token;
+          currentTempMetadata = {
+            original_name: responseData.original_name,
+            size:          responseData.size,
+            preview_url:   responseData.preview_url,
+            ext: responseData.file_ext || responseData.original_name.split('.').pop().toLowerCase() || 'pdf',
+            _trayId:      trayId,
+            _onComplete:  _processNextDropped,
+          };
+
+          // ── Phase 2: Open the Upload Record Modal preview (reuse existing flow)
+          openTempPreviewModal(responseData.token, responseData.preview_url, responseData.original_name);
+          applyOcrSuggestions(responseData);
+
+        } catch (err) {
+          _hideUploadToast();
+          if (err.message === 'Aborted' || (window.UploadTray && window.UploadTray.isCancelled())) return;
+          if (window.UploadTray && trayId) window.UploadTray.setError(trayId, 'Failed');
+          showDialog('Upload failed. Please try again.', 'error');
+        }
       }
 
-      const file = files[0];
+      _processNextDropped();
 
-      // ── Phase 1: Temp upload with OCR ──────────────────────────────────────
-      _showUploadToast(`Scanning: ${file.name}…`, 'progress');
-
-      try {
-        const fd = new FormData();
-        fd.append(CSRF_NAME, CSRF_TOKEN);
-        fd.append('record_file', file);
-        fd.append('folder_path', currentFolderPath);
-
-        const res  = await fetch(
-          API.listFolder.replace('/list-folder', '/temp-upload'),
-          { method: 'POST', body: fd }
-        );
-        _hideUploadToast();
-
-        if (!res.ok) { showDialog('Upload failed. Server error.', 'error'); return; }
-        const data = await res.json();
-        if (!data.success) { showDialog('Upload failed: ' + (data.message || 'Unknown error'), 'error'); return; }
-
-        // Store temp token and metadata (same as the Upload Record Modal flow)
-        currentTempToken    = data.token;
-        currentTempMetadata = {
-          original_name: data.original_name,
-          size:          data.size,
-          preview_url:   data.preview_url,
-          ext: data.file_ext || data.original_name.split('.').pop().toLowerCase() || 'pdf',
-        };
-
-        // ── Phase 2: Open the Upload Record Modal preview (reuse existing flow)
-        openTempPreviewModal(data.token, data.preview_url, data.original_name);
-        applyOcrSuggestions(data);
-
-      } catch (err) {
-        _hideUploadToast();
-        showDialog('Upload failed. Please try again.', 'error');
-      }
     }, false);
+
+
   })();
 
   // ── Part B: Drag-to-move file cards onto folder cards ────────────────────

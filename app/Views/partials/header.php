@@ -14,7 +14,7 @@ if ($role === 'admin') {
 ?>
 
 <!-- Green Header -->
-<div class="bg-green-700 border-b border-green-800 px-8 py-4">
+<div class="bg-green-700 border-b border-green-800 px-8 py-4 sticky top-0 z-50">
   <div class="flex items-center justify-end">
     <div class="flex items-center gap-3">
       <div class="text-right">

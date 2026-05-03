@@ -14,7 +14,7 @@
     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
     </svg>
-    Add Document Type
+    Add Record Type
   </button>
 </div>
 
@@ -196,7 +196,7 @@ function openTypeModal(type) {
   document.getElementById('f_suffix').value      = type ? type.filename_suffix : '';
   document.getElementById('f_sort_order').value  = type ? type.sort_order : 0;
   document.getElementById('f_is_active').value   = type ? type.is_active  : 1;
-  document.getElementById('typeModalTitle').textContent = type ? 'Edit Document Type' : 'Add Document Type';
+  document.getElementById('typeModalTitle').textContent = type ? 'Edit Record Type' : 'Add Record Type';
   document.getElementById('typeModal').classList.remove('hidden');
 }
 function closeTypeModal() { document.getElementById('typeModal').classList.add('hidden'); }

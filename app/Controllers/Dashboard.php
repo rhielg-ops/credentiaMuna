@@ -56,8 +56,11 @@ class Dashboard extends BaseController
      * Scan $basePath and return counts scoped to what $userId is allowed to see.
      * Admins (role === 'admin') always get full access.
      */
+
+    
     private function countAccessibleItems(string $basePath, int $userId): array
     {
+        log_message('debug', 'Dashboard: using updated countAccessibleItems');
         $fileCount          = 0;
         $folderCount        = 0;
         $fileTypes          = [];
@@ -100,24 +103,42 @@ class Dashboard extends BaseController
                     continue;
                 }
 
-                if ($item->isDir()) {
+              if ($item->isDir()) {
                     $folderCount++;
-
-                    // Track top-level folder distribution
-                    $topFolder = explode('/', $relativePath)[0];
-                    $folderDistribution[$topFolder] = ($folderDistribution[$topFolder] ?? 0) + 1;
+                    // Do NOT count directories toward folder distribution —
+                    // file counts are tallied in the else branch below.
                 } else {
+                    $ext = strtolower(pathinfo($item->getFilename(), PATHINFO_EXTENSION));
+
+                    // Only count valid uploaded file types
+                    $validExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
+                    if (!in_array($ext, $validExtensions, true)) {
+                        continue;
+                    }
+
                     $fileCount++;
 
                     // Track file types
-                    $ext = strtolower(pathinfo($item->getFilename(), PATHINFO_EXTENSION));
                     $fileTypes[$ext] = ($fileTypes[$ext] ?? 0) + 1;
+
+                    // Track top-level folder distribution:
+                    // Attribute every valid file to its top-level folder,
+                    // regardless of how deeply nested it is.
+                    // Only actual files (valid extensions) reach this point —
+                    // the isDir() branch above ensures directories are never counted here.
+                    $pathParts = explode('/', $relativePath);
+                    if (count($pathParts) >= 2) {
+                        $topFolder = $pathParts[0];
+                        $folderDistribution[$topFolder] = ($folderDistribution[$topFolder] ?? 0) + 1;
+                    }
+
 
                     // Track monthly uploads (current year only)
                     $mtime = filemtime($item->getPathname());
                     if ((int) date('Y', $mtime) === (int) date('Y')) {
                         $monthlyData[(int) date('n', $mtime) - 1]++;
                     }
+
                 }
             }
         } catch (\Exception $e) {

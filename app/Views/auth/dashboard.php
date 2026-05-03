@@ -317,7 +317,7 @@ $folder_values = array_values($top_folders);
     <div class="chart-card-header">
       <div>
         <p class="chart-card-title">Folder Distribution</p>
-        <p class="chart-card-sub">Top 5 folders by record count</p>
+        <p class="chart-card-sub">Top 5 folders by folder count</p>
       </div>
       <button class="chart-export-btn" onclick="openExportModal('folderDistChart', 'Folder Distribution')">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -519,7 +519,7 @@ const folderDistChart = new Chart(folderDistCtx, {
   data: {
     labels: [<?= !empty($folder_labels) ? "'" . implode("','", array_map('addslashes', $folder_labels)) . "'" : "'No Data'" ?>],
     datasets: [{
-      label: 'Number of Records',
+      label: 'Number of Folders',
       data: [<?= !empty($folder_values) ? implode(',', $folder_values) : '0' ?>],
       backgroundColor: 'rgba(22,163,74,0.15)',
       borderColor: colors.secondary,
@@ -537,7 +537,7 @@ const folderDistChart = new Chart(folderDistCtx, {
       tooltip: {
         ...tip,
         callbacks: {
-          label: function(ctx) { return '  ' + ctx.parsed.x + ' records'; }
+         label: function(ctx) { return '  ' + ctx.parsed.x + ' folders'; }
         }
       }
     },
@@ -749,11 +749,20 @@ function doExport(format) {
     document.head.appendChild(script);
 
   } else if (format === 'csv') {
-    // ── CSV (native, no library needed) ─────────────────────────────────────
-    const cfg     = chart.config;
-    const labels  = cfg.data.labels || [];
-    const headers = ['Record Type', ...cfg.data.datasets.map(ds => ds.label || 'Value')];
-    const rows    = [headers];
+    // ── CSV — chart-aware headers and filename ───────────────────────────────
+
+    // Map each chart ID to its correct first-column label and export filename
+    const chartMeta = {
+      fileTypeChart:   { rowLabel: 'Record Type', filename: 'records_by_type_'         },
+      folderDistChart: { rowLabel: 'Folder Name',  filename: 'folder_distribution_'    },
+      timelineChart:   { rowLabel: 'Month',        filename: 'records_over_time_'      }
+    };
+
+    const meta     = chartMeta[_exportChartId] || { rowLabel: 'Label', filename: 'chart_export_' };
+    const cfg      = chart.config;
+    const labels   = cfg.data.labels || [];
+    const headers  = [meta.rowLabel, ...cfg.data.datasets.map(ds => ds.label || 'Value')];
+    const rows     = [headers];
 
     labels.forEach(function(label, i) {
       const row = [label];
@@ -772,12 +781,14 @@ function doExport(format) {
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.download = 'records_' + ts + '.csv';
+    link.download = meta.filename + ts + '.csv';
     link.href = URL.createObjectURL(blob);
     link.click();
     URL.revokeObjectURL(link.href);
     closeExportModal();
   }
+
+
 }
 </script>
 

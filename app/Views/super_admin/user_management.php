@@ -4,7 +4,7 @@
 <!-- Page Header -->
 <div class="bg-green-700 text-white p-8 rounded-xl mb-6">
   <h2 class="text-3xl font-bold mb-2">User Management</h2>
-  <p class="text-green-100">Manage administrators and approve pending requests</p>
+  <p class="text-green-100">Manage users and approve pending requests</p>
 </div>
 
 <!-- Pending Approvals Section -->

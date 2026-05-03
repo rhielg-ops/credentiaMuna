@@ -50,7 +50,7 @@
       <h3 class="text-lg font-bold text-gray-800">Total Backups</h3>
     </div>
     <p id="statTotalBackups" class="text-2xl font-bold text-gray-900 mb-1">—</p>
-    <p class="text-xs text-gray-500">Stored in File Server 2</p>
+    <p class="text-xs text-gray-500">Stored in File Server </p>
   </div>
 
 </div>

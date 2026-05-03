@@ -72,7 +72,7 @@
       <button type="submit"
               class="w-full py-3 bg-green-700 text-white rounded-lg hover:bg-green-800
                      font-semibold text-lg">
-        Verify MPIN
+        Verify PIN
       </button>
 
       <div class="mt-5 text-center space-y-3">

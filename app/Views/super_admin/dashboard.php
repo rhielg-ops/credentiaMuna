@@ -228,13 +228,7 @@
   <p class="text-green-100">System management and oversight</p>
 </div>
 
-<!-- Tabs -->
-<div class="flex gap-2 mb-6 border-b border-gray-200">
-  <button class="px-4 py-2 bg-green-700 text-white rounded-t-lg font-medium">Overview</button>
-  <button onclick="window.location.href='<?= base_url('super-admin/all-records'); ?>'" class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-t-lg font-medium">Academic Records</button>
-  <button onclick="window.location.href='<?= base_url('super-admin/user-management'); ?>'" class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-t-lg font-medium">User Management</button>
-  <button class="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-t-lg font-medium">System Settings</button>
-</div>
+
 
 <!-- Stats Cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -308,9 +302,13 @@ $docx_count  = ($file_types['docx'] ?? 0) + ($file_types['doc'] ?? 0);
 $image_count = ($file_types['png'] ?? 0) + ($file_types['jpg'] ?? 0) + ($file_types['jpeg'] ?? 0);
 $other_count = $total_files - ($pdf_count + $docx_count + $image_count);
 
-// Get top 5 folders by file count
-arsort($folder_distribution);
-$top_folders   = array_slice($folder_distribution, 0, 5, true);
+//folder_distribution already contains plain integer file counts (direct files only,
+// valid extensions only) as computed by Dashboard::countAccessibleItems().
+// Sort descending and take the top 5.
+$filtered_folder_distribution = array_map('intval', $folder_distribution);
+arsort($filtered_folder_distribution);
+$top_folders   = array_slice($filtered_folder_distribution, 0, 5, true);
+
 $folder_labels = array_keys($top_folders);
 $folder_values = array_values($top_folders);
 ?>
@@ -341,7 +339,7 @@ $folder_values = array_values($top_folders);
     <div class="chart-card-header">
       <div>
         <p class="chart-card-title">Folder Distribution</p>
-        <p class="chart-card-sub">Top 5 folders by file count</p>
+        <p class="chart-card-sub">Top 5 folders by folder count</p>
       </div>
       <button class="chart-export-btn" onclick="openExportModal('folderDistChart', 'Folder Distribution')">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -511,7 +509,7 @@ const fileTypeChart = new Chart(fileTypeCtx, {
   data: {
     labels: ['PDF', 'Word Documents', 'Images', 'Others'],
     datasets: [{
-      label: 'Number of Records',
+      label: 'Number of Folders',
       data: [<?= $pdf_count ?>, <?= $docx_count ?>, <?= $image_count ?>, <?= $other_count ?>],
       backgroundColor: [
         'rgba(21,128,61,0.85)',
@@ -568,7 +566,7 @@ const folderDistChart = new Chart(folderDistCtx, {
   data: {
     labels: [<?= !empty($folder_labels) ? "'" . implode("','", array_map('addslashes', $folder_labels)) . "'" : "'No Data'" ?>],
     datasets: [{
-      label: 'Number of Records',
+      label: 'Number of Files',
       data: [<?= !empty($folder_values) ? implode(',', $folder_values) : '0' ?>],
       backgroundColor: 'rgba(22,163,74,0.15)',
       borderColor: colors.secondary,
@@ -576,6 +574,7 @@ const folderDistChart = new Chart(folderDistCtx, {
       borderRadius: 8,
       borderSkipped: false
     }]
+
   },
   options: {
     indexAxis: 'y',
@@ -586,7 +585,7 @@ const folderDistChart = new Chart(folderDistCtx, {
       tooltip: {
         ...tip,
         callbacks: {
-          label: function(ctx) { return '  ' + ctx.parsed.x + ' records'; }
+          label: function(ctx) { return '  ' + ctx.parsed.x + ' folders'; }
         }
       }
     },
@@ -797,12 +796,21 @@ function doExport(format) {
     };
     document.head.appendChild(script);
 
-  } else if (format === 'csv') {
-    // ── CSV (native, no library needed) ─────────────────────────────────────
-    const cfg     = chart.config;
-    const labels  = cfg.data.labels || [];
-    const headers = ['Record Type', ...cfg.data.datasets.map(ds => ds.label || 'Value')];
-    const rows    = [headers];
+   } else if (format === 'csv') {
+    // ── CSV — chart-aware headers and filename ───────────────────────────────
+
+    // Map each chart ID to its correct first-column label and export filename
+    const chartMeta = {
+      fileTypeChart:   { rowLabel: 'Record Type', filename: 'records_by_type_'         },
+      folderDistChart: { rowLabel: 'Folder Name',  filename: 'folder_distribution_', valueLabel: 'Number of Files' },
+      timelineChart:   { rowLabel: 'Month',        filename: 'records_over_time_'      }
+    };
+
+    const meta     = chartMeta[_exportChartId] || { rowLabel: 'Label', filename: 'chart_export_' };
+    const cfg      = chart.config;
+    const labels   = cfg.data.labels || [];
+    const headers  = [meta.rowLabel, ...cfg.data.datasets.map(ds => ds.label || 'Value')];
+    const rows     = [headers];
 
     labels.forEach(function(label, i) {
       const row = [label];
@@ -821,12 +829,13 @@ function doExport(format) {
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.download = 'records_' + ts + '.csv';
+    link.download = meta.filename + ts + '.csv';
     link.href = URL.createObjectURL(blob);
     link.click();
     URL.revokeObjectURL(link.href);
     closeExportModal();
   }
+
 }
 </script>
 
